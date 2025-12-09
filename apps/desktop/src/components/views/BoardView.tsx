@@ -80,8 +80,8 @@ export function BoardView() {
         setActiveTask(null);
     };
 
-    // Sort tasks for consistency
-    const sortedTasks = sortTasks(tasks);
+    // Sort tasks for consistency, filter out deleted
+    const sortedTasks = sortTasks(tasks.filter(t => !t.deletedAt));
 
     return (
         <div className="h-full overflow-x-auto">

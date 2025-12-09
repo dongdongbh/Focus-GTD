@@ -13,8 +13,10 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
     const { tasks } = useTaskStore();
     const { t } = useLanguage();
 
-    const inboxCount = tasks.filter(t => t.status === 'inbox').length;
-    const nextCount = tasks.filter(t => t.status === 'next').length;
+    // Filter out deleted tasks from counts
+    const activeTasks = tasks.filter(t => !t.deletedAt);
+    const inboxCount = activeTasks.filter(t => t.status === 'inbox').length;
+    const nextCount = activeTasks.filter(t => t.status === 'next').length;
 
     const navItems = [
         { id: 'inbox', labelKey: 'nav.inbox', icon: Inbox, count: inboxCount },

@@ -41,12 +41,14 @@ export default function NextActionsScreen() {
   ])).sort();
 
   const nextTasks = sortTasks(tasks.filter(t => {
+    if (t.deletedAt) return false;
     if (t.status !== 'next') return false;
     if (selectedContext && !t.contexts?.includes(selectedContext)) return false;
     return true;
   }));
 
   const todoTasks = sortTasks(tasks.filter(t => {
+    if (t.deletedAt) return false;
     if (t.status !== 'todo') return false;
     if (selectedContext && !t.contexts?.includes(selectedContext)) return false;
     return true;

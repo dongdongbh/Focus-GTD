@@ -20,7 +20,7 @@ import { useTaskStore, mergeAppData } from '@focus-gtd/core';
 import { mobileStorage } from '../lib/storage-adapter';
 import { pickAndParseSyncFile, exportData, readSyncFile, writeSyncFile } from '../lib/storage-file';
 
-type SettingsScreen = 'main' | 'appearance' | 'language' | 'sync';
+type SettingsScreen = 'main' | 'appearance' | 'language' | 'sync' | 'about';
 
 const LANGUAGES: { id: Language; native: string }[] = [
     { id: 'en', native: 'English' },
@@ -287,6 +287,43 @@ export default function SettingsPage() {
         );
     }
 
+    // ============ ABOUT SCREEN ============
+    if (currentScreen === 'about') {
+        return (
+            <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]} edges={['bottom']}>
+                <SubHeader title={t('settings.about')} />
+                <ScrollView style={styles.scrollView}>
+                    <View style={[styles.settingCard, { backgroundColor: tc.cardBg }]}>
+                        <View style={styles.settingRow}>
+                            <Text style={[styles.settingLabel, { color: tc.text }]}>{t('settings.version')}</Text>
+                            <Text style={[styles.settingValue, { color: tc.secondaryText }]}>
+                                {Constants.expoConfig?.version ?? '0.1.0'}
+                            </Text>
+                        </View>
+                        <View style={[styles.settingRow, { borderTopWidth: 1, borderTopColor: tc.border }]}>
+                            <Text style={[styles.settingLabel, { color: tc.text }]}>{language === 'zh' ? '许可证' : 'License'}</Text>
+                            <Text style={[styles.settingValue, { color: tc.secondaryText }]}>MIT</Text>
+                        </View>
+                        <TouchableOpacity
+                            style={[styles.settingRow, { borderTopWidth: 1, borderTopColor: tc.border }]}
+                            onPress={() => openLink('https://dongdongbh.tech')}
+                        >
+                            <Text style={[styles.settingLabel, { color: tc.text }]}>{language === 'zh' ? '网站' : 'Website'}</Text>
+                            <Text style={styles.linkText}>dongdongbh.tech</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.settingRow, { borderTopWidth: 1, borderTopColor: tc.border }]}
+                            onPress={() => openLink('https://github.com/dongdongbh/Focus-GTD')}
+                        >
+                            <Text style={[styles.settingLabel, { color: tc.text }]}>GitHub</Text>
+                            <Text style={styles.linkText}>Focus-GTD</Text>
+                        </TouchableOpacity>
+                    </View>
+                </ScrollView>
+            </SafeAreaView>
+        );
+    }
+
     // ============ MAIN SETTINGS SCREEN ============
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]} edges={['bottom']}>
@@ -295,35 +332,7 @@ export default function SettingsPage() {
                     <MenuItem title={t('settings.appearance')} onPress={() => setCurrentScreen('appearance')} />
                     <MenuItem title={t('settings.language')} onPress={() => setCurrentScreen('language')} />
                     <MenuItem title={t('settings.dataSync')} onPress={() => setCurrentScreen('sync')} />
-                </View>
-
-                {/* About Section */}
-                <Text style={[styles.sectionTitle, { color: tc.text, marginTop: 24 }]}>{t('settings.about')}</Text>
-                <View style={[styles.settingCard, { backgroundColor: tc.cardBg }]}>
-                    <View style={styles.settingRow}>
-                        <Text style={[styles.settingLabel, { color: tc.text }]}>{t('settings.version')}</Text>
-                        <Text style={[styles.settingValue, { color: tc.secondaryText }]}>
-                            {Constants.expoConfig?.version ?? '0.1.0'}
-                        </Text>
-                    </View>
-                    <View style={[styles.settingRow, { borderTopWidth: 1, borderTopColor: tc.border }]}>
-                        <Text style={[styles.settingLabel, { color: tc.text }]}>{language === 'zh' ? '许可证' : 'License'}</Text>
-                        <Text style={[styles.settingValue, { color: tc.secondaryText }]}>MIT</Text>
-                    </View>
-                    <TouchableOpacity
-                        style={[styles.settingRow, { borderTopWidth: 1, borderTopColor: tc.border }]}
-                        onPress={() => openLink('https://dongdongbh.tech')}
-                    >
-                        <Text style={[styles.settingLabel, { color: tc.text }]}>{language === 'zh' ? '网站' : 'Website'}</Text>
-                        <Text style={styles.linkText}>dongdongbh.tech</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.settingRow, { borderTopWidth: 1, borderTopColor: tc.border }]}
-                        onPress={() => openLink('https://github.com/dongdongbh/Focus-GTD')}
-                    >
-                        <Text style={[styles.settingLabel, { color: tc.text }]}>GitHub</Text>
-                        <Text style={styles.linkText}>github.com/dongdongbh/Focus-GTD</Text>
-                    </TouchableOpacity>
+                    <MenuItem title={t('settings.about')} onPress={() => setCurrentScreen('about')} />
                 </View>
             </ScrollView>
         </SafeAreaView>

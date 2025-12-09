@@ -22,7 +22,7 @@ export function SomedayView() {
   };
 
   const somedayTasks = tasks
-    .filter((t) => t.status === 'someday')
+    .filter((t) => !t.deletedAt && t.status === 'someday')
     .sort((a, b) => {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });

@@ -97,7 +97,7 @@ export function BoardView() {
             id={col.id}
             label={col.label}
             color={col.color}
-            tasks={tasks.filter((t) => t.status === col.id)}
+            tasks={tasks.filter((t) => !t.deletedAt && t.status === col.id)}
             onTaskPress={handleTaskPress}
             onStatusChange={(taskId, status) => updateTask(taskId, { status: status as any })}
             onDelete={deleteTask}

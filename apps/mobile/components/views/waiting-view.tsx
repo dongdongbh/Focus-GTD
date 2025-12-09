@@ -22,7 +22,7 @@ export function WaitingView() {
   };
 
   const waitingTasks = tasks
-    .filter((t) => t.status === 'waiting')
+    .filter((t) => !t.deletedAt && t.status === 'waiting')
     .sort((a, b) => {
       if (a.dueDate && !b.dueDate) return -1;
       if (!a.dueDate && b.dueDate) return 1;

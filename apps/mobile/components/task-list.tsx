@@ -41,6 +41,8 @@ export function TaskList({ statusFilter, title, allowAdd = true, projectId }: Ta
   // Memoize filtered tasks for performance
   const filteredTasks = useMemo(() => {
     return tasks.filter(t => {
+      // Filter out soft-deleted tasks
+      if (t.deletedAt) return false;
       const matchesStatus = statusFilter === 'all' ? true : t.status === statusFilter;
       const matchesProject = projectId ? t.projectId === projectId : true;
       const matchesSearch = searchQuery

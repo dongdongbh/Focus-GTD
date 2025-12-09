@@ -8,14 +8,17 @@ export function ContextsView() {
     const { tasks } = useTaskStore();
     const [selectedContext, setSelectedContext] = useState<string | null>(null);
 
-    // Extract all unique contexts from tasks
+    // Filter out deleted tasks first
+    const activeTasks = tasks.filter(t => !t.deletedAt);
+
+    // Extract all unique contexts from active tasks
     const allContexts = Array.from(new Set(
-        tasks.flatMap(t => t.contexts || [])
+        activeTasks.flatMap(t => t.contexts || [])
     )).sort();
 
     const filteredTasks = selectedContext
-        ? tasks.filter(t => t.contexts?.includes(selectedContext) && t.status !== 'done')
-        : tasks.filter(t => (t.contexts?.length || 0) > 0 && t.status !== 'done');
+        ? activeTasks.filter(t => t.contexts?.includes(selectedContext) && t.status !== 'done')
+        : activeTasks.filter(t => (t.contexts?.length || 0) > 0 && t.status !== 'done');
 
     return (
         <div className="flex h-full gap-6">
@@ -37,7 +40,7 @@ export function ContextsView() {
                         <Tag className="w-4 h-4" />
                         <span className="flex-1">All Contexts</span>
                         <span className="text-xs text-muted-foreground">
-                            {tasks.filter(t => (t.contexts?.length || 0) > 0 && t.status !== 'done').length}
+                            {activeTasks.filter(t => (t.contexts?.length || 0) > 0 && t.status !== 'done').length}
                         </span>
                     </div>
 
@@ -53,7 +56,7 @@ export function ContextsView() {
                             <span className="text-muted-foreground">@</span>
                             <span className="flex-1 truncate">{context.replace(/^@/, '')}</span>
                             <span className="text-xs text-muted-foreground">
-                                {tasks.filter(t => t.contexts?.includes(context) && t.status !== 'done').length}
+                                {activeTasks.filter(t => t.contexts?.includes(context) && t.status !== 'done').length}
                             </span>
                         </div>
                     ))}

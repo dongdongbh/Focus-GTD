@@ -37,13 +37,16 @@ export function ListView({ title, statusFilter }: ListViewProps) {
 
     const filteredTasks = useMemo(() => {
         const filtered = tasks.filter(t => {
+            // Always filter out soft-deleted tasks
+            if (t.deletedAt) return false;
+
             if (statusFilter !== 'all' && t.status !== statusFilter) return false;
             // Filter out archived unless we are in archived view (which uses statusFilter='archived')
             // But ListView is generic. If statusFilter is 'inbox', we want inbox.
             // If 'all', we usually want active tasks.
             // Desktop App.tsx passes explicit filters.
 
-            if (statusFilter === 'all' && (t.status === 'archived' || t.status === 'done' || t.deletedAt)) {
+            if (statusFilter === 'all' && (t.status === 'archived' || t.status === 'done')) {
                 // "All" view usually implies ContextsView or similar. 
                 // But ListView statusFilter is usually one status.
             }
@@ -58,7 +61,7 @@ export function ListView({ title, statusFilter }: ListViewProps) {
 
     const contextCounts = useMemo(() => {
         const counts: Record<string, number> = {};
-        tasks.filter(t => statusFilter === 'all' || t.status === statusFilter).forEach(t => {
+        tasks.filter(t => !t.deletedAt && (statusFilter === 'all' || t.status === statusFilter)).forEach(t => {
             (t.contexts || []).forEach(ctx => {
                 counts[ctx] = (counts[ctx] || 0) + 1;
             });
