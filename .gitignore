@@ -44,7 +44,12 @@ apps/mobile/.expo/
 apps/mobile/android/
 apps/mobile/ios/
 *.apk
+*.aab
 *.ipa
+
+# EAS build artifacts
+apps/mobile/eas-build-*
+.eas/
 
 # Desktop (Electron)
 apps/desktop/dist/
@@ -53,3 +58,9 @@ apps/desktop/dist-electron/
 # Lock files (using bun)
 package-lock.json
 yarn.lock
+
+# AUR build artifacts
+aur/*.pkg.tar.zst
+aur/*.deb
+aur/pkg/
+aur/src/

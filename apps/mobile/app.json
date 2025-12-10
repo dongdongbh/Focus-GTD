@@ -19,7 +19,7 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "package": "com.dongdongbh.focusgtd",
+      "package": "tech.dongdongbh.focusgtd",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },

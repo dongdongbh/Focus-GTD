@@ -13,7 +13,10 @@
                 "buildType": "apk",
                 "credentialsSource": "remote"
             },
-            "distribution": "internal"
+            "distribution": "internal",
+            "env": {
+                "NODE_ENV": "production"
+            }
         },
         "production": {
             "android": {

@@ -39,18 +39,19 @@ describe('URL Polyfill Shim', () => {
         // Temporarily replace global URL
         globalThis.URL = MockURL as unknown as typeof URL;
 
-        // 3. Re-import the shim
+        // 3. Re-import and call setupURLPolyfill
         const shim = await import('./url-polyfill');
+        shim.setupURLPolyfill();
 
-        // 4. Verify it was patched
-        expect(typeof shim.URL.createObjectURL).toBe('function');
+        // 4. Verify it was patched on globalThis
+        expect(typeof globalThis.URL.createObjectURL).toBe('function');
 
         // 5. Test safety behavior (returns string, warns)
-        const result = shim.URL.createObjectURL({} as any);
+        const result = globalThis.URL.createObjectURL({} as any);
         expect(result).toBe('');
 
         expect(warnMock).toHaveBeenCalledWith(
-            expect.stringContaining('prevent crash')
+            expect.stringContaining('not supported')
         );
 
         // Cleanup

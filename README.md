@@ -49,6 +49,41 @@ A complete Getting Things Done (GTD) productivity system for desktop and mobile.
 - 🌍 **i18n** - English and Chinese language support
 - 🔄 **Shared Core** - Same data model and business logic
 
+## Installation
+
+### Desktop (Linux)
+
+**Arch Linux (AUR):**
+```bash
+# Using yay
+yay -S focus-gtd-bin
+
+# Using paru
+paru -S focus-gtd-bin
+```
+📦 [AUR Package](https://aur.archlinux.org/packages/focus-gtd-bin)
+
+**Debian/Ubuntu:**
+Download the `.deb` from [GitHub Releases](https://github.com/dongdongbh/Focus-GTD/releases) and install:
+```bash
+sudo dpkg -i focus-gtd_*.deb
+```
+
+**AppImage (Universal):**
+Download the `.AppImage` from [GitHub Releases](https://github.com/dongdongbh/Focus-GTD/releases):
+```bash
+chmod +x Focus.GTD_*.AppImage
+./Focus.GTD_*.AppImage
+```
+
+### Mobile
+
+**Android:**
+Download the APK from [GitHub Releases](https://github.com/dongdongbh/Focus-GTD/releases).
+
+**iOS:**
+Coming soon via TestFlight.
+
 ## Quick Start
 
 ```bash
@@ -102,13 +137,6 @@ Optional sync folder (e.g., Dropbox, Syncthing) can be configured in Settings fo
 - [ ] 📱 **Android Widget** - Agenda widget using [react-native-android-widget](https://github.com/nickhudkins/react-native-android-widget)
 - [ ] ☁️ **Cloud Sync** - Optional cloud-based sync service
 - [ ] 🌐 **Web App** - Browser-based version
-
-## Development Notes
-
-### Mobile URL Shim
-The mobile app uses a custom URL shim (`apps/mobile/shims/url-polyfill.js`) to support `URL` and `URLSearchParams` in the Hermes environment.
-- **Safety**: `URL.createObjectURL` is intentionally implemented to return an empty string (`''`) and log a warning. This prevents crashes in Hermes which lacks `Blob` support for this method.
-- **Testing**: This behavior is verified by `apps/mobile/shims/url-polyfill.test.ts`.
 
 ## License
 

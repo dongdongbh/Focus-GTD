@@ -12,7 +12,6 @@
   "scripts": {
     "desktop:dev": "bun run --filter gtd-todo-app dev",
     "desktop:build": "bun run --filter gtd-todo-app build",
-    "expo": "bun run --filter mobile expo",
     "mobile:start": "bun run --filter mobile start",
     "mobile:android": "bun run --filter mobile android",
     "mobile:ios": "bun run --filter mobile ios",
