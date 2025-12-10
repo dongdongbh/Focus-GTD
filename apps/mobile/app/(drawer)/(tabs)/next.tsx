@@ -10,7 +10,7 @@ import { useLanguage } from '../../../contexts/language-context';
 import { Colors } from '@/constants/theme';
 import { SwipeableTaskItem } from '@/components/swipeable-task-item';
 
-import { sortTasks } from '@/utils/task-sorter';
+import { sortTasks } from '@focus-gtd/core';
 
 export default function NextActionsScreen() {
   const router = useRouter();

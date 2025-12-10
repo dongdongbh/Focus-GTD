@@ -48,7 +48,7 @@ const getStatusLabels = (lang: 'en' | 'zh'): Record<TaskStatus, string> => {
 
 import { TaskEditModal } from '@/components/task-edit-modal';
 import { SwipeableTaskItem } from '@/components/swipeable-task-item';
-import { sortTasks } from '@/utils/task-sorter';
+import { sortTasks } from '@focus-gtd/core';
 
 export default function ReviewScreen() {
   const router = useRouter();

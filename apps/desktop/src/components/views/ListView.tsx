@@ -1,10 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { Plus, Play, X, Trash2, Moon, User, CheckCircle } from 'lucide-react';
-import { useTaskStore, TaskStatus, Task, PRESET_CONTEXTS } from '@focus-gtd/core';
+import { useTaskStore, TaskStatus, Task, PRESET_CONTEXTS, sortTasks } from '@focus-gtd/core';
 import { TaskItem } from '../TaskItem';
 import { cn } from '../../lib/utils';
 import { useLanguage } from '../../contexts/language-context';
-import { sortTasks } from '../../lib/task-sorter';
 
 
 interface ListViewProps {

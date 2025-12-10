@@ -1,9 +1,8 @@
 import React from 'react';
 import { DndContext, DragOverlay, useDraggable, useDroppable, DragEndEvent, DragStartEvent, closestCorners } from '@dnd-kit/core';
 import { TaskItem } from '../TaskItem';
-import { useTaskStore, Task, TaskStatus } from '@focus-gtd/core';
+import { useTaskStore, Task, TaskStatus, sortTasks } from '@focus-gtd/core';
 import { useLanguage } from '../../contexts/language-context';
-import { sortTasks } from '../../lib/task-sorter';
 
 const getColumns = (t: (key: string) => string): { id: TaskStatus; label: string }[] => [
     { id: 'inbox', label: t('list.inbox') || 'Inbox' },

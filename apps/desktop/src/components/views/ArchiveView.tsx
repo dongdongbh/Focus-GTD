@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react';
-import { useTaskStore } from '@focus-gtd/core';
+import { useTaskStore, sortTasks } from '@focus-gtd/core';
 
 import { Undo2, Trash2 } from 'lucide-react';
-import { sortTasks } from '../../lib/task-sorter';
 
 export function ArchiveView() {
     const { tasks, updateTask, deleteTask } = useTaskStore();

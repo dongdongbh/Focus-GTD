@@ -1,5 +1,5 @@
 import { View, Text, ScrollView, Pressable, StyleSheet, TextInput } from 'react-native';
-import { useTaskStore, PRESET_CONTEXTS } from '@focus-gtd/core';
+import { useTaskStore, PRESET_CONTEXTS, sortTasks } from '@focus-gtd/core';
 import type { Task } from '@focus-gtd/core';
 import { useState } from 'react';
 import { useTheme } from '../../contexts/theme-context';
@@ -8,7 +8,6 @@ import { Colors } from '@/constants/theme';
 import { TaskEditModal } from '../task-edit-modal';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SwipeableTaskItem } from '../swipeable-task-item';
-import { sortTasks } from '@/utils/task-sorter';
 
 
 export function ContextsView() {
