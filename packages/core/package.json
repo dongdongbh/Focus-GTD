@@ -15,6 +15,6 @@
   "devDependencies": {
     "@types/uuid": "^9.0.8",
     "typescript": "^5.2.2",
-    "vitest": "^4.0.15"
+    "vitest": "^2.1.8"
   }
 }
