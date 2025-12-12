@@ -13,6 +13,7 @@ export function KeybindingHelpModal({ style, onClose, currentView, t }: Keybindi
     const vimGlobal: HelpItem[] = [
         { keys: '/', labelKey: 'keybindings.openSearch' },
         { keys: '?', labelKey: 'keybindings.openHelp' },
+        { keys: 'Ctrl-b', labelKey: 'keybindings.toggleSidebar' },
         { keys: 'gi', labelKey: 'keybindings.goInbox' },
         { keys: 'gn', labelKey: 'keybindings.goNext' },
         { keys: 'ga', labelKey: 'keybindings.goAgenda' },
@@ -39,6 +40,7 @@ export function KeybindingHelpModal({ style, onClose, currentView, t }: Keybindi
     const emacsGlobal: HelpItem[] = [
         { keys: 'Ctrl-s', labelKey: 'keybindings.openSearch' },
         { keys: 'Ctrl-h', labelKey: 'keybindings.openHelp' },
+        { keys: 'Ctrl-b', labelKey: 'keybindings.toggleSidebar' },
         { keys: 'Alt-i', labelKey: 'keybindings.goInbox' },
         { keys: 'Alt-n', labelKey: 'keybindings.goNext' },
         { keys: 'Alt-a', labelKey: 'keybindings.goAgenda' },
@@ -124,4 +126,3 @@ export function KeybindingHelpModal({ style, onClose, currentView, t }: Keybindi
         </div>
     );
 }
-

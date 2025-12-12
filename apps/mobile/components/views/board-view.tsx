@@ -28,9 +28,10 @@ interface DraggableTaskProps {
   onDrop: (taskId: string, newColumnIndex: number) => void;
   onTap: (task: Task) => void;
   onDelete: (taskId: string) => void;
+  deleteLabel: string;
 }
 
-function DraggableTask({ task, isDark, currentColumnIndex, onDrop, onTap, onDelete }: DraggableTaskProps) {
+function DraggableTask({ task, isDark, currentColumnIndex, onDrop, onTap, onDelete, deleteLabel }: DraggableTaskProps) {
   const translateY = useSharedValue(0);
   const scale = useSharedValue(1);
   const zIndex = useSharedValue(1);
@@ -95,7 +96,7 @@ function DraggableTask({ task, isDark, currentColumnIndex, onDrop, onTap, onDele
         <Swipeable
           renderRightActions={() => (
             <View style={styles.deleteAction}>
-              <Text style={styles.deleteActionText}>Delete</Text>
+              <Text style={styles.deleteActionText}>{deleteLabel}</Text>
             </View>
           )}
           onSwipeableOpen={() => onDelete(task.id)}
@@ -142,9 +143,11 @@ interface ColumnProps {
   onDrop: (taskId: string, newColumnIndex: number) => void;
   onTap: (task: Task) => void;
   onDelete: (taskId: string) => void;
+  noTasksLabel: string;
+  deleteLabel: string;
 }
 
-function Column({ columnIndex, label, color, tasks, isDark, onDrop, onTap, onDelete }: ColumnProps) {
+function Column({ columnIndex, label, color, tasks, isDark, onDrop, onTap, onDelete, noTasksLabel, deleteLabel }: ColumnProps) {
   return (
     <View style={[styles.column, { borderTopColor: color, backgroundColor: isDark ? '#1F2937' : '#F3F4F6' }]}>
       <View style={[styles.columnHeader, { borderBottomColor: isDark ? '#374151' : '#E5E7EB' }]}>
@@ -163,12 +166,13 @@ function Column({ columnIndex, label, color, tasks, isDark, onDrop, onTap, onDel
             onDrop={onDrop}
             onTap={onTap}
             onDelete={onDelete}
+            deleteLabel={deleteLabel}
           />
         ))}
         {tasks.length === 0 && (
           <View style={styles.emptyColumn}>
             <Text style={[styles.emptyText, { color: isDark ? '#6B7280' : '#9CA3AF' }]}>
-              No tasks
+              {noTasksLabel}
             </Text>
           </View>
         )}
@@ -220,7 +224,7 @@ export function BoardView() {
       }]}>
         <Text style={[styles.title, { color: isDark ? '#FFFFFF' : '#111827' }]}>{t('board.title')}</Text>
         <Text style={[styles.subtitle, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-          Hold to drag • Swipe left to delete
+          {t('board.hint')}
         </Text>
       </View>
 
@@ -240,6 +244,8 @@ export function BoardView() {
             onDrop={handleDrop}
             onTap={handleTap}
             onDelete={handleDelete}
+            noTasksLabel={t('board.noTasks')}
+            deleteLabel={t('board.delete')}
           />
         ))}
       </ScrollView>

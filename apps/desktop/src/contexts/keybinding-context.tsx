@@ -59,6 +59,11 @@ export function KeybindingProvider({
     const [style, setStyleState] = useState<KeybindingStyle>('vim');
     const [isHelpOpen, setIsHelpOpen] = useState(false);
 
+    const isSidebarCollapsed = settings.sidebarCollapsed ?? false;
+    const toggleSidebar = useCallback(() => {
+        updateSettings({ sidebarCollapsed: !isSidebarCollapsed }).catch(console.error);
+    }, [updateSettings, isSidebarCollapsed]);
+
     const scopeRef = useRef<TaskListScope | null>(null);
     const pendingRef = useRef<{ key: string | null; timestamp: number }>({ key: null, timestamp: 0 });
 
@@ -228,6 +233,11 @@ export function KeybindingProvider({
                 setIsHelpOpen(false);
                 return;
             }
+            if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'b' && !isEditableTarget(e.target)) {
+                e.preventDefault();
+                toggleSidebar();
+                return;
+            }
             if (style === 'emacs') {
                 handleEmacs(e);
             } else {
@@ -237,7 +247,7 @@ export function KeybindingProvider({
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [style, vimGoMap, emacsAltMap, onNavigate, isHelpOpen]);
+    }, [style, vimGoMap, emacsAltMap, onNavigate, isHelpOpen, toggleSidebar]);
 
     const contextValue = useMemo<KeybindingContextType>(() => ({
         style,

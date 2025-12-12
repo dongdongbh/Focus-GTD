@@ -10,6 +10,7 @@ import { TutorialView } from './components/views/TutorialView';
 import { SettingsView } from './components/views/SettingsView';
 import { ArchiveView } from './components/views/ArchiveView';
 import { AgendaView } from './components/views/AgendaView';
+import { SearchView } from './components/views/SearchView';
 import { useTaskStore, flushPendingSave } from '@mindwtr/core';
 import { GlobalSearch } from './components/GlobalSearch';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -39,6 +40,10 @@ function App() {
     }, [fetchData]);
 
     const renderView = () => {
+        if (currentView.startsWith('savedSearch:')) {
+            const savedSearchId = currentView.replace('savedSearch:', '');
+            return <SearchView savedSearchId={savedSearchId} />;
+        }
         switch (currentView) {
             case 'inbox':
                 return <ListView title={t('list.inbox')} statusFilter="inbox" />;

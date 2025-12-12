@@ -12,3 +12,5 @@ export { generateUUID } from './uuid';
 export * from './date';
 export * from './quick-add';
 export * from './schedule-utils';
+export * from './search';
+export * from './defer-utils';

@@ -1,6 +1,7 @@
 import { getNextScheduledAt, Task } from '@mindwtr/core';
 import { useTaskStore } from '@mindwtr/core';
 import type { NotificationContentInput, NotificationResponse, Subscription } from 'expo-notifications';
+import Constants from 'expo-constants';
 
 type NotificationsApi = typeof import('expo-notifications');
 
@@ -14,6 +15,12 @@ let Notifications: NotificationsApi | null = null;
 
 async function loadNotifications(): Promise<NotificationsApi | null> {
   if (Notifications) return Notifications;
+
+  // Skip notifications in Expo Go (not supported in newer SDKs)
+  if (Constants.appOwnership === 'expo') {
+    return null;
+  }
+
   try {
     const mod = await import('expo-notifications');
     Notifications = mod;
@@ -22,11 +29,12 @@ async function loadNotifications(): Promise<NotificationsApi | null> {
         shouldShowAlert: true,
         shouldPlaySound: true,
         shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: true,
       }),
     });
     return mod;
   } catch (error) {
-    // Expo Go does not support notifications on newer SDKs.
     console.warn('[Notifications] expo-notifications unavailable:', error);
     return null;
   }
@@ -47,9 +55,10 @@ async function scheduleForTask(api: NotificationsApi, task: Task, when: Date) {
     categoryIdentifier: 'task-reminder',
   };
 
+  const secondsUntil = Math.max(1, Math.floor((when.getTime() - Date.now()) / 1000));
   const id = await api.scheduleNotificationAsync({
     content,
-    trigger: when,
+    trigger: { seconds: secondsUntil, repeats: false } as any,
   });
 
   scheduledByTask.set(task.id, { scheduledAtIso: when.toISOString(), notificationId: id });
@@ -70,7 +79,7 @@ async function rescheduleAll(api: NotificationsApi) {
     if (existing && existing.scheduledAtIso === nextIso) continue;
 
     if (existing) {
-      await api.cancelScheduledNotificationAsync(existing.notificationId).catch(() => {});
+      await api.cancelScheduledNotificationAsync(existing.notificationId).catch(() => { });
     }
 
     await scheduleForTask(api, task, next);
@@ -106,16 +115,13 @@ export async function startMobileNotifications() {
       buttonTitle: 'Open',
       options: { opensAppToForeground: true },
     },
-  ]).catch(() => {});
+  ]).catch(() => { });
 
   await rescheduleAll(api);
 
-  useTaskStore.subscribe(
-    (state) => state.tasks,
-    () => {
-      rescheduleAll(api).catch(console.error);
-    }
-  );
+  useTaskStore.subscribe(() => {
+    rescheduleAll(api).catch(console.error);
+  });
 
   responseSubscription?.remove();
   responseSubscription = api.addNotificationResponseReceivedListener((response: NotificationResponse) => {
@@ -132,7 +138,7 @@ export async function stopMobileNotifications() {
 
   if (Notifications) {
     for (const entry of scheduledByTask.values()) {
-      await Notifications.cancelScheduledNotificationAsync(entry.notificationId).catch(() => {});
+      await Notifications.cancelScheduledNotificationAsync(entry.notificationId).catch(() => { });
     }
   }
 

@@ -135,3 +135,16 @@ export function getTaskUrgency(task: Partial<Task>): 'overdue' | 'urgent' | 'upc
     if (diffHours < 72) return 'upcoming';
     return 'normal';
 }
+
+/**
+ * Get checklist progress for display.
+ * Returns null if no checklist or checklist is empty.
+ */
+export function getChecklistProgress(task: Pick<Task, 'checklist'>): { completed: number; total: number; percent: number } | null {
+    const list = task.checklist || [];
+    if (list.length === 0) return null;
+    const completed = list.filter((i) => i.isCompleted).length;
+    const total = list.length;
+    const percent = total === 0 ? 0 : completed / total;
+    return { completed, total, percent };
+}

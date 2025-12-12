@@ -1,8 +1,7 @@
 import { useState, memo } from 'react';
 
 import { Calendar as CalendarIcon, Tag, Trash2, ArrowRight, Repeat, Check, Plus, Clock, Timer } from 'lucide-react';
-import { Task, TaskStatus, TimeEstimate, getTaskAgeLabel, getTaskStaleness, getTaskUrgency, getStatusColor, Project, safeFormatDate, safeParseDate } from '@mindwtr/core';
-import { useTaskStore } from '@mindwtr/core';
+import { useTaskStore, Task, TaskStatus, TimeEstimate, getTaskAgeLabel, getTaskStaleness, getTaskUrgency, getStatusColor, Project, safeFormatDate, safeParseDate, getChecklistProgress, DeferPreset } from '@mindwtr/core';
 import { cn } from '../lib/utils';
 import { useLanguage } from '../contexts/language-context';
 
@@ -22,9 +21,11 @@ interface TaskItemProps {
 }
 
 export const TaskItem = memo(function TaskItem({ task, project: propProject, isSelected, onSelect }: TaskItemProps) {
-    const { updateTask, deleteTask, moveTask, projects, tasks } = useTaskStore();
+    const { updateTask, deleteTask, moveTask, deferTask, projects, tasks } = useTaskStore();
     const { t, language } = useLanguage();
     const [isEditing, setIsEditing] = useState(false);
+    const [isChecklistOpen, setIsChecklistOpen] = useState(false);
+    const [isDeferOpen, setIsDeferOpen] = useState(false);
     const [editTitle, setEditTitle] = useState(task.title);
     const [editDueDate, setEditDueDate] = useState(toDateTimeLocalValue(task.dueDate));
     const [editStartTime, setEditStartTime] = useState(toDateTimeLocalValue(task.startTime));
@@ -38,6 +39,7 @@ export const TaskItem = memo(function TaskItem({ task, project: propProject, isS
     const [editReviewAt, setEditReviewAt] = useState(toDateTimeLocalValue(task.reviewAt));
 
     const ageLabel = getTaskAgeLabel(task.createdAt, language);
+    const checklistProgress = getChecklistProgress(task);
 
     const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         moveTask(task.id, e.target.value as TaskStatus);
@@ -75,6 +77,27 @@ export const TaskItem = memo(function TaskItem({ task, project: propProject, isS
     };
 
     const project = propProject || projects.find(p => p.id === task.projectId);
+
+    const deferPresets: { preset: DeferPreset; labelKey: string }[] = [
+        { preset: 'tomorrow', labelKey: 'defer.tomorrow' },
+        { preset: 'nextWeek', labelKey: 'defer.nextWeek' },
+        { preset: 'weekend', labelKey: 'defer.weekend' },
+        { preset: 'nextMonth', labelKey: 'defer.nextMonth' },
+        { preset: 'pickDate', labelKey: 'defer.pickDate' },
+    ];
+
+    const handleDefer = async (preset: DeferPreset) => {
+        setIsDeferOpen(false);
+        if (preset === 'pickDate') {
+            const input = window.prompt(t('defer.pickDate'));
+            if (!input) return;
+            const parsed = safeParseDate(input);
+            if (!parsed) return;
+            await updateTask(task.id, { dueDate: parsed.toISOString() });
+            return;
+        }
+        await deferTask(task.id, preset);
+    };
 
     return (
         <div
@@ -496,6 +519,27 @@ export const TaskItem = memo(function TaskItem({ task, project: propProject, isS
                                         {task.tags.join(', ')}
                                     </div>
                                 )}
+                                {checklistProgress && (
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setIsChecklistOpen((v) => !v);
+                                        }}
+                                        className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+                                        title={t('checklist.progress')}
+                                    >
+                                        <span className="font-medium">
+                                            {checklistProgress.completed}/{checklistProgress.total}
+                                        </span>
+                                        <div className="w-16 h-1 bg-muted rounded overflow-hidden">
+                                            <div
+                                                className="h-full bg-primary"
+                                                style={{ width: `${Math.round(checklistProgress.percent * 100)}%` }}
+                                            />
+                                        </div>
+                                    </button>
+                                )}
                                 {/* Task Age Indicator */}
                                 {task.status !== 'done' && task.status !== 'archived' && ageLabel && (
                                     <div className={cn(
@@ -521,15 +565,68 @@ export const TaskItem = memo(function TaskItem({ task, project: propProject, isS
                                     </div>
                                 )}
                             </div>
+
+                            {!isEditing && isChecklistOpen && (task.checklist || []).length > 0 && (
+                                <div
+                                    className="mt-3 space-y-1 pl-1"
+                                    onPointerDown={(e) => e.stopPropagation()}
+                                >
+                                    {(task.checklist || []).map((item, index) => (
+                                        <div key={item.id || index} className="flex items-center gap-2 text-xs text-muted-foreground">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const newList = (task.checklist || []).map((it, i) =>
+                                                        i === index ? { ...it, isCompleted: !it.isCompleted } : it
+                                                    );
+                                                    updateTask(task.id, { checklist: newList });
+                                                }}
+                                                className={cn(
+                                                    "w-3 h-3 border rounded flex items-center justify-center transition-colors",
+                                                    item.isCompleted
+                                                        ? "bg-primary border-primary text-primary-foreground"
+                                                        : "border-muted-foreground hover:border-primary"
+                                                )}
+                                            >
+                                                {item.isCompleted && <Check className="w-2 h-2" />}
+                                            </button>
+                                            <span className={cn(item.isCompleted && "line-through")}>{item.title}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
 
                 {!isEditing && (
                     <div
-                        className="flex items-center gap-2"
+                        className="relative flex items-center gap-2"
                         onPointerDown={(e) => e.stopPropagation()}
                     >
+                        <button
+                            onClick={() => setIsDeferOpen((v) => !v)}
+                            aria-label={t('defer.title')}
+                            title={t('defer.title')}
+                            className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted/50"
+                        >
+                            <Clock className="w-4 h-4" />
+                        </button>
+
+                        {isDeferOpen && (
+                            <div className="absolute right-0 top-full mt-1 z-10 bg-popover border border-border rounded-md shadow-md p-1 space-y-1 min-w-[140px]">
+                                {deferPresets.map(({ preset, labelKey }) => (
+                                    <button
+                                        key={preset}
+                                        onClick={() => handleDefer(preset)}
+                                        className="w-full text-left text-xs px-2 py-1 rounded hover:bg-muted/70 transition-colors"
+                                    >
+                                        {t(labelKey)}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
                         <select
                             value={task.status}
                             aria-label="Task status"

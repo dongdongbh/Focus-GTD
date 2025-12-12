@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
-import { useTaskStore, Task, Project } from '@mindwtr/core';
+import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Modal } from 'react-native';
+import { useTaskStore, Task, Project, searchAll, generateUUID, SavedSearch } from '@mindwtr/core';
 import { useTheme } from '../contexts/theme-context';
 import { useLanguage } from '../contexts/language-context';
 import { Colors } from '@/constants/theme';
@@ -8,11 +8,13 @@ import { useRouter } from 'expo-router';
 import { Search, X, Folder, CheckCircle, ChevronRight } from 'lucide-react-native';
 
 export default function SearchScreen() {
-    const { tasks, projects } = useTaskStore();
+    const { tasks, projects, settings, updateSettings } = useTaskStore();
     const { isDark } = useTheme();
     const { t } = useLanguage();
     const router = useRouter();
     const [query, setQuery] = useState('');
+    const [showSaveModal, setShowSaveModal] = useState(false);
+    const [saveName, setSaveName] = useState('');
     const inputRef = useRef<TextInput>(null);
 
     useEffect(() => {
@@ -29,10 +31,43 @@ export default function SearchScreen() {
         placeholder: isDark ? '#6B7280' : '#9CA3AF',
     };
 
-    const results = query.trim() === '' ? [] : [
-        ...projects.filter(p => !p.deletedAt && p.title.toLowerCase().includes(query.toLowerCase())).map(p => ({ type: 'project' as const, item: p })),
-        ...tasks.filter(t => !t.deletedAt && t.title.toLowerCase().includes(query.toLowerCase())).map(t => ({ type: 'task' as const, item: t }))
+    const trimmedQuery = query.trim();
+    const { tasks: taskResults, projects: projectResults } = trimmedQuery === ''
+        ? { tasks: [] as Task[], projects: [] as Project[] }
+        : searchAll(tasks, projects, trimmedQuery);
+    const results = trimmedQuery === '' ? [] : [
+        ...projectResults.map(p => ({ type: 'project' as const, item: p })),
+        ...taskResults.map(t => ({ type: 'task' as const, item: t })),
     ].slice(0, 50);
+
+    const savedSearches = settings?.savedSearches || [];
+    const canSave = trimmedQuery.length > 0;
+
+    const openSaveModal = () => {
+        setSaveName(trimmedQuery);
+        setShowSaveModal(true);
+    };
+
+    const handleSaveSearch = async () => {
+        if (!canSave) return;
+        const name = saveName.trim();
+        if (!name) return;
+        const existing = savedSearches.find(s => s.query === trimmedQuery);
+        if (existing) {
+            setShowSaveModal(false);
+            router.push(`/saved-search/${existing.id}`);
+            return;
+        }
+
+        const newSearch: SavedSearch = {
+            id: generateUUID(),
+            name,
+            query: trimmedQuery,
+        };
+        await updateSettings({ savedSearches: [...savedSearches, newSearch] });
+        setShowSaveModal(false);
+        router.push(`/saved-search/${newSearch.id}`);
+    };
 
     const handleSelect = (result: { type: 'project' | 'task', item: Project | Task }) => {
         if (result.type === 'project') {
@@ -73,7 +108,18 @@ export default function SearchScreen() {
                         <X size={20} color={tc.secondaryText} />
                     </TouchableOpacity>
                 )}
+                {canSave && (
+                    <TouchableOpacity onPress={openSaveModal} style={styles.saveButton}>
+                        <Text style={[styles.saveButtonText, { color: '#3B82F6' }]}>{t('search.saveSearch')}</Text>
+                    </TouchableOpacity>
+                )}
             </View>
+
+            {trimmedQuery !== '' && (
+                <Text style={[styles.helpText, { color: tc.secondaryText }]}>
+                    {t('search.helpOperators')}
+                </Text>
+            )}
 
             <FlatList
                 data={results}
@@ -81,9 +127,11 @@ export default function SearchScreen() {
                 contentContainerStyle={styles.listContent}
                 keyboardShouldPersistTaps="handled"
                 ListEmptyComponent={
-                    query.trim() !== '' ? (
+                    trimmedQuery !== '' ? (
                         <View style={styles.emptyContainer}>
-                            <Text style={[styles.emptyText, { color: tc.secondaryText }]}>No results found</Text>
+                            <Text style={[styles.emptyText, { color: tc.secondaryText }]}>
+                                {t('search.noResults')} "{trimmedQuery}"
+                            </Text>
                         </View>
                     ) : null
                 }
@@ -100,13 +148,46 @@ export default function SearchScreen() {
                         <View style={styles.resultText}>
                             <Text style={[styles.resultTitle, { color: tc.text }]}>{item.item.title}</Text>
                             <Text style={[styles.resultSubtitle, { color: tc.secondaryText }]}>
-                                {item.type === 'project' ? 'Project' : (item.item as Task).projectId ? 'Task in Project' : 'Task'}
+                                {item.type === 'project'
+                                    ? t('search.resultProject')
+                                    : (item.item as Task).projectId
+                                        ? `${t('search.resultTask')} • ${t('search.inProjectSuffix')}`
+                                        : t('search.resultTask')}
                             </Text>
                         </View>
                         <ChevronRight size={20} color={tc.secondaryText} />
                     </TouchableOpacity>
                 )}
             />
+
+            <Modal
+                visible={showSaveModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowSaveModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.saveModal, { backgroundColor: tc.itemBg, borderColor: tc.border }]}>
+                        <Text style={[styles.modalTitle, { color: tc.text }]}>{t('search.saveSearch')}</Text>
+                        <TextInput
+                            style={[styles.modalInput, { color: tc.text, borderColor: tc.border }]}
+                            placeholder={t('search.saveSearchPrompt')}
+                            placeholderTextColor={tc.placeholder}
+                            value={saveName}
+                            onChangeText={setSaveName}
+                            autoFocus
+                        />
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity onPress={() => setShowSaveModal(false)} style={styles.modalButton}>
+                                <Text style={[styles.modalButtonText, { color: tc.secondaryText }]}>{t('common.cancel')}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={handleSaveSearch} style={styles.modalButton}>
+                                <Text style={[styles.modalButtonText, { color: tc.text }]}>{t('common.save')}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -121,6 +202,18 @@ const styles = StyleSheet.create({
         padding: 16,
         borderBottomWidth: 1,
         gap: 12,
+    },
+    saveButton: {
+        marginLeft: 4,
+    },
+    saveButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    helpText: {
+        fontSize: 12,
+        paddingHorizontal: 16,
+        paddingTop: 8,
     },
     searchIcon: {
         marginRight: 4,
@@ -159,5 +252,43 @@ const styles = StyleSheet.create({
     },
     emptyText: {
         fontSize: 16,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 24,
+    },
+    saveModal: {
+        width: '100%',
+        borderRadius: 12,
+        padding: 16,
+        borderWidth: 1,
+        gap: 12,
+    },
+    modalTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    modalInput: {
+        borderWidth: 1,
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        fontSize: 16,
+    },
+    modalActions: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: 12,
+    },
+    modalButton: {
+        paddingHorizontal: 8,
+        paddingVertical: 6,
+    },
+    modalButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
     },
 });

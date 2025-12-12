@@ -44,6 +44,14 @@ export interface Task {
     deletedAt?: string; // Soft-delete: if set, this item is considered deleted
 }
 
+export interface SavedSearch {
+    id: string;
+    name: string;
+    query: string;
+    sort?: string;
+    groupBy?: string;
+}
+
 export interface AppData {
     tasks: Task[];
     projects: Project[];
@@ -54,5 +62,7 @@ export interface AppData {
         dateFormat?: string;
         keybindingStyle?: 'vim' | 'emacs';
         notificationsEnabled?: boolean;
+        savedSearches?: SavedSearch[];
+        sidebarCollapsed?: boolean;
     };
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, FileText, CheckCircle } from 'lucide-react';
-import { useTaskStore, Task, Project } from '@mindwtr/core';
+import { Search, FileText, CheckCircle, Save } from 'lucide-react';
+import { useTaskStore, Task, Project, searchAll, generateUUID, SavedSearch } from '@mindwtr/core';
 import { useLanguage } from '../contexts/language-context';
 import { cn } from '../lib/utils';
 
@@ -13,7 +13,7 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
     const [query, setQuery] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(0);
     const inputRef = useRef<HTMLInputElement>(null);
-    const { tasks, projects } = useTaskStore();
+    const { tasks, projects, settings, updateSettings } = useTaskStore();
     const { t } = useLanguage();
 
     // Toggle search with Cmd+K / Ctrl+K
@@ -41,10 +41,14 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
         }
     }, [isOpen]);
 
-    // Filter results
-    const results = query.trim() === '' ? [] : [
-        ...projects.filter(p => !p.deletedAt && p.title.toLowerCase().includes(query.toLowerCase())).map(p => ({ type: 'project' as const, item: p })),
-        ...tasks.filter(t => !t.deletedAt && t.title.toLowerCase().includes(query.toLowerCase())).map(t => ({ type: 'task' as const, item: t }))
+    const trimmedQuery = query.trim();
+    const { tasks: taskResults, projects: projectResults } = trimmedQuery === ''
+        ? { tasks: [] as Task[], projects: [] as Project[] }
+        : searchAll(tasks, projects, trimmedQuery);
+
+    const results = trimmedQuery === '' ? [] : [
+        ...projectResults.map(p => ({ type: 'project' as const, item: p })),
+        ...taskResults.map(t => ({ type: 'task' as const, item: t })),
     ].slice(0, 50); // Limit results
 
     // Keyboard navigation
@@ -87,6 +91,30 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
 
     if (!isOpen) return null;
 
+    const savedSearches = settings?.savedSearches || [];
+    const canSave = trimmedQuery.length > 0;
+
+    const handleSaveSearch = async () => {
+        if (!canSave) return;
+        const existing = savedSearches.find(s => s.query === trimmedQuery);
+        if (existing) {
+            setIsOpen(false);
+            onNavigate(`savedSearch:${existing.id}`);
+            return;
+        }
+        const name = window.prompt(t('search.saveSearchPrompt'), trimmedQuery);
+        if (!name || !name.trim()) return;
+
+        const newSearch: SavedSearch = {
+            id: generateUUID(),
+            name: name.trim(),
+            query: trimmedQuery,
+        };
+        await updateSettings({ savedSearches: [...savedSearches, newSearch] });
+        setIsOpen(false);
+        onNavigate(`savedSearch:${newSearch.id}`);
+    };
+
     return (
         <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] bg-background/80 backdrop-blur-sm animate-in fade-in-0">
             <div
@@ -106,21 +134,31 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
                         placeholder={t('search.placeholder') || "Search tasks and projects..."}
                         className="flex-1 bg-transparent border-none outline-none text-lg placeholder:text-muted-foreground"
                     />
+                    {canSave && (
+                        <button
+                            onClick={handleSaveSearch}
+                            className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-muted/50 hover:bg-muted transition-colors text-muted-foreground"
+                            title={t('search.saveSearch')}
+                        >
+                            <Save className="w-3 h-3" />
+                            {t('search.saveSearch')}
+                        </button>
+                    )}
                     <div className="text-xs text-muted-foreground border rounded px-1.5 py-0.5 hidden sm:inline-block">
                         ESC
                     </div>
                 </div>
 
                 <div className="max-h-[60vh] overflow-y-auto p-2">
-                    {results.length === 0 && query.trim() !== '' && (
+                    {results.length === 0 && trimmedQuery !== '' && (
                         <div className="text-center py-8 text-muted-foreground text-sm">
-                            No results found for "{query}"
+                            {t('search.noResults')} "{trimmedQuery}"
                         </div>
                     )}
 
-                    {results.length === 0 && query.trim() === '' && (
+                    {results.length === 0 && trimmedQuery === '' && (
                         <div className="text-center py-8 text-muted-foreground text-sm">
-                            Type to search...
+                            {t('search.typeToSearch')}
                         </div>
                     )}
 
@@ -153,6 +191,12 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
                             )}
                         </button>
                     ))}
+
+                    {trimmedQuery !== '' && (
+                        <div className="px-3 py-2 text-xs text-muted-foreground border-t border-border mt-2">
+                            {t('search.helpOperators')}
+                        </div>
+                    )}
                 </div>
             </div>
 

@@ -1,6 +1,6 @@
 import { View, Text, Pressable, StyleSheet, Modal } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
-import { Task, Project, getTaskAgeLabel, getTaskStaleness, getTaskUrgency, getStatusColor, safeFormatDate, TaskStatus } from '@mindwtr/core';
+import { useTaskStore, Task, getChecklistProgress, DeferPreset, getTaskAgeLabel, getTaskStaleness, getTaskUrgency, getStatusColor, safeFormatDate, TaskStatus } from '@mindwtr/core';
 import { useLanguage } from '../contexts/language-context';
 import { useRef, useState } from 'react';
 import { ThemeColors } from '../hooks/use-theme-colors';
@@ -38,6 +38,7 @@ export function SwipeableTaskItem({
 }: SwipeableTaskItemProps) {
     const swipeableRef = useRef<Swipeable>(null);
     const { t, language } = useLanguage();
+    const { updateTask, deferTask } = useTaskStore();
 
     // Status-aware left swipe action
     const getLeftAction = (): { label: string; color: string; action: TaskStatus } => {
@@ -58,6 +59,27 @@ export function SwipeableTaskItem({
 
     const leftAction = getLeftAction();
     const [showStatusMenu, setShowStatusMenu] = useState(false);
+    const [showDeferMenu, setShowDeferMenu] = useState(false);
+    const [showChecklist, setShowChecklist] = useState(false);
+
+    const checklistProgress = getChecklistProgress(task);
+
+    const deferPresets: { preset: DeferPreset; labelKey: string }[] = [
+        { preset: 'tomorrow', labelKey: 'defer.tomorrow' },
+        { preset: 'nextWeek', labelKey: 'defer.nextWeek' },
+        { preset: 'weekend', labelKey: 'defer.weekend' },
+        { preset: 'nextMonth', labelKey: 'defer.nextMonth' },
+        { preset: 'pickDate', labelKey: 'defer.pickDate' },
+    ];
+
+    const handleDefer = async (preset: DeferPreset) => {
+        setShowDeferMenu(false);
+        if (preset === 'pickDate') {
+            onPress();
+            return;
+        }
+        await deferTask(task.id, preset);
+    };
 
     const renderLeftActions = () => (
         <Pressable
@@ -109,6 +131,7 @@ export function SwipeableTaskItem({
                 <Pressable
                     style={[styles.taskItem, { backgroundColor: tc.cardBg }]}
                     onPress={onPress}
+                    onLongPress={() => setShowDeferMenu(true)}
                     accessibilityLabel={accessibilityLabel}
                     accessibilityHint="Double tap to edit task details. Swipe left to change status, right to delete."
                     accessibilityRole="button"
@@ -133,6 +156,54 @@ export function SwipeableTaskItem({
                                     <Text key={idx} style={styles.contextTag}>
                                         {ctx}
                                     </Text>
+                                ))}
+                            </View>
+                        )}
+                        {checklistProgress && (
+                            <Pressable
+                                onPress={() => setShowChecklist((v) => !v)}
+                                style={styles.checklistRow}
+                                accessibilityRole="button"
+                                accessibilityLabel={t('checklist.progress')}
+                            >
+                                <Text style={[styles.checklistText, { color: tc.secondaryText }]}>
+                                    {checklistProgress.completed}/{checklistProgress.total}
+                                </Text>
+                                <View style={[styles.checklistBar, { backgroundColor: tc.border }]}>
+                                    <View
+                                        style={[
+                                            styles.checklistBarFill,
+                                            { width: `${Math.round(checklistProgress.percent * 100)}%` }
+                                        ]}
+                                    />
+                                </View>
+                            </Pressable>
+                        )}
+                        {showChecklist && (task.checklist || []).length > 0 && (
+                            <View style={styles.checklistItems}>
+                                {(task.checklist || []).map((item, index) => (
+                                    <Pressable
+                                        key={item.id || index}
+                                        onPress={() => {
+                                            const newList = (task.checklist || []).map((it, i) =>
+                                                i === index ? { ...it, isCompleted: !it.isCompleted } : it
+                                            );
+                                            updateTask(task.id, { checklist: newList });
+                                        }}
+                                        style={styles.checklistItem}
+                                        accessibilityRole="button"
+                                    >
+                                        <Text
+                                            style={[
+                                                styles.checklistItemText,
+                                                { color: tc.secondaryText },
+                                                item.isCompleted && styles.checklistItemCompleted
+                                            ]}
+                                            numberOfLines={1}
+                                        >
+                                            {item.isCompleted ? '✓ ' : '○ '} {item.title}
+                                        </Text>
+                                    </Pressable>
                                 ))}
                             </View>
                         )}
@@ -183,7 +254,7 @@ export function SwipeableTaskItem({
                             styles.statusText,
                             ['todo', 'inbox'].includes(task.status) ? styles.textDark : styles.textLight
                         ]}>
-                            {task.status}
+                            {t(`status.${task.status}`)}
                         </Text>
                     </Pressable>
                 </Pressable>
@@ -197,7 +268,7 @@ export function SwipeableTaskItem({
             >
                 <Pressable style={styles.modalOverlay} onPress={() => setShowStatusMenu(false)}>
                     <View style={[styles.menuContainer, { backgroundColor: tc.cardBg }]}>
-                        <Text style={[styles.menuTitle, { color: tc.text }]}>Change Status</Text>
+                        <Text style={[styles.menuTitle, { color: tc.text }]}>{t('taskStatus.changeStatus')}</Text>
                         <View style={styles.menuGrid}>
                             {quickStatusOptions.map(status => {
                                 const colors = getStatusColor(status as TaskStatus);
@@ -215,10 +286,35 @@ export function SwipeableTaskItem({
                                         }}
                                     >
                                         <View style={[styles.menuDot, { backgroundColor: colors.text }]} />
-                                        <Text style={[styles.menuText, { color: tc.text }]}>{status}</Text>
+                                        <Text style={[styles.menuText, { color: tc.text }]}>{t(`status.${status}`)}</Text>
                                     </Pressable>
                                 );
                             })}
+                        </View>
+                    </View>
+                </Pressable>
+            </Modal>
+
+            <Modal
+                visible={showDeferMenu}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowDeferMenu(false)}
+            >
+                <Pressable style={styles.modalOverlay} onPress={() => setShowDeferMenu(false)}>
+                    <View style={[styles.menuContainer, { backgroundColor: tc.cardBg }]}>
+                        <Text style={[styles.menuTitle, { color: tc.text }]}>{t('defer.title')}</Text>
+                        <View style={styles.deferList}>
+                            {deferPresets.map(({ preset, labelKey }) => (
+                                <Pressable
+                                    key={preset}
+                                    style={[styles.deferItem, { borderColor: tc.border }]}
+                                    onPress={() => handleDefer(preset)}
+                                    accessibilityRole="button"
+                                >
+                                    <Text style={[styles.deferText, { color: tc.text }]}>{t(labelKey)}</Text>
+                                </Pressable>
+                            ))}
                         </View>
                     </View>
                 </Pressable>
@@ -270,6 +366,40 @@ const styles = StyleSheet.create({
         paddingHorizontal: 8,
         paddingVertical: 2,
         borderRadius: 10,
+    },
+    checklistRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginTop: 8,
+    },
+    checklistText: {
+        fontSize: 11,
+        fontWeight: '600',
+    },
+    checklistBar: {
+        flex: 1,
+        height: 4,
+        borderRadius: 2,
+        overflow: 'hidden',
+    },
+    checklistBarFill: {
+        height: '100%',
+        backgroundColor: '#3B82F6',
+    },
+    checklistItems: {
+        marginTop: 6,
+        gap: 4,
+    },
+    checklistItem: {
+        paddingVertical: 2,
+    },
+    checklistItemText: {
+        fontSize: 11,
+    },
+    checklistItemCompleted: {
+        textDecorationLine: 'line-through',
+        opacity: 0.6,
     },
     statusBadge: {
         paddingHorizontal: 8,
@@ -362,6 +492,20 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '500',
         textTransform: 'capitalize',
+    },
+    deferList: {
+        gap: 8,
+    },
+    deferItem: {
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderRadius: 10,
+        borderWidth: 1,
+    },
+    deferText: {
+        fontSize: 14,
+        fontWeight: '500',
+        textAlign: 'center',
     },
     // Task Age Indicator styles
     ageBadge: {

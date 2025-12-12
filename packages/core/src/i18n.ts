@@ -27,6 +27,17 @@ export const translations: Record<Language, Record<string, string>> = {
         'quickAdd.help': 'Quick add supports /due:<when>, /note:<text>, /next|/todo, @context, #tag, +Project.',
         'quickAdd.example': 'Example: Call mom /due:tomorrow 5pm @phone #family',
 
+        // Defer / Postpone
+        'defer.title': 'Defer',
+        'defer.tomorrow': 'Tomorrow',
+        'defer.nextWeek': 'Next Week',
+        'defer.weekend': 'This Weekend',
+        'defer.nextMonth': 'Next Month',
+        'defer.pickDate': 'Pick Date…',
+
+        // Checklist
+        'checklist.progress': 'Checklist progress',
+
         // Keybindings (Desktop)
         'keybindings.helpTitle': 'Keyboard Shortcuts',
         'keybindings.helpSubtitle': 'Press Esc to close',
@@ -37,6 +48,7 @@ export const translations: Record<Language, Record<string, string>> = {
         'keybindings.section.taskList': 'Task List',
         'keybindings.openHelp': 'Show shortcuts',
         'keybindings.openSearch': 'Open search',
+        'keybindings.toggleSidebar': 'Toggle sidebar',
         'keybindings.goInbox': 'Go to Inbox',
         'keybindings.goNext': 'Go to Next Actions',
         'keybindings.goAgenda': 'Go to Agenda',
@@ -169,6 +181,8 @@ export const translations: Record<Language, Record<string, string>> = {
         'board.inProgress': 'In Progress',
         'board.done': 'Done',
         'board.noTasks': 'No tasks',
+        'board.hint': 'Hold to drag • Swipe left to delete',
+        'board.delete': 'Delete',
 
         // Calendar
         'calendar.title': 'Calendar',
@@ -434,9 +448,16 @@ export const translations: Record<Language, Record<string, string>> = {
         // Search
         'search.title': 'Search',
         'search.placeholder': 'Search tasks and projects...',
+        'search.noResults': 'No results found',
+        'search.typeToSearch': 'Type to search...',
         'search.resultProject': 'Project',
         'search.resultTask': 'Task',
         'search.inProjectSuffix': 'In Project',
+        'search.saveSearch': 'Save Search',
+        'search.saveSearchPrompt': 'Name this search',
+        'search.savedSearches': 'Saved Searches',
+        'search.noSavedSearches': 'No saved searches yet.',
+        'search.helpOperators': 'Use operators like status:, context:, tag:, project:, due:<=7d.',
 
         // Archived
         'archived.title': 'Archived',
@@ -474,6 +495,17 @@ export const translations: Record<Language, Record<string, string>> = {
         'quickAdd.help': '快速添加支持 /due:<时间>、/note:<备注>、/next|/todo、@情境、#标签、+项目。',
         'quickAdd.example': '示例：给妈妈打电话 /due:tomorrow 5pm @phone #family',
 
+        // Defer / Postpone
+        'defer.title': '延后',
+        'defer.tomorrow': '明天',
+        'defer.nextWeek': '下周',
+        'defer.weekend': '本周末',
+        'defer.nextMonth': '下个月',
+        'defer.pickDate': '选择日期…',
+
+        // Checklist
+        'checklist.progress': '清单进度',
+
         // Keybindings (Desktop)
         'keybindings.helpTitle': '快捷键',
         'keybindings.helpSubtitle': '按 Esc 关闭',
@@ -484,6 +516,7 @@ export const translations: Record<Language, Record<string, string>> = {
         'keybindings.section.taskList': '任务列表',
         'keybindings.openHelp': '查看快捷键',
         'keybindings.openSearch': '打开搜索',
+        'keybindings.toggleSidebar': '切换侧边栏',
         'keybindings.goInbox': '前往收集箱',
         'keybindings.goNext': '前往下一步行动',
         'keybindings.goAgenda': '前往日程',
@@ -510,7 +543,7 @@ export const translations: Record<Language, Record<string, string>> = {
         'tab.review': '回顾',
 
         // List Views
-        'list.inbox': '收件箱',
+        'list.inbox': '收集箱',
         'list.todo': '待办',
         'list.inProgress': '进行中',
         'list.next': '下一步行动',
@@ -616,6 +649,8 @@ export const translations: Record<Language, Record<string, string>> = {
         'board.inProgress': '进行中',
         'board.done': '已完成',
         'board.noTasks': '没有任务',
+        'board.hint': '长按拖动 • 左滑删除',
+        'board.delete': '删除',
 
         // Calendar
         'calendar.title': '日历',
@@ -881,9 +916,16 @@ export const translations: Record<Language, Record<string, string>> = {
         // Search
         'search.title': '搜索',
         'search.placeholder': '搜索任务和项目...',
+        'search.noResults': '未找到结果',
+        'search.typeToSearch': '输入以搜索...',
         'search.resultProject': '项目',
         'search.resultTask': '任务',
         'search.inProjectSuffix': '在项目中',
+        'search.saveSearch': '保存搜索',
+        'search.saveSearchPrompt': '为此搜索命名',
+        'search.savedSearches': '已保存的搜索',
+        'search.noSavedSearches': '暂无已保存的搜索。',
+        'search.helpOperators': '可用操作符：status:、context:、tag:、project:、due:<=7d 等。',
 
         // Archived
         'archived.title': '归档',
