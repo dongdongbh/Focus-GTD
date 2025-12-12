@@ -3,7 +3,7 @@ export type Language = 'en' | 'zh';
 export const translations: Record<Language, Record<string, string>> = {
     en: {
         // App
-        'app.name': 'Focus GTD',
+        'app.name': 'Mindwtr',
 
         // Navigation
         'nav.main': 'Main',
@@ -317,7 +317,7 @@ export const translations: Record<Language, Record<string, string>> = {
     },
     zh: {
         // App
-        'app.name': 'Focus GTD',
+        'app.name': 'Mindwtr',
 
         // Navigation
         'nav.main': '主页',

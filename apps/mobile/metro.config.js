@@ -17,6 +17,13 @@ config.serializer = {
 // 1. Watch all files within the monorepo
 config.watchFolders = [workspaceRoot];
 
+// 1.1 CRITICAL: Exclude build output directories that cause Metro to crash
+config.resolver.blockList = [
+    /apps\/desktop\/src-tauri\/target\/.*/,
+    /\.git\/.*/,
+    /node_modules\/.*\/\.git\/.*/,
+];
+
 // 2. Let Metro know where to resolve packages and in what order
 config.resolver.nodeModulesPaths = [
     path.resolve(projectRoot, 'node_modules'),
@@ -43,8 +50,8 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
         };
     }
 
-    // Handle @focus-gtd/core workspace package
-    if (moduleName === '@focus-gtd/core' || moduleName.startsWith('@focus-gtd/core/')) {
+    // Handle @mindwtr/core workspace package
+    if (moduleName === '@mindwtr/core' || moduleName.startsWith('@mindwtr/core/')) {
         const corePath = path.resolve(workspaceRoot, 'packages/core/src/index.ts');
         return {
             filePath: corePath,

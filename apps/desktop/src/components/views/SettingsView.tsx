@@ -117,7 +117,7 @@ export function SettingsView() {
     const labels = {
         en: {
             title: 'Settings',
-            subtitle: 'Customize your Focus GTD experience',
+            subtitle: 'Customize your Mindwtr experience',
             appearance: 'Appearance',
             language: 'Language',
             about: 'About',
@@ -151,7 +151,7 @@ export function SettingsView() {
         },
         zh: {
             title: '设置',
-            subtitle: '自定义您的 Focus GTD 体验',
+            subtitle: '自定义您的 Mindwtr 体验',
             appearance: '外观',
             language: '语言',
             about: '关于',
@@ -393,10 +393,10 @@ export function SettingsView() {
                         <div className="flex justify-between items-center">
                             <span className="text-muted-foreground">{t.github}</span>
                             <button
-                                onClick={() => openLink('https://github.com/dongdongbh/Focus-GTD')}
+                                onClick={() => openLink('https://github.com/dongdongbh/Mindwtr')}
                                 className="text-blue-400 hover:underline cursor-pointer flex items-center gap-1"
                             >
-                                github.com/dongdongbh/Focus-GTD
+                                github.com/dongdongbh/Mindwtr
                                 <ExternalLink className="w-3 h-3" />
                             </button>
                         </div>

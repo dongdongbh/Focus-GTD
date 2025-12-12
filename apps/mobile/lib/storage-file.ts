@@ -122,7 +122,7 @@ export const exportData = async (data: AppData): Promise<void> => {
             await Sharing.shareAsync(fileUri, {
                 UTI: 'public.json',
                 mimeType: 'application/json',
-                dialogTitle: 'Export Focus GTD Data',
+                dialogTitle: 'Export Mindwtr Data',
             });
         } else {
             throw new Error('Sharing is not available on this device');
