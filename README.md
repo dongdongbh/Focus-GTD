@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="apps/mobile/assets/images/icon.png" width="120" alt="Focus GTD Logo">
+<img src="apps/mobile/assets/images/icon.png" width="120" alt="Mindwtr Logo">
 
-# Focus GTD
+# Mindwtr
 
-A complete Getting Things Done (GTD) productivity system for desktop and mobile.
+A complete Getting Things Done (GTD) productivity system for desktop and mobile. *Mind Like Water.*
 
 *New to GTD? Read [GTD in 15 minutes](https://hamberg.no/gtd) for a quick introduction.*
 
@@ -56,24 +56,24 @@ A complete Getting Things Done (GTD) productivity system for desktop and mobile.
 **Arch Linux (AUR):**
 ```bash
 # Using yay
-yay -S focus-gtd-bin
+yay -S mindwtr-bin
 
 # Using paru
-paru -S focus-gtd-bin
+paru -S mindwtr-bin
 ```
-📦 [AUR Package](https://aur.archlinux.org/packages/focus-gtd-bin)
+📦 [AUR Package](https://aur.archlinux.org/packages/mindwtr-bin)
 
 **Debian/Ubuntu:**
 Download the `.deb` from [GitHub Releases](https://github.com/dongdongbh/Focus-GTD/releases) and install:
 ```bash
-sudo dpkg -i focus-gtd_*.deb
+sudo dpkg -i mindwtr_*.deb
 ```
 
 **AppImage (Universal):**
 Download the `.AppImage` from [GitHub Releases](https://github.com/dongdongbh/Focus-GTD/releases):
 ```bash
-chmod +x Focus.GTD_*.AppImage
-./Focus.GTD_*.AppImage
+chmod +x Mindwtr_*.AppImage
+./Mindwtr_*.AppImage
 ```
 
 ### Desktop (Windows)
@@ -93,7 +93,7 @@ iOS builds require an Apple Developer account ($99/year). Currently available as
 ## Data Storage
 
 Tasks and projects are stored locally on your device:
-- **Desktop**: `~/.config/focus-gtd/data.json`
+- **Desktop**: `~/.config/mindwtr/data.json`
 - **Mobile**: Device storage (AsyncStorage)
 
 Optional sync via Dropbox, Syncthing, or similar can be configured in Settings.

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useTaskStore, sortTasks } from '@focus-gtd/core';
+import { useTaskStore, sortTasks } from '@mindwtr/core';
 
 import { Undo2, Trash2 } from 'lucide-react';
 

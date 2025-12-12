@@ -9,7 +9,7 @@ import {
     Modal,
     Pressable
 } from 'react-native';
-import { TaskStatus, getStatusColor } from '@focus-gtd/core';
+import { TaskStatus, getStatusColor } from '@mindwtr/core';
 
 interface TaskStatusBadgeProps {
     status: TaskStatus;

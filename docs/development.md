@@ -18,7 +18,7 @@ bun mobile:start
 ## Project Structure
 
 ```
-Focus-GTD/
+Mindwtr/
 ├── apps/
 │   ├── desktop/     # Tauri v2 + React + Vite
 │   └── mobile/      # Expo + React Native + NativeWind
@@ -40,11 +40,11 @@ Focus-GTD/
 ## Data Storage
 
 Tasks and projects are stored locally:
-- **Desktop**: `~/.config/focus-gtd/data.json`
+- **Desktop**: `~/.config/mindwtr/data.json`
 - **Mobile**: AsyncStorage
 
 Optional sync folder (e.g., Dropbox, Syncthing) can be configured in Settings for cross-device sync.
-Default sync folder: `~/Sync/focus-gtd/`
+Default sync folder: `~/Sync/mindwtr/`
 
 ## App READMEs
 

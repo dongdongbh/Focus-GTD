@@ -10,7 +10,7 @@ import { TutorialView } from './components/views/TutorialView';
 import { SettingsView } from './components/views/SettingsView';
 import { ArchiveView } from './components/views/ArchiveView';
 import { AgendaView } from './components/views/AgendaView';
-import { useTaskStore, flushPendingSave } from '@focus-gtd/core';
+import { useTaskStore, flushPendingSave } from '@mindwtr/core';
 import { GlobalSearch } from './components/GlobalSearch';
 import { ErrorBoundary } from './components/ErrorBoundary';
 

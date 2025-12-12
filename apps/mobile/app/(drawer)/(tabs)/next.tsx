@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { useTaskStore, PRESET_CONTEXTS, Task, Project, sortTasks } from '@focus-gtd/core';
+import { useTaskStore, PRESET_CONTEXTS, Task, Project, sortTasks } from '@mindwtr/core';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { TaskEditModal } from '@/components/task-edit-modal';
 

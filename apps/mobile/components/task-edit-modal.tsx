@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Modal, StyleSheet, TouchableOpacity, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Task, TaskStatus, TimeEstimate, useTaskStore, generateUUID, PRESET_TAGS } from '@focus-gtd/core';
+import { Task, TaskStatus, TimeEstimate, useTaskStore, generateUUID, PRESET_TAGS } from '@mindwtr/core';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
 interface TaskEditModalProps {

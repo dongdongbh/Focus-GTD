@@ -1,4 +1,4 @@
-import { AppData } from '@focus-gtd/core';
+import { AppData } from '@mindwtr/core';
 
 export interface ElectronAPI {
     getData: () => Promise<AppData>

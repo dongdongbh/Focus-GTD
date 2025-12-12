@@ -1,6 +1,6 @@
 import { Calendar, Inbox, CheckSquare, Archive, Layers, Tag, CheckCircle2, HelpCircle, Folder, Settings, Target, Search } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { useTaskStore } from '@focus-gtd/core';
+import { useTaskStore } from '@mindwtr/core';
 import { useLanguage } from '../contexts/language-context';
 
 interface LayoutProps {

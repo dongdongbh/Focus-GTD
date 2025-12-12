@@ -1,6 +1,6 @@
 
 import { invoke } from '@tauri-apps/api/core';
-import { mergeAppData, AppData, useTaskStore } from '@focus-gtd/core';
+import { mergeAppData, AppData, useTaskStore } from '@mindwtr/core';
 
 export class SyncService {
     /**

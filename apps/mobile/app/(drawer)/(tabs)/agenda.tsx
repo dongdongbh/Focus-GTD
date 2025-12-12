@@ -1,7 +1,7 @@
 import { View, Text, SectionList, Pressable, StyleSheet } from 'react-native';
 import { useMemo, useState, useCallback } from 'react';
 
-import { useTaskStore, Task } from '@focus-gtd/core';
+import { useTaskStore, Task } from '@mindwtr/core';
 
 import { useLanguage } from '../../../contexts/language-context';
 

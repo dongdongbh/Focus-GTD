@@ -1,22 +1,22 @@
-# Focus GTD AUR Package
+# Mindwtr AUR Package
 
-This directory contains the PKGBUILD for maintaining the [focus-gtd-bin](https://aur.archlinux.org/packages/focus-gtd-bin) package on the Arch User Repository (AUR).
+This directory contains the PKGBUILD for maintaining the [mindwtr-bin](https://aur.archlinux.org/packages/mindwtr-bin) package on the Arch User Repository (AUR).
 
 ## Installation
 
 **Using an AUR helper (recommended):**
 ```bash
 # Using yay
-yay -S focus-gtd-bin
+yay -S mindwtr-bin
 
 # Using paru
-paru -S focus-gtd-bin
+paru -S mindwtr-bin
 ```
 
 **Manual installation:**
 ```bash
-git clone https://aur.archlinux.org/focus-gtd-bin.git
-cd focus-gtd-bin
+git clone https://aur.archlinux.org/mindwtr-bin.git
+cd mindwtr-bin
 makepkg -sri
 ```
 
@@ -27,7 +27,7 @@ makepkg -sri
 ### Prerequisites
 1. Create an account on [aur.archlinux.org](https://aur.archlinux.org/)
 2. Upload your SSH public key to your AUR account
-3. Clone the AUR repo: `git clone ssh://aur@aur.archlinux.org/focus-gtd-bin.git`
+3. Clone the AUR repo: `git clone ssh://aur@aur.archlinux.org/mindwtr-bin.git`
 
 ### Updating the Package
 
@@ -35,7 +35,7 @@ When a new version is released:
 
 ```bash
 # 1. Go to your local AUR repo clone
-cd /path/to/aur/focus-gtd-bin
+cd /path/to/aur/mindwtr-bin
 
 # 2. Update PKGBUILD
 # - Change pkgver to new version (e.g., 0.2.4)
@@ -43,7 +43,7 @@ cd /path/to/aur/focus-gtd-bin
 
 # 3. Update checksums (download the new .deb and calculate)
 updpkgsums
-# Or manually: sha256sum focus-gtd_0.2.4_amd64.deb
+# Or manually: sha256sum mindwtr_0.2.4_amd64.deb
 
 # 4. Regenerate .SRCINFO (required by AUR)
 makepkg --printsrcinfo > .SRCINFO
@@ -89,11 +89,11 @@ echo "  git add PKGBUILD .SRCINFO && git commit -m 'Update to v$VERSION' && git 
 
 ### Package Types
 
-| Package              | Source                     | Notes                    |
-| -------------------- | -------------------------- | ------------------------ |
-| `focus-gtd-bin`      | GitHub Release `.deb`      | Binary package (current) |
-| `focus-gtd`          | Build from source          | Not yet available        |
-| `focus-gtd-appimage` | GitHub Release `.AppImage` | Alternative binary       |
+| Package            | Source                     | Notes                    |
+| ------------------ | -------------------------- | ------------------------ |
+| `mindwtr-bin`      | GitHub Release `.deb`      | Binary package (current) |
+| `mindwtr`          | Build from source          | Not yet available        |
+| `mindwtr-appimage` | GitHub Release `.AppImage` | Alternative binary       |
 
 ### Useful Commands
 
@@ -102,10 +102,10 @@ echo "  git add PKGBUILD .SRCINFO && git commit -m 'Update to v$VERSION' && git 
 namcap PKGBUILD
 
 # Check built package
-namcap focus-gtd-bin-*.pkg.tar.zst
+namcap mindwtr-bin-*.pkg.tar.zst
 
 # View package contents
-pacman -Qlp focus-gtd-bin-*.pkg.tar.zst
+pacman -Qlp mindwtr-bin-*.pkg.tar.zst
 ```
 
 ## Notes

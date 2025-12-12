@@ -1,4 +1,4 @@
-import { StorageAdapter, AppData } from '@focus-gtd/core';
+import { StorageAdapter, AppData } from '@mindwtr/core';
 import { invoke } from '@tauri-apps/api/core';
 
 export const tauriStorage: StorageAdapter = {

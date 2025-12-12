@@ -1,6 +1,6 @@
 # Feature Ideas from GTD Community
 
-> Ideas extracted from r/gtd Reddit discussions that could enhance Focus GTD
+> Ideas extracted from r/gtd Reddit discussions that could enhance Mindwtr
 
 ---
 

@@ -17,7 +17,7 @@ const mockUseTaskStore = vi.hoisted(() => vi.fn(() => ({
     projects: [],
 })));
 
-vi.mock('@focus-gtd/core', () => ({
+vi.mock('@mindwtr/core', () => ({
     useTaskStore: mockUseTaskStore,
     Task: {},
     Project: {},

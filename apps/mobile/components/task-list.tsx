@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { View, TextInput, FlatList, StyleSheet, TouchableOpacity, Text, RefreshControl } from 'react-native';
 import { router } from 'expo-router';
-import { useTaskStore, Task, TaskStatus } from '@focus-gtd/core';
+import { useTaskStore, Task, TaskStatus } from '@mindwtr/core';
 
 
 import { TaskEditModal } from './task-edit-modal';

@@ -15,7 +15,7 @@
     "@babel/runtime": "^7.28.4",
     "@expo/metro-runtime": "^6.1.2",
     "@expo/vector-icons": "^15.0.3",
-    "@focus-gtd/core": "workspace:*",
+    "@mindwtr/core": "workspace:*",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/datetimepicker": "8.4.4",
     "@react-navigation/bottom-tabs": "^7.4.0",

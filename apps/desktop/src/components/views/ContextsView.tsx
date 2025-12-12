@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useTaskStore } from '@focus-gtd/core';
+import { useTaskStore } from '@mindwtr/core';
 import { TaskItem } from '../TaskItem';
 import { Tag, Filter } from 'lucide-react';
 import { cn } from '../../lib/utils';

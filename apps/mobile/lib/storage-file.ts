@@ -1,7 +1,7 @@
 import * as DocumentPicker from 'expo-document-picker';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
-import { AppData } from '@focus-gtd/core';
+import { AppData } from '@mindwtr/core';
 import { Platform } from 'react-native';
 
 // StorageAccessFramework is part of the legacy FileSystem module

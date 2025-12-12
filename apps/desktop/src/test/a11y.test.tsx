@@ -2,7 +2,7 @@ import { describe, it, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import { axe } from 'vitest-axe';
 import { TaskItem } from '../components/TaskItem';
-import { Task } from '@focus-gtd/core';
+import { Task } from '@mindwtr/core';
 
 // Mock store
 vi.mock('../store/store', () => ({

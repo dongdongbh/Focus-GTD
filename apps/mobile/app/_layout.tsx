@@ -10,7 +10,7 @@ import { Alert, AppState, AppStateStatus } from 'react-native';
 
 import { ThemeProvider, useTheme } from '../contexts/theme-context';
 import { LanguageProvider } from '../contexts/language-context';
-import { setStorageAdapter, useTaskStore, flushPendingSave } from '@focus-gtd/core';
+import { setStorageAdapter, useTaskStore, flushPendingSave } from '@mindwtr/core';
 import { mobileStorage } from '../lib/storage-adapter';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { verifyPolyfills } from '../utils/verify-polyfills';

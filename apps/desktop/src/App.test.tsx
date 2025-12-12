@@ -11,8 +11,8 @@ const renderWithProviders = (ui: React.ReactElement) => {
     );
 };
 
-vi.mock('@focus-gtd/core', async () => {
-    const actual = await vi.importActual('@focus-gtd/core');
+vi.mock('@mindwtr/core', async () => {
+    const actual = await vi.importActual('@mindwtr/core');
     return {
         ...actual,
         useTaskStore: () => ({

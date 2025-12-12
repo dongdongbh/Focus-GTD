@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Plus, Play, X, Trash2, Moon, User, CheckCircle } from 'lucide-react';
-import { useTaskStore, TaskStatus, Task, PRESET_CONTEXTS, sortTasks, Project } from '@focus-gtd/core';
+import { useTaskStore, TaskStatus, Task, PRESET_CONTEXTS, sortTasks, Project } from '@mindwtr/core';
 import { TaskItem } from '../TaskItem';
 import { cn } from '../../lib/utils';
 import { useLanguage } from '../../contexts/language-context';

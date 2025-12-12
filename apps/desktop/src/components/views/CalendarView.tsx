@@ -1,6 +1,6 @@
 import React from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday } from 'date-fns';
-import { useTaskStore } from '@focus-gtd/core';
+import { useTaskStore } from '@mindwtr/core';
 import { cn } from '../../lib/utils';
 
 export function CalendarView() {

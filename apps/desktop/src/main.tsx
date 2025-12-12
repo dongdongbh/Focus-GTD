@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 
-import { setStorageAdapter } from '@focus-gtd/core';
+import { setStorageAdapter } from '@mindwtr/core';
 import { tauriStorage } from './lib/storage-adapter';
 import { LanguageProvider } from './contexts/language-context';
 

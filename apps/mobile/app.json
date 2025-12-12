@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Focus GTD",
-    "slug": "focus-gtd-monorepo",
+    "name": "Mindwtr",
+    "slug": "mindwtr",
     "version": "0.2.5",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -11,7 +11,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "tech.dongdongbh.focusgtd"
+      "bundleIdentifier": "tech.dongdongbh.mindwtr"
     },
     "android": {
       "adaptiveIcon": {
@@ -20,7 +20,7 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "package": "tech.dongdongbh.focusgtd",
+      "package": "tech.dongdongbh.mindwtr",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },

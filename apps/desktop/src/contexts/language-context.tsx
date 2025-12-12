@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-import { translations, Language } from '@focus-gtd/core';
+import { translations, Language } from '@mindwtr/core';
 export type { Language };
 
 interface LanguageContextType {

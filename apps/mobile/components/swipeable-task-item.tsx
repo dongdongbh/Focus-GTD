@@ -1,6 +1,6 @@
 import { View, Text, Pressable, StyleSheet, Modal } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
-import { Task, getTaskAgeLabel, getTaskStaleness, getStatusColor, TaskStatus } from '@focus-gtd/core';
+import { Task, getTaskAgeLabel, getTaskStaleness, getStatusColor, TaskStatus } from '@mindwtr/core';
 import { useRef, useState } from 'react';
 import { ThemeColors } from '../hooks/use-theme-colors';
 

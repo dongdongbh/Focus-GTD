@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, FlatList, StyleSheet, TouchableOpacity, Modal, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useTaskStore , Project } from '@focus-gtd/core';
+import { useTaskStore , Project } from '@mindwtr/core';
 
 import { TaskList } from '../../components/task-list';
 import { useTheme } from '../../contexts/theme-context';

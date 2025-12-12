@@ -1,8 +1,8 @@
 import { useState, memo } from 'react';
 import { format } from 'date-fns';
 import { Calendar as CalendarIcon, Tag, Trash2, ArrowRight, Repeat, Check, Plus, Clock, Timer } from 'lucide-react';
-import { Task, TaskStatus, TimeEstimate, getTaskAgeLabel, getTaskStaleness, getTaskUrgency, getStatusColor, Project } from '@focus-gtd/core';
-import { useTaskStore } from '@focus-gtd/core';
+import { Task, TaskStatus, TimeEstimate, getTaskAgeLabel, getTaskStaleness, getTaskUrgency, getStatusColor, Project } from '@mindwtr/core';
+import { useTaskStore } from '@mindwtr/core';
 import { cn } from '../lib/utils';
 
 interface TaskItemProps {

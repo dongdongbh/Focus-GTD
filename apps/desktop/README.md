@@ -1,6 +1,6 @@
-# Focus GTD Desktop
+# Mindwtr Desktop
 
-Tauri v2 desktop app for the Focus GTD productivity system.
+Tauri v2 desktop app for the Mindwtr productivity system.
 
 ## Features
 
@@ -74,9 +74,9 @@ bun run build
 ## Data Storage
 
 Tasks are saved to:
-- **Linux**: `~/.config/focus-gtd/data.json`
-- **macOS**: `~/Library/Application Support/focus-gtd/data.json`
-- **Windows**: `%APPDATA%/focus-gtd/data.json`
+- **Linux**: `~/.config/mindwtr/data.json`
+- **macOS**: `~/Library/Application Support/mindwtr/data.json`
+- **Windows**: `%APPDATA%/mindwtr/data.json`
 
 ## Sync
 

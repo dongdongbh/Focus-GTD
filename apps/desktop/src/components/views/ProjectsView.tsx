@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useTaskStore, Task } from '@focus-gtd/core';
+import { useTaskStore, Task } from '@mindwtr/core';
 import { TaskItem } from '../TaskItem';
 import { Plus, Folder, Trash2, ListOrdered, ChevronRight, ChevronDown } from 'lucide-react';
 import { cn } from '../../lib/utils';

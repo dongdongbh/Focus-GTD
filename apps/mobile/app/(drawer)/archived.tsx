@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, Pressable, StyleSheet, Alert } from 'react-native';
-import { useTaskStore } from '@focus-gtd/core';
-import type { Task } from '@focus-gtd/core';
+import { useTaskStore } from '@mindwtr/core';
+import type { Task } from '@mindwtr/core';
 import { useTheme } from '../../contexts/theme-context';
 import { useLanguage } from '../../contexts/language-context';
 

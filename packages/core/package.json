@@ -1,5 +1,5 @@
 {
-  "name": "@focus-gtd/core",
+  "name": "@mindwtr/core",
   "version": "0.2.5",
   "main": "src/index.ts",
   "types": "src/index.ts",

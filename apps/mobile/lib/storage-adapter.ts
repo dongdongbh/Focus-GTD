@@ -1,4 +1,4 @@
-import { StorageAdapter, AppData } from '@focus-gtd/core';
+import { StorageAdapter, AppData } from '@mindwtr/core';
 import { Platform } from 'react-native';
 
 const DATA_KEY = 'focus-gtd-data';

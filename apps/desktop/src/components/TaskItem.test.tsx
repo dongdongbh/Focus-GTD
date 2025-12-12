@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { TaskItem } from '../components/TaskItem';
-import { Task } from '@focus-gtd/core';
+import { Task } from '@mindwtr/core';
 
 // Mock store
 const mocks = vi.hoisted(() => ({
@@ -10,8 +10,8 @@ const mocks = vi.hoisted(() => ({
     moveTask: vi.fn(),
 }));
 
-vi.mock('@focus-gtd/core', async () => {
-    const actual = await vi.importActual('@focus-gtd/core');
+vi.mock('@mindwtr/core', async () => {
+    const actual = await vi.importActual('@mindwtr/core');
     return {
         ...actual,
         useTaskStore: () => ({

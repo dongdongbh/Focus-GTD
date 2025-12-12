@@ -18,7 +18,7 @@ import { useTheme } from '../../contexts/theme-context';
 import { useLanguage, Language } from '../../contexts/language-context';
 
 import { useThemeColors } from '@/hooks/use-theme-colors';
-import { useTaskStore, mergeAppData } from '@focus-gtd/core';
+import { useTaskStore, mergeAppData } from '@mindwtr/core';
 import { mobileStorage } from '../../lib/storage-adapter';
 import { pickAndParseSyncFile, exportData, readSyncFile, writeSyncFile } from '../../lib/storage-file';
 

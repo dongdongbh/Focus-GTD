@@ -44,7 +44,7 @@ const URLSearchParamsPoly = nativeURLSearchParamsWorks ? NativeURLSearchParams :
 
 ```javascript
 static createObjectURL() {
-    console.warn('[Focus-GTD] URL.createObjectURL called but not supported by shim.');
+    console.warn('[Mindwtr] URL.createObjectURL called but not supported by shim.');
     return '';  // Return empty string instead of throwing
 }
 ```

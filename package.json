@@ -1,5 +1,5 @@
 {
-  "name": "focus-gtd-monorepo",
+  "name": "mindwtr-monorepo",
   "private": true,
   "workspaces": [
     "apps/*",

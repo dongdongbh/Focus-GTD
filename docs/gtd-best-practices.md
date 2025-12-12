@@ -1,6 +1,6 @@
 # GTD Best Practices Guide
 
-> A practical guide to Getting Things Done, curated from community wisdom and real-world experience. Designed to help Focus GTD users master the methodology while keeping things simple and intuitive.
+> A practical guide to Getting Things Done, curated from community wisdom and real-world experience. Designed to help Mindwtr users master the methodology while keeping things simple and intuitive.
 
 ---
 
@@ -379,9 +379,9 @@ For every item in your inbox, ask:
 
 ---
 
-## Focus GTD App Tips
+## Mindwtr App Tips
 
-Based on GTD principles, here's how to use Focus GTD effectively:
+Based on GTD principles, here's how to use Mindwtr effectively:
 
 ### Inbox
 - **Capture quickly** — Don't think, just dump

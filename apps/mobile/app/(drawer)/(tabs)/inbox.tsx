@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView, TextInput } from 'react-native';
 
-import { useTaskStore, PRESET_CONTEXTS } from '@focus-gtd/core';
+import { useTaskStore, PRESET_CONTEXTS } from '@mindwtr/core';
 import { TaskList } from '../../../components/task-list';
 
 import { useLanguage } from '../../../contexts/language-context';

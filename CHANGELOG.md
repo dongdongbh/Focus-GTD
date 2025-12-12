@@ -18,7 +18,7 @@ All notable changes to Focus GTD will be documented in this file.
 ### Features
 - **Mobile Navigation**: Implemented proper Android back button handling in Settings sub-menus.
 - **Sync Logic**: Implemented robust Last-Write-Wins (LWW) synchronization strategy with dedicated `SyncService`.
-- **Architecture**: Consolidated translations and theme logic into `@focus-gtd/core` for consistency.
+- **Architecture**: Consolidated translations and theme logic into `@mindwtr/core` for consistency.
 
 ### Fixed
 - **Mobile Stability**: Implemented safe URL shim to prevent Hermes crashes (non-standard `createObjectURL`).
@@ -56,7 +56,7 @@ All notable changes to Focus GTD will be documented in this file.
 - **Settings**: Theme, language, developer info
 
 ### Technical
-- Monorepo structure with shared `@focus-gtd/core` package
+- Monorepo structure with shared `@mindwtr/core` package
 - Zustand for state management
 - Local storage persistence
 - GitHub Actions CI/CD with automated releases

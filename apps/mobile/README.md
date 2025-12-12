@@ -1,6 +1,6 @@
-# Focus GTD Mobile
+# Mindwtr Mobile
 
-React Native mobile app for the Focus GTD productivity system.
+React Native mobile app for the Mindwtr productivity system.
 
 ## Features
 
@@ -29,7 +29,7 @@ React Native mobile app for the Focus GTD productivity system.
 
 - React Native + Expo SDK 54
 - TypeScript
-- Zustand (shared with desktop via @focus-gtd/core)
+- Zustand (shared with desktop via @mindwtr/core)
 - Expo Router (file-based navigation)
 
 ## Quick Start
@@ -97,10 +97,10 @@ bun install
 
 # Build APK (from apps/mobile directory)
 cd apps/mobile
-npx eas-cli build --platform android --profile preview --local --output focus-gtd-v0.2.3.apk
+npx eas-cli build --platform android --profile preview --local --output mindwtr-v0.2.3.apk
 ```
 
-The APK will be saved to `apps/mobile/focus-gtd-v0.2.3.apk`.
+The APK will be saved to `apps/mobile/mindwtr-v0.2.3.apk`.
 
 ## Android Environment
 
@@ -131,7 +131,7 @@ bun mobile:android
 
 ## Data Storage
 
-Tasks are stored in AsyncStorage and synced via the shared @focus-gtd/core package.
+Tasks are stored in AsyncStorage and synced via the shared @mindwtr/core package.
 
 ## Project Structure
 

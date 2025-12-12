@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useTaskStore, Task, getTaskAgeLabel, getTaskStaleness, type TaskStatus } from '@focus-gtd/core';
+import { useTaskStore, Task, getTaskAgeLabel, getTaskStaleness, type TaskStatus } from '@mindwtr/core';
 import { useLanguage } from '../../contexts/language-context';
 import { cn } from '../../lib/utils';
 import { Clock, Star, Calendar, AlertCircle, PlayCircle, ArrowRight, type LucideIcon } from 'lucide-react';

@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, Pressable, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useTaskStore, sortTasks, type Task, type TaskStatus } from '@focus-gtd/core';
+import { useTaskStore, sortTasks, type Task, type TaskStatus } from '@mindwtr/core';
 import { useState } from 'react';
 import { useTheme } from '../../../contexts/theme-context';
 import { useLanguage } from '../../../contexts/language-context';
