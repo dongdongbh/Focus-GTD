@@ -146,6 +146,21 @@ unset ANDROID_SDK_ROOT
 npx eas-cli build --platform android --profile preview --local --output mindwtr-v0.2.7.apk
 ```
 
+### 4. Upload to GitHub Release
+
+After building, upload the APK to GitHub releases using `gh` CLI:
+
+```bash
+# Upload to existing release
+gh release upload v0.2.7 mindwtr-v0.2.7.apk --clobber
+
+# Or create new release with APK
+gh release create v0.2.7 mindwtr-v0.2.7.apk --title "v0.2.7" --notes "Release notes here"
+
+# View releases
+gh release list
+```
+
 ## Running on Device
 
 ### Expo Go (Recommended)
@@ -154,16 +169,41 @@ npx eas-cli build --platform android --profile preview --local --output mindwtr-
 3. Scan QR code with camera (iOS) or Expo Go (Android)
 
 ### Android Emulator
-```bash
-# List available emulators
-emulator -list-avds
 
-# Start emulator
-emulator -avd Pixel_API_34 &
+#### Option A: Android Studio (Recommended for Emulator)
 
-# Run app
-bun mobile:android
-```
+1. **Install Android Studio:**
+   ```bash
+   # Arch Linux
+   sudo pacman -S android-studio
+   # Or use snap:
+   sudo snap install android-studio --classic
+   ```
+
+2. **Install SDK via Android Studio:**
+   - Open Android Studio → Tools → SDK Manager
+   - Install: Android SDK Platform, Build-Tools, Emulator
+
+3. **Create Virtual Device:**
+   - Tools → Device Manager → Create Device
+   - Pick a phone (e.g., Pixel 6) → Select system image (e.g., Android 13)
+   - Finish
+
+4. **Run:**
+   ```bash
+   # List available emulators
+   emulator -list-avds
+
+   # Start emulator
+   emulator -avd Pixel_API_34 &
+
+   # Run app
+   bun mobile:android
+   ```
+
+#### Option B: Command-line Only (Already Covered Above)
+
+Use the SDK you installed in the "Building APK Locally" section.
 
 ## Data Storage
 
