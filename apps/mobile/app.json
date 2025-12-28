@@ -31,7 +31,7 @@
     "plugins": [
       "./plugins/expo-router",
       [
-        "expo-splash-screen",
+        "./plugins/expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
