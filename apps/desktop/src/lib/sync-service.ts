@@ -26,6 +26,8 @@ function normalizeSyncBackend(raw: string | null): SyncBackend {
 
 export class SyncService {
     private static didMigrate = false;
+    private static syncInFlight: Promise<{ success: boolean; stats?: MergeStats; error?: string }> | null = null;
+    private static syncQueued = false;
 
     private static getSyncBackendLocal(): SyncBackend {
         return normalizeSyncBackend(localStorage.getItem(SYNC_BACKEND_KEY));
@@ -219,7 +221,12 @@ export class SyncService {
      * 4. Refresh Core Store
      */
     static async performSync(): Promise<{ success: boolean; stats?: MergeStats; error?: string }> {
-        try {
+        if (SyncService.syncInFlight) {
+            SyncService.syncQueued = true;
+            return SyncService.syncInFlight;
+        }
+
+        const runSync = async (): Promise<{ success: boolean; stats?: MergeStats; error?: string }> => {
             // 1. Read Local Data
             const localData = isTauriRuntime() ? await tauriInvoke<AppData>('get_data') : await webStorage.getData();
 
@@ -287,7 +294,9 @@ export class SyncService {
             await useTaskStore.getState().fetchData();
 
             return { success: true, stats };
-        } catch (error) {
+        };
+
+        const resultPromise = runSync().catch(async (error) => {
             console.error('Sync failed', error);
             const now = new Date().toISOString();
             try {
@@ -301,6 +310,17 @@ export class SyncService {
                 console.error('Failed to persist sync error', e);
             }
             return { success: false, error: String(error) };
+        });
+
+        SyncService.syncInFlight = resultPromise;
+        const result = await resultPromise;
+        SyncService.syncInFlight = null;
+
+        if (SyncService.syncQueued) {
+            SyncService.syncQueued = false;
+            void SyncService.performSync();
         }
+
+        return result;
     }
 }
