@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { createAIProvider, getStaleItems, isDueForReview, sortTasksBy, type ReviewSuggestion, useTaskStore, type Project, type Task, type TaskStatus, type TaskSortBy } from '@mindwtr/core';
+import { createAIProvider, getStaleItems, isDueForReview, safeFormatDate, safeParseDate, sortTasksBy, type ReviewSuggestion, useTaskStore, type Project, type Task, type TaskStatus, type TaskSortBy } from '@mindwtr/core';
 import { Archive, ArrowRight, Calendar, Check, CheckSquare, Layers, RefreshCw, Sparkles, X, type LucideIcon } from 'lucide-react';
 
 import { TaskItem } from '../TaskItem';
@@ -10,6 +10,11 @@ import { useLanguage } from '../../contexts/language-context';
 import { buildAIConfig, loadAIKey } from '../../lib/ai-config';
 
 type ReviewStep = 'intro' | 'inbox' | 'ai' | 'calendar' | 'waiting' | 'projects' | 'someday' | 'completed';
+type CalendarReviewEntry = {
+    task: Task;
+    date: Date;
+    kind: 'due' | 'start';
+};
 
 function WeeklyReviewGuideModal({ onClose }: { onClose: () => void }) {
     const [currentStep, setCurrentStep] = useState<ReviewStep>('intro');
@@ -30,6 +35,31 @@ function WeeklyReviewGuideModal({ onClose }: { onClose: () => void }) {
             return acc;
         }, {} as Record<string, string>);
     }, [staleItems]);
+    const calendarReviewItems = useMemo(() => {
+        const now = new Date();
+        const pastStart = new Date(now);
+        pastStart.setDate(pastStart.getDate() - 14);
+        const upcomingEnd = new Date(now);
+        upcomingEnd.setDate(upcomingEnd.getDate() + 14);
+        const entries: CalendarReviewEntry[] = [];
+
+        tasks.forEach((task) => {
+            if (task.deletedAt) return;
+            const dueDate = safeParseDate(task.dueDate);
+            if (dueDate) entries.push({ task, date: dueDate, kind: 'due' });
+            const startTime = safeParseDate(task.startTime);
+            if (startTime) entries.push({ task, date: startTime, kind: 'start' });
+        });
+
+        const past = entries
+            .filter((entry) => entry.date >= pastStart && entry.date < now)
+            .sort((a, b) => b.date.getTime() - a.date.getTime());
+        const upcoming = entries
+            .filter((entry) => entry.date >= now && entry.date <= upcomingEnd)
+            .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+        return { past, upcoming };
+    }, [tasks]);
 
     const steps: { id: ReviewStep; title: string; description: string; icon: LucideIcon }[] = [
         { id: 'intro', title: t('review.title'), description: t('review.intro'), icon: RefreshCw },
@@ -129,6 +159,28 @@ function WeeklyReviewGuideModal({ onClose }: { onClose: () => void }) {
         await batchUpdateTasks(updates);
     };
 
+    const renderCalendarList = (items: CalendarReviewEntry[]) => {
+        if (items.length === 0) {
+            return <div className="text-sm text-muted-foreground">{t('calendar.noTasks')}</div>;
+        }
+        return (
+            <div className="space-y-2">
+                {items.map((entry) => (
+                    <div key={`${entry.kind}-${entry.task.id}-${entry.date.toISOString()}`} className="flex items-start gap-3 text-sm">
+                        <div className="min-w-0">
+                            <div className="font-medium truncate">{entry.task.title}</div>
+                            <div className="text-xs text-muted-foreground">
+                                {(entry.kind === 'due' ? t('taskEdit.dueDateLabel') : t('review.startTime'))}
+                                {' / '}
+                                {safeFormatDate(entry.date, 'MMM d, HH:mm')}
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
     const renderStepContent = () => {
         switch (currentStep) {
             case 'intro':
@@ -180,14 +232,16 @@ function WeeklyReviewGuideModal({ onClose }: { onClose: () => void }) {
                         <div className="grid grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <h3 className="font-semibold text-muted-foreground uppercase text-xs tracking-wider">{t('review.past14')}</h3>
-                                <div className="bg-card border border-border rounded-lg p-4 min-h-[200px] text-sm text-muted-foreground">
-                                    {t('review.past14Desc')}
+                                <div className="bg-card border border-border rounded-lg p-4 min-h-[200px] space-y-3">
+                                    <p className="text-xs text-muted-foreground">{t('review.past14Desc')}</p>
+                                    {renderCalendarList(calendarReviewItems.past)}
                                 </div>
                             </div>
                             <div className="space-y-2">
                                 <h3 className="font-semibold text-muted-foreground uppercase text-xs tracking-wider">{t('review.upcoming14')}</h3>
-                                <div className="bg-card border border-border rounded-lg p-4 min-h-[200px] text-sm text-muted-foreground">
-                                    {t('review.upcoming14Desc')}
+                                <div className="bg-card border border-border rounded-lg p-4 min-h-[200px] space-y-3">
+                                    <p className="text-xs text-muted-foreground">{t('review.upcoming14Desc')}</p>
+                                    {renderCalendarList(calendarReviewItems.upcoming)}
                                 </div>
                             </div>
                         </div>
@@ -402,7 +456,7 @@ function WeeklyReviewGuideModal({ onClose }: { onClose: () => void }) {
                             {t('review.completeDesc')}
                         </p>
                         <button
-                            onClick={() => setCurrentStep('intro')}
+                            onClick={onClose}
                             className="bg-primary text-primary-foreground px-8 py-3 rounded-lg text-lg font-medium hover:bg-primary/90 transition-colors"
                         >
                             {t('review.finish')}

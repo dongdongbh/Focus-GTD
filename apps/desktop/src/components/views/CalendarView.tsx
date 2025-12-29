@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { endOfMonth, format, isSameDay, isSameMonth, isToday, startOfMonth, eachDayOfInterval } from 'date-fns';
 import { parseIcs, safeParseDate, type ExternalCalendarEvent, type ExternalCalendarSubscription, useTaskStore } from '@mindwtr/core';
 import { useLanguage } from '../../contexts/language-context';
@@ -20,6 +20,7 @@ export function CalendarView() {
     const [isExternalLoading, setIsExternalLoading] = useState(false);
     const [editingTimeTaskId, setEditingTimeTaskId] = useState<string | null>(null);
     const [editingTimeValue, setEditingTimeValue] = useState<string>('');
+    const calendarBodyRef = useRef<HTMLDivElement | null>(null);
 
     const days = eachDayOfInterval({
         start: startOfMonth(currentMonth),
@@ -266,6 +267,19 @@ export function CalendarView() {
             .slice(0, 12);
     }, [tasks, scheduleQuery, selectedDate]);
 
+    useEffect(() => {
+        if (!selectedDate) return;
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as Node;
+            if (!calendarBodyRef.current || calendarBodyRef.current.contains(target)) return;
+            setSelectedDate(null);
+            setScheduleQuery('');
+            setScheduleError(null);
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [selectedDate]);
+
     const scheduleTaskOnSelectedDate = (taskId: string) => {
         if (!selectedDate) return;
         const task = tasks.find((t) => t.id === taskId);
@@ -332,99 +346,100 @@ export function CalendarView() {
                 </div>
             </header>
 
-            <div className="grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden shadow-sm">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                    <div key={day} className="bg-card p-2 text-center text-sm font-medium text-muted-foreground">
-                        {day}
-                    </div>
-                ))}
-
-                {days.map((day, _dayIdx) => {
-                    const deadlines = getDeadlinesForDay(day);
-                    const scheduled = getScheduledForDay(day);
-                    const taskCount = new Set([...deadlines, ...scheduled].map((t) => t.id)).size;
-                    const eventCount = getExternalEventsForDay(day).length;
-                    const isSelected = selectedDate && isSameDay(day, selectedDate);
-
-                    return (
-                        <div
-                            key={day.toString()}
-                            className={cn(
-                                "group bg-card min-h-[120px] p-2 transition-colors hover:bg-accent/50 relative",
-                                !isSameMonth(day, currentMonth) && "bg-muted/50 text-muted-foreground",
-                                isToday(day) && "bg-accent/20",
-                                isSelected && "ring-2 ring-primary"
-                            )}
-                            onClick={() => setSelectedDate(day)}
-                        >
-                            <div className="flex justify-between items-start">
-                                <div className={cn(
-                                    "text-sm font-medium w-6 h-6 flex items-center justify-center rounded-full mb-1",
-                                    isToday(day) && "bg-primary text-primary-foreground"
-                                )}>
-                                    {format(day, 'd')}
-                                </div>
-                                {(taskCount > 0 || eventCount > 0) && (
-                                    <div className="flex items-center gap-1">
-                                        {taskCount > 0 && (
-                                            <div className="text-[10px] px-1.5 rounded bg-primary/10 text-primary border border-primary/20">
-                                                {taskCount}
-                                            </div>
-                                        )}
-                                        {eventCount > 0 && (
-                                            <div className="text-[10px] px-1.5 rounded bg-muted/60 text-muted-foreground border border-border">
-                                                {eventCount}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="space-y-1">
-                                {deadlines.map(task => (
-                                    <div
-                                        key={task.id}
-                                        className="text-xs truncate px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20"
-                                        title={task.title}
-                                        onClick={(e) => e.stopPropagation()}
-                                    >
-                                        {task.title}
-                                    </div>
-                                ))}
-                                {scheduled.slice(0, 2).map(task => (
-                                    <div
-                                        key={task.id}
-                                        className="text-xs truncate px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                                        title={task.title}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setSelectedDate(day);
-                                        }}
-                                    >
-                                        {task.title}
-                                    </div>
-                                ))}
-                            </div>
+            <div ref={calendarBodyRef} className="space-y-6">
+                <div className="grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden shadow-sm">
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                        <div key={day} className="bg-card p-2 text-center text-sm font-medium text-muted-foreground">
+                            {day}
                         </div>
-                    );
-                })}
-            </div>
+                    ))}
 
-            {selectedDate && (
-                <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-                    <div className="flex items-baseline justify-between gap-4">
-                        <div className="text-sm font-semibold">{format(selectedDate, 'PPPP')}</div>
-                        <button
-                            className="text-xs text-muted-foreground hover:text-foreground"
-                            onClick={() => {
-                                setSelectedDate(null);
-                                setScheduleQuery('');
-                                setScheduleError(null);
-                            }}
-                        >
-                            {t('common.close')}
-                        </button>
-                    </div>
+                    {days.map((day, _dayIdx) => {
+                        const deadlines = getDeadlinesForDay(day);
+                        const scheduled = getScheduledForDay(day);
+                        const taskCount = new Set([...deadlines, ...scheduled].map((t) => t.id)).size;
+                        const eventCount = getExternalEventsForDay(day).length;
+                        const isSelected = selectedDate && isSameDay(day, selectedDate);
+
+                        return (
+                            <div
+                                key={day.toString()}
+                                className={cn(
+                                    "group bg-card min-h-[120px] p-2 transition-colors hover:bg-accent/50 relative",
+                                    !isSameMonth(day, currentMonth) && "bg-muted/50 text-muted-foreground",
+                                    isToday(day) && "bg-accent/20",
+                                    isSelected && "ring-2 ring-primary"
+                                )}
+                                onClick={() => setSelectedDate(day)}
+                            >
+                                <div className="flex justify-between items-start">
+                                    <div className={cn(
+                                        "text-sm font-medium w-6 h-6 flex items-center justify-center rounded-full mb-1",
+                                        isToday(day) && "bg-primary text-primary-foreground"
+                                    )}>
+                                        {format(day, 'd')}
+                                    </div>
+                                    {(taskCount > 0 || eventCount > 0) && (
+                                        <div className="flex items-center gap-1">
+                                            {taskCount > 0 && (
+                                                <div className="text-[10px] px-1.5 rounded bg-primary/10 text-primary border border-primary/20">
+                                                    {taskCount}
+                                                </div>
+                                            )}
+                                            {eventCount > 0 && (
+                                                <div className="text-[10px] px-1.5 rounded bg-muted/60 text-muted-foreground border border-border">
+                                                    {eventCount}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="space-y-1">
+                                    {deadlines.map(task => (
+                                        <div
+                                            key={task.id}
+                                            className="text-xs truncate px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20"
+                                            title={task.title}
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            {task.title}
+                                        </div>
+                                    ))}
+                                    {scheduled.slice(0, 2).map(task => (
+                                        <div
+                                            key={task.id}
+                                            className="text-xs truncate px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                            title={task.title}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedDate(day);
+                                            }}
+                                        >
+                                            {task.title}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {selectedDate && (
+                    <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+                        <div className="flex items-baseline justify-between gap-4">
+                            <div className="text-sm font-semibold">{format(selectedDate, 'PPPP')}</div>
+                            <button
+                                className="text-xs text-muted-foreground hover:text-foreground"
+                                onClick={() => {
+                                    setSelectedDate(null);
+                                    setScheduleQuery('');
+                                    setScheduleError(null);
+                                }}
+                            >
+                                {t('common.close')}
+                            </button>
+                        </div>
 
                     <div className="space-y-2">
                         <input

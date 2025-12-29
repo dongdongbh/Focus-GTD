@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useTaskStore, Attachment, Task, generateUUID, safeFormatDate, safeParseDate, parseQuickAdd } from '@mindwtr/core';
 import { TaskItem } from '../TaskItem';
 import { Plus, Folder, Trash2, ListOrdered, ChevronRight, ChevronDown, CheckCircle, Archive as ArchiveIcon, RotateCcw, Paperclip, Link2 } from 'lucide-react';
@@ -26,6 +26,8 @@ export function ProjectsView() {
     const [showNotesPreview, setShowNotesPreview] = useState(false);
     const [attachmentError, setAttachmentError] = useState<string | null>(null);
     const [showLinkPrompt, setShowLinkPrompt] = useState(false);
+    const [areaDraft, setAreaDraft] = useState('');
+    const projectColorInputRef = useRef<HTMLInputElement | null>(null);
 
     useEffect(() => {
         setAttachmentError(null);
@@ -79,6 +81,21 @@ export function ProjectsView() {
         ? tasks.filter(t => t.projectId === selectedProjectId && t.status !== 'done' && !t.deletedAt)
         : [];
     const visibleAttachments = (selectedProject?.attachments || []).filter((a) => !a.deletedAt);
+    const projectProgress = useMemo(() => {
+        if (!selectedProjectId) return null;
+        const projectItems = tasks.filter((task) => task.projectId === selectedProjectId && !task.deletedAt);
+        const doneCount = projectItems.filter((task) => task.status === 'done').length;
+        const remainingCount = projectItems.length - doneCount;
+        return { doneCount, remainingCount, total: projectItems.length };
+    }, [tasks, selectedProjectId]);
+
+    useEffect(() => {
+        if (!selectedProject) {
+            setAreaDraft('');
+            return;
+        }
+        setAreaDraft(selectedProject.areaTitle || '');
+    }, [selectedProject?.id, selectedProject?.areaTitle]);
 
     const openAttachment = (attachment: Attachment) => {
         if (attachment.kind === 'link') {
@@ -271,8 +288,30 @@ export function ProjectsView() {
                     <>
                         <header className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
-                                <div className="w-4 h-4 rounded-full" style={{ backgroundColor: selectedProject.color }} />
-                                <h2 className="text-2xl font-bold">{selectedProject.title}</h2>
+                                <button
+                                    type="button"
+                                    onClick={() => projectColorInputRef.current?.click()}
+                                    className="w-4 h-4 rounded-full border border-border"
+                                    style={{ backgroundColor: selectedProject.color }}
+                                    title={t('projects.color')}
+                                    aria-label={t('projects.color')}
+                                />
+                                <input
+                                    ref={projectColorInputRef}
+                                    type="color"
+                                    value={selectedProject.color}
+                                    onChange={(e) => updateProject(selectedProject.id, { color: e.target.value })}
+                                    className="sr-only"
+                                    aria-hidden="true"
+                                />
+                                <div className="flex flex-col">
+                                    <h2 className="text-2xl font-bold">{selectedProject.title}</h2>
+                                    {projectProgress && projectProgress.total > 0 && (
+                                        <div className="text-xs text-muted-foreground">
+                                            {t('status.done')}: {projectProgress.doneCount} / {projectProgress.remainingCount} {t('process.remaining')}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                             <div className="flex items-center gap-3">
                                 {/* Sequential Toggle */}
@@ -468,8 +507,16 @@ export function ProjectsView() {
 			                            <input
 			                                key={`${selectedProject.id}-area`}
 			                                type="text"
-			                                defaultValue={selectedProject.areaTitle || ''}
-			                                onBlur={(e) => updateProject(selectedProject.id, { areaTitle: e.target.value || undefined })}
+			                                value={areaDraft}
+			                                onChange={(e) => setAreaDraft(e.target.value)}
+			                                onBlur={() => updateProject(selectedProject.id, { areaTitle: areaDraft.trim() || undefined })}
+			                                onKeyDown={(e) => {
+			                                    if (e.key === 'Enter') {
+			                                        e.preventDefault();
+			                                        updateProject(selectedProject.id, { areaTitle: areaDraft.trim() || undefined });
+			                                        e.currentTarget.blur();
+			                                    }
+			                                }}
 			                                placeholder={t('projects.areaPlaceholder')}
 			                                className="w-full text-sm bg-muted/50 border border-border rounded px-2 py-1"
 			                            />

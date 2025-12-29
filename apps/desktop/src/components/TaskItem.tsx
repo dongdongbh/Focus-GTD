@@ -137,6 +137,18 @@ export const TaskItem = memo(function TaskItem({
     const unblocksCount = getUnblocksCount(task.id, tasks ?? []);
     const visibleAttachments = (task.attachments || []).filter((a) => !a.deletedAt);
     const visibleEditAttachments = editAttachments.filter((a) => !a.deletedAt);
+    const blockedByTasks = useMemo(() => {
+        if (!task.blockedByTaskIds?.length) return [];
+        const taskMap = new Map((tasks ?? []).map((t) => [t.id, t]));
+        return task.blockedByTaskIds
+            .map((id) => taskMap.get(id))
+            .filter((t): t is Task => Boolean(t));
+    }, [task.blockedByTaskIds, tasks]);
+
+    const removeBlocker = (blockerId: string) => {
+        const nextBlockedBy = (task.blockedByTaskIds || []).filter((id) => id !== blockerId);
+        updateTask(task.id, { blockedByTaskIds: nextBlockedBy.length > 0 ? nextBlockedBy : undefined });
+    };
 
     const openAttachment = (attachment: Attachment) => {
         if (attachment.kind === 'link') {
@@ -1088,6 +1100,25 @@ export const TaskItem = memo(function TaskItem({
                                     <div className="flex items-center gap-1 text-muted-foreground">
                                         <Tag className="w-3 h-3" />
                                         {task.tags.join(', ')}
+                                    </div>
+                                )}
+                                {blockedByTasks.length > 0 && (
+                                    <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
+                                        <span className="text-[10px] uppercase tracking-wide">{t('taskEdit.blockedByLabel')}</span>
+                                        {blockedByTasks.map((blocker) => (
+                                            <button
+                                                key={blocker.id}
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    removeBlocker(blocker.id);
+                                                }}
+                                                className="text-[10px] px-2 py-0.5 rounded-full border border-border bg-muted/40 hover:bg-destructive/10 hover:text-destructive transition-colors"
+                                                title="Remove blocker"
+                                            >
+                                                {blocker.title}
+                                            </button>
+                                        ))}
                                     </div>
                                 )}
                                 {checklistProgress && (
