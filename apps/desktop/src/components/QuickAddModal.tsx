@@ -98,7 +98,7 @@ export function QuickAddModal() {
                                 close();
                             }
                         }}
-                        placeholder={`${t('nav.addTask')}... ${t('quickAdd.example')}`}
+                        placeholder={t('nav.addTask')}
                         className={cn(
                             "w-full bg-card border border-border rounded-lg py-3 px-4 shadow-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all",
                         )}
