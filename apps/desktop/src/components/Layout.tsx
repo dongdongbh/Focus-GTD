@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Calendar, Inbox, CheckSquare, Archive, Layers, Tag, CheckCircle2, HelpCircle, Folder, Settings, Target, Search, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useTaskStore, safeParseDate } from '@mindwtr/core';
@@ -14,16 +15,18 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
     const { t } = useLanguage();
     const isCollapsed = settings?.sidebarCollapsed ?? false;
 
-    // Filter out deleted tasks from counts
-    const activeTasks = tasks.filter(t => !t.deletedAt);
-    const now = new Date();
-    const inboxCount = activeTasks.filter(t => {
-        if (t.status !== 'inbox') return false;
-        const start = safeParseDate(t.startTime);
-        if (start && start > now) return false;
-        return true;
-    }).length;
-    const nextCount = activeTasks.filter(t => t.status === 'next').length;
+    const { inboxCount, nextCount } = useMemo(() => {
+        const activeTasks = tasks.filter((task) => !task.deletedAt);
+        const now = new Date();
+        const inbox = activeTasks.filter((task) => {
+            if (task.status !== 'inbox') return false;
+            const start = safeParseDate(task.startTime);
+            if (start && start > now) return false;
+            return true;
+        }).length;
+        const next = activeTasks.filter((task) => task.status === 'next').length;
+        return { inboxCount: inbox, nextCount: next };
+    }, [tasks]);
 
     // Trigger global search by simulating Cmd+K
     const triggerSearch = () => {

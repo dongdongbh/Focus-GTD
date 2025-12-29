@@ -105,6 +105,19 @@ export const TaskItem = memo(function TaskItem({
         return Array.from(new Set([...PRESET_TAGS, ...taskTags])).filter(Boolean);
     }, [tasks]);
 
+    const popularTagOptions = useMemo(() => {
+        const counts = new Map<string, number>();
+        tasks.forEach((t) => {
+            t.tags?.forEach((tag) => {
+                counts.set(tag, (counts.get(tag) || 0) + 1);
+            });
+        });
+        const sorted = Array.from(counts.entries())
+            .sort((a, b) => b[1] - a[1])
+            .map(([tag]) => tag);
+        return Array.from(new Set([...sorted, ...PRESET_TAGS])).slice(0, 8);
+    }, [tasks]);
+
     const ageLabel = getTaskAgeLabel(task.createdAt, language);
     const checklistProgress = getChecklistProgress(task);
     const unblocksCount = getUnblocksCount(task.id, tasks ?? []);
@@ -816,26 +829,7 @@ export const TaskItem = memo(function TaskItem({
 	                                        className="text-xs bg-muted/50 border border-border rounded px-2 py-1 w-full text-foreground placeholder:text-muted-foreground"
 	                                    />
                                     <div className="flex flex-wrap gap-2 pt-1">
-                                        {((() => {
-                                            // Compute most frequent tags (hashtags)
-                                            // Note: In a real app we might want to memoize this or pass it down,
-                                            // but for this inline component, we'll compute it from store tasks
-                                            const allTasks = tasks || [];
-                                            const PRESET_TAGS = ['#creative', '#focused', '#lowenergy', '#routine'];
-
-                                            const counts = new Map<string, number>();
-                                            allTasks.forEach(t => {
-                                                t.tags?.forEach(tag => {
-                                                    counts.set(tag, (counts.get(tag) || 0) + 1);
-                                                });
-                                            });
-
-                                            const sorted = Array.from(counts.entries())
-                                                .sort((a, b) => b[1] - a[1])
-                                                .map(([tag]) => tag);
-
-                                            return Array.from(new Set([...sorted, ...PRESET_TAGS])).slice(0, 8);
-                                        })()).map(tag => {
+                                        {popularTagOptions.map(tag => {
                                             const currentTags = editTags.split(',').map(t => t.trim()).filter(Boolean);
                                             const isActive = currentTags.includes(tag);
                                             return (
