@@ -35,6 +35,7 @@ function RootLayoutContent() {
   const syncDebounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const widgetRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isActive = useRef(true);
+  const loadAttempts = useRef(0);
 
   // Auto-sync on data changes with debounce
   useEffect(() => {
@@ -124,6 +125,7 @@ function RootLayoutContent() {
     // Load data from storage
     const loadData = async () => {
       try {
+        loadAttempts.current += 1;
         // Verify critical polyfills
         verifyPolyfills();
 
@@ -142,6 +144,14 @@ function RootLayoutContent() {
         }, 800);
       } catch (e) {
         console.error('[Mobile] Failed to load data:', e);
+        if (loadAttempts.current < 3 && isActive.current) {
+          setTimeout(() => {
+            if (isActive.current) {
+              loadData();
+            }
+          }, 2000);
+          return;
+        }
         Alert.alert(
           '⚠️ Data Load Error',
           'Failed to load your data. Some tasks may be missing.\n\nError: ' + (e as Error).message,
