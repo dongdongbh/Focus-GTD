@@ -85,10 +85,10 @@ export function QuickAddModal() {
             aria-label={t('common.close')}
             onClick={close}
             onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    close();
-                }
+                if (event.key !== 'Escape') return;
+                if (event.currentTarget !== event.target) return;
+                event.preventDefault();
+                close();
             }}
         >
             <div

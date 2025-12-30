@@ -664,20 +664,31 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
     const [containerWidth, setContainerWidth] = useState(0);
     const scrollX = useRef(new Animated.Value(0)).current;
     const scrollRef = useRef<ScrollView | null>(null);
+    const isUserSwipe = useRef(false);
+
+    const scrollToTab = useCallback((mode: TaskEditTab, animated = true) => {
+        if (!containerWidth) return;
+        const x = mode === 'task' ? 0 : containerWidth;
+        const node = scrollRef.current as unknown as {
+            scrollTo?: (options: { x: number; animated?: boolean }) => void;
+            getNode?: () => { scrollTo?: (options: { x: number; animated?: boolean }) => void };
+        } | null;
+        if (node?.scrollTo) {
+            node.scrollTo({ x, animated });
+            return;
+        }
+        node?.getNode?.()?.scrollTo?.({ x, animated });
+    }, [containerWidth]);
 
     useEffect(() => {
         if (!containerWidth) return;
-        scrollRef.current?.scrollTo({
-            x: editTab === 'task' ? 0 : containerWidth,
-            animated: true,
-        });
-    }, [editTab, containerWidth]);
+        scrollToTab(editTab, false);
+    }, [containerWidth, scrollToTab, task?.id]);
 
     const handleTabPress = (mode: TaskEditTab) => {
+        isUserSwipe.current = false;
         setModeTab(mode);
-        if (containerWidth) {
-            scrollRef.current?.scrollTo({ x: mode === 'task' ? 0 : containerWidth, animated: true });
-        }
+        scrollToTab(mode);
     };
 
     const applyChecklistUpdate = (nextChecklist: NonNullable<Task['checklist']>) => {
@@ -1406,6 +1417,7 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
                     <View style={[styles.modeTabsTrack, { backgroundColor: tc.filterBg, borderColor: tc.border }]}>
                         {containerWidth > 0 && (
                             <Animated.View
+                                pointerEvents="none"
                                 style={[
                                     styles.modeTabIndicator,
                                     {
@@ -1463,6 +1475,9 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
                         scrollEventThrottle={16}
                         showsHorizontalScrollIndicator={false}
                         directionalLockEnabled
+                        onScrollBeginDrag={() => {
+                            isUserSwipe.current = true;
+                        }}
                         onScroll={Animated.event(
                             [{ nativeEvent: { contentOffset: { x: scrollX } } }],
                             { useNativeDriver: true }
@@ -1470,6 +1485,8 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
                         onMomentumScrollEnd={(event) => {
                             const offsetX = event.nativeEvent.contentOffset.x;
                             if (!containerWidth) return;
+                            if (!isUserSwipe.current) return;
+                            isUserSwipe.current = false;
                             setModeTab(offsetX >= containerWidth / 2 ? 'view' : 'task');
                         }}
                     >

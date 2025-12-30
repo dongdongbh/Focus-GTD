@@ -59,7 +59,7 @@ function ArchivedTaskItem({
         >
             <View style={[
                 styles.taskItem,
-                { backgroundColor: tc.cardBg },
+                { backgroundColor: tc.taskItemBg },
                 isHighlighted && { borderWidth: 2, borderColor: tc.tint }
             ]}>
                 <View style={styles.taskContent}>

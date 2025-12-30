@@ -4,6 +4,7 @@ import { useTheme } from '../contexts/theme-context';
 export interface ThemeColors {
     bg: string;
     cardBg: string;
+    taskItemBg: string;
     text: string;
     secondaryText: string;
     border: string;
@@ -21,6 +22,7 @@ export function useThemeColors() {
     const tc: ThemeColors = {
         bg: isDark ? Colors.dark.background : Colors.light.background,
         cardBg: isDark ? '#1F2937' : '#FFFFFF', // Using the values found in existing code
+        taskItemBg: isDark ? '#1F2937' : '#F8FAFC',
         text: isDark ? Colors.dark.text : Colors.light.text,
         secondaryText: isDark ? '#9CA3AF' : '#6B7280',
         border: isDark ? '#374151' : '#E5E7EB',

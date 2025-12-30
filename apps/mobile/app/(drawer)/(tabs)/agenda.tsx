@@ -55,7 +55,7 @@ function TaskCard({ task, onPress, onToggleFocus, tc, isDark, focusedCount, proj
   const canFocus = task.isFocusedToday || (focusedCount !== undefined && focusedCount < 3);
 
   return (
-    <Pressable style={[styles.taskCard, { backgroundColor: tc.cardBg }, task.isFocusedToday && styles.focusedCard]} onPress={onPress}>
+    <Pressable style={[styles.taskCard, { backgroundColor: tc.taskItemBg }, task.isFocusedToday && styles.focusedCard]} onPress={onPress}>
       <View style={[styles.statusBar, { backgroundColor: getStatusColor(task.status) }]} />
         <View style={styles.taskContent}>
           <View style={styles.taskTitleRow}>

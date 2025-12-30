@@ -181,7 +181,7 @@ export function SwipeableTaskItem({
                 <Pressable
                     style={[
                         styles.taskItem,
-                        { backgroundColor: tc.cardBg },
+                        { backgroundColor: tc.taskItemBg },
                         isHighlighted && !selectionMode && { borderWidth: 2, borderColor: tc.tint },
                         selectionMode && { borderWidth: 2, borderColor: isMultiSelected ? tc.tint : tc.border }
                     ]}

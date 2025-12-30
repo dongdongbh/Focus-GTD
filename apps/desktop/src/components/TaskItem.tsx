@@ -958,21 +958,6 @@ export const TaskItem = memo(function TaskItem({
                                         )}
                                     </div>
                                 </div>
-                                {(task.checklist || []).length > 0 && (
-                                    <div className="mt-3 space-y-1 pl-1">
-                                        {(task.checklist || []).map((item, i) => (
-                                            <div key={item.id || i} className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                <div className={cn(
-                                                    "w-3 h-3 border rounded flex items-center justify-center",
-                                                    item.isCompleted ? "bg-muted-foreground/20 border-muted-foreground" : "border-muted-foreground"
-                                                )}>
-                                                    {item.isCompleted && <Check className="w-2 h-2" />}
-                                                </div>
-                                                <span className={cn(item.isCompleted && "line-through")}>{item.title}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
                             </div>
                             <div className="flex gap-2 pt-1">
                                 <button
