@@ -20,7 +20,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
+import { File } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
@@ -446,8 +446,8 @@ export default function SettingsPage() {
             Alert.alert(t('settings.debugLogging'), t('settings.logMissing'));
             return;
         }
-        const info = await FileSystem.getInfoAsync(path);
-        if (!info.exists) {
+        const logFile = new File(path);
+        if (!logFile.exists) {
             Alert.alert(t('settings.debugLogging'), t('settings.logMissing'));
             return;
         }
@@ -456,7 +456,7 @@ export default function SettingsPage() {
             Alert.alert(t('settings.debugLogging'), t('settings.shareUnavailable'));
             return;
         }
-        await Sharing.shareAsync(path, { mimeType: 'text/plain' });
+        await Sharing.shareAsync(logFile.uri, { mimeType: 'text/plain' });
     };
 
     const handleClearLog = async () => {
