@@ -71,8 +71,7 @@ function App() {
                 const { url } = await SyncService.getWebDavConfig();
                 return Boolean(url);
             }
-            const { url, token } = await SyncService.getCloudConfig();
-            return Boolean(url && token);
+            return false;
         };
 
         const performSync = async () => {

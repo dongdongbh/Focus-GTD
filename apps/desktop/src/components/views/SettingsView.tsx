@@ -864,7 +864,7 @@ export function SettingsView() {
             const featureHiddenFields = new Set<TaskEditorFieldId>();
             if (!prioritiesEnabled) featureHiddenFields.add('priority');
             if (!timeEstimatesEnabled) featureHiddenFields.add('timeEstimate');
-            const defaultTaskEditorOrder: TaskEditorFieldId[] = [
+            const baseTaskEditorOrder: TaskEditorFieldId[] = [
                 'status',
                 'priority',
                 'contexts',
@@ -877,7 +877,8 @@ export function SettingsView() {
                 'reviewAt',
                 'attachments',
                 'checklist',
-            ].filter((fieldId) => !featureHiddenFields.has(fieldId));
+            ];
+            const defaultTaskEditorOrder = baseTaskEditorOrder.filter((fieldId) => !featureHiddenFields.has(fieldId));
             const defaultTaskEditorHidden = [...defaultTaskEditorOrder];
             const savedOrder = settings.gtd?.taskEditor?.order ?? [];
             const savedHidden = settings.gtd?.taskEditor?.hidden ?? defaultTaskEditorHidden;

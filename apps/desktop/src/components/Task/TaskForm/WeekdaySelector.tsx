@@ -1,5 +1,3 @@
-import React from 'react';
-
 import { buildRRuleString, parseRRuleString, type RecurrenceWeekday } from '@mindwtr/core';
 import { cn } from '../../../lib/utils';
 

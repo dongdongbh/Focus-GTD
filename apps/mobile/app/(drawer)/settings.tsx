@@ -95,7 +95,7 @@ const maskCalendarUrl = (url: string): string => {
 export default function SettingsPage() {
     const { themeMode, themeStyle, setThemeMode, setThemeStyle, isDark } = useTheme();
     const { language, setLanguage, t } = useLanguage();
-    const { tasks, projects, settings, updateSettings } = useTaskStore();
+    const { tasks, projects, areas, settings, updateSettings } = useTaskStore();
     const [isSyncing, setIsSyncing] = useState(false);
     const [currentScreen, setCurrentScreen] = useState<SettingsScreen>('main');
     const [syncPath, setSyncPath] = useState<string | null>(null);
@@ -411,7 +411,7 @@ export default function SettingsPage() {
     const handleBackup = async () => {
         setIsSyncing(true);
         try {
-            await exportData({ tasks, projects, settings });
+            await exportData({ tasks, projects, areas, settings });
         } catch (error) {
             console.error(error);
             Alert.alert(language === 'zh' ? '错误' : 'Error', language === 'zh' ? '导出失败' : 'Failed to export data');
@@ -1190,7 +1190,7 @@ export default function SettingsPage() {
         if (!prioritiesEnabled) featureHiddenFields.add('priority');
         if (!timeEstimatesEnabled) featureHiddenFields.add('timeEstimate');
 
-        const defaultTaskEditorOrder: TaskEditorFieldId[] = [
+        const baseTaskEditorOrder: TaskEditorFieldId[] = [
             'status',
             'priority',
             'contexts',
@@ -1203,9 +1203,10 @@ export default function SettingsPage() {
             'reviewAt',
             'attachments',
             'checklist',
-        ].filter((fieldId) => !featureHiddenFields.has(fieldId));
-
-        const defaultTaskEditorHidden = defaultTaskEditorOrder.filter((id) => !['status', 'priority', 'contexts', 'description', 'recurrence'].includes(id));
+        ];
+        const defaultTaskEditorOrder = baseTaskEditorOrder.filter((fieldId) => !featureHiddenFields.has(fieldId));
+        const alwaysVisible: TaskEditorFieldId[] = ['status', 'priority', 'contexts', 'description', 'recurrence'];
+        const defaultTaskEditorHidden = defaultTaskEditorOrder.filter((id) => !alwaysVisible.includes(id));
         const known = new Set(defaultTaskEditorOrder);
         const savedOrder = (settings.gtd?.taskEditor?.order ?? []).filter((id) => known.has(id));
         const taskEditorOrder = [...savedOrder, ...defaultTaskEditorOrder.filter((id) => !savedOrder.includes(id))];
