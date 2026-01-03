@@ -75,6 +75,9 @@ type SettingsScreen =
 const LANGUAGES: { id: Language; native: string }[] = [
     { id: 'en', native: 'English' },
     { id: 'zh', native: '中文' },
+    { id: 'es', native: 'Español' },
+    { id: 'hi', native: 'हिन्दी' },
+    { id: 'ar', native: 'العربية' },
 ];
 
 const maskCalendarUrl = (url: string): string => {
@@ -107,6 +110,7 @@ export default function SettingsPage() {
     const [digestTimePicker, setDigestTimePicker] = useState<'morning' | 'evening' | null>(null);
     const [weeklyReviewTimePicker, setWeeklyReviewTimePicker] = useState(false);
     const [modelPicker, setModelPicker] = useState<null | 'model' | 'copilot'>(null);
+    const [languagePickerOpen, setLanguagePickerOpen] = useState(false);
     const [externalCalendars, setExternalCalendars] = useState<ExternalCalendarSubscription[]>([]);
     const [newCalendarName, setNewCalendarName] = useState('');
     const [newCalendarUrl, setNewCalendarUrl] = useState('');
@@ -154,7 +158,14 @@ export default function SettingsPage() {
     };
 
     const formatTime = (time: string) => time;
-    const locale = language === 'zh' ? 'zh-CN' : 'en-US';
+    const localeMap: Record<Language, string> = {
+        en: 'en-US',
+        zh: 'zh-CN',
+        es: 'es-ES',
+        hi: 'hi-IN',
+        ar: 'ar',
+    };
+    const locale = localeMap[language] ?? 'en-US';
     const toTimePickerDate = (time: string) => {
         const [hours, minutes] = time.split(':').map((v) => parseInt(v, 10));
         const date = new Date();
@@ -715,17 +726,54 @@ export default function SettingsPage() {
                     <Text style={[styles.sectionTitle, { color: tc.secondaryText, marginTop: 16 }]}>{t('settings.language')}</Text>
                     <Text style={[styles.description, { color: tc.secondaryText }]}>{t('settings.selectLang')}</Text>
                     <View style={[styles.settingCard, { backgroundColor: tc.cardBg }]}>
-                        {LANGUAGES.map((lang, idx) => (
-                            <TouchableOpacity
-                                key={lang.id}
-                                style={[styles.settingRow, idx > 0 && { borderTopWidth: 1, borderTopColor: tc.border }]}
-                                onPress={() => setLanguage(lang.id)}
-                            >
-                                <Text style={[styles.settingLabel, { color: tc.text }]}>{lang.native}</Text>
-                                {language === lang.id && <Text style={{ color: '#3B82F6', fontSize: 20 }}>✓</Text>}
-                            </TouchableOpacity>
-                        ))}
+                        <TouchableOpacity style={styles.settingRow} onPress={() => setLanguagePickerOpen(true)}>
+                            <View style={styles.settingInfo}>
+                                <Text style={[styles.settingLabel, { color: tc.text }]}>{t('settings.language')}</Text>
+                                <Text style={[styles.settingDescription, { color: tc.secondaryText }]}>
+                                    {LANGUAGES.find((lang) => lang.id === language)?.native ?? language}
+                                </Text>
+                            </View>
+                            <Text style={{ color: tc.secondaryText, fontSize: 18 }}>▾</Text>
+                        </TouchableOpacity>
                     </View>
+                    <Modal
+                        transparent
+                        visible={languagePickerOpen}
+                        animationType="fade"
+                        onRequestClose={() => setLanguagePickerOpen(false)}
+                    >
+                        <Pressable style={styles.pickerOverlay} onPress={() => setLanguagePickerOpen(false)}>
+                            <View
+                                style={[styles.pickerCard, { backgroundColor: tc.cardBg, borderColor: tc.border }]}
+                                onStartShouldSetResponder={() => true}
+                            >
+                                <Text style={[styles.pickerTitle, { color: tc.text }]}>{t('settings.language')}</Text>
+                                <ScrollView style={styles.pickerList} contentContainerStyle={styles.pickerListContent}>
+                                    {LANGUAGES.map((lang) => {
+                                        const selected = language === lang.id;
+                                        return (
+                                            <TouchableOpacity
+                                                key={lang.id}
+                                                style={[
+                                                    styles.pickerOption,
+                                                    { borderColor: tc.border, backgroundColor: selected ? tc.filterBg : 'transparent' },
+                                                ]}
+                                                onPress={() => {
+                                                    setLanguage(lang.id);
+                                                    setLanguagePickerOpen(false);
+                                                }}
+                                            >
+                                                <Text style={[styles.pickerOptionText, { color: selected ? tc.tint : tc.text }]}>
+                                                    {lang.native}
+                                                </Text>
+                                                {selected && <Text style={{ color: tc.tint, fontSize: 18 }}>✓</Text>}
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </ScrollView>
+                            </View>
+                        </Pressable>
+                    </Modal>
                 </ScrollView>
             </SafeAreaView>
         );

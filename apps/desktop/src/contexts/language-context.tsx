@@ -12,6 +12,7 @@ interface LanguageContextType {
 
 
 const LANGUAGE_STORAGE_KEY = 'mindwtr-language';
+const SUPPORTED_LANGUAGES: Language[] = ['en', 'zh', 'es', 'hi', 'ar'];
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
@@ -20,8 +21,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY);
-        if (saved === 'en' || saved === 'zh') {
-            setLanguageState(saved);
+        if (saved && SUPPORTED_LANGUAGES.includes(saved as Language)) {
+            setLanguageState(saved as Language);
         }
     }, []);
 
@@ -31,7 +32,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     };
 
     const t = (key: string): string => {
-        return translations[language][key] || key;
+        return translations[language][key] || translations.en[key] || key;
     };
 
     return (

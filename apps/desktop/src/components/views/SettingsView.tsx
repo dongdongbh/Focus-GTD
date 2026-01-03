@@ -46,6 +46,9 @@ const THEME_STORAGE_KEY = 'mindwtr-theme';
 const LANGUAGES: { id: Language; label: string; native: string }[] = [
     { id: 'en', label: 'English', native: 'English' },
     { id: 'zh', label: 'Chinese', native: '中文' },
+    { id: 'es', label: 'Spanish', native: 'Español' },
+    { id: 'hi', label: 'Hindi', native: 'हिन्दी' },
+    { id: 'ar', label: 'Arabic', native: 'العربية' },
 ];
 
 const maskCalendarUrl = (url: string): string => {
@@ -741,7 +744,14 @@ export function SettingsView() {
     const weeklyReviewEnabled = settings?.weeklyReviewEnabled === true;
     const weeklyReviewTime = settings?.weeklyReviewTime || '18:00';
     const weeklyReviewDay = Number.isFinite(settings?.weeklyReviewDay) ? settings?.weeklyReviewDay as number : 0;
-    const locale = language === 'zh' ? 'zh-CN' : 'en-US';
+    const localeMap: Record<Language, string> = {
+        en: 'en-US',
+        zh: 'zh-CN',
+        es: 'es-ES',
+        hi: 'hi-IN',
+        ar: 'ar',
+    };
+    const locale = localeMap[language] ?? 'en-US';
     const weekdayOptions = useMemo(() => (
         Array.from({ length: 7 }, (_, i) => {
             const base = new Date(2021, 7, 1 + i);
@@ -859,7 +869,15 @@ export function SettingsView() {
             const autoArchiveOptions = [0, 1, 3, 7, 14, 30, 60];
             const formatArchiveLabel = (days: number) => {
                 if (days <= 0) return t.autoArchiveNever;
-                return language === 'zh' ? `${days} 天` : `${days} days`;
+                const dayLabelMap: Record<Language, string> = {
+                    en: 'days',
+                    zh: '天',
+                    es: 'días',
+                    hi: 'दिन',
+                    ar: 'أيام',
+                };
+                const label = dayLabelMap[language] ?? 'days';
+                return `${days} ${label}`;
             };
             const featureHiddenFields = new Set<TaskEditorFieldId>();
             if (!prioritiesEnabled) featureHiddenFields.add('priority');

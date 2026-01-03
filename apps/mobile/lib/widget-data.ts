@@ -20,7 +20,10 @@ export interface TasksWidgetPayload {
 
 export function resolveWidgetLanguage(saved: string | null, setting?: string): Language {
     const candidate = setting && setting !== 'system' ? setting : saved;
-    return candidate === 'zh' ? 'zh' : 'en';
+    if (candidate === 'zh' || candidate === 'es' || candidate === 'hi' || candidate === 'ar') {
+        return candidate as Language;
+    }
+    return 'en';
 }
 
 export function buildWidgetPayload(data: AppData, language: Language): TasksWidgetPayload {

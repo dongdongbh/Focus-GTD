@@ -66,7 +66,14 @@ export function CalendarView() {
 
   const daysInMonth = getDaysInMonth(currentYear, currentMonth);
   const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
-  const locale = language === 'zh' ? 'zh-CN' : 'en-US';
+  const localeMap: Record<typeof language, string> = {
+    en: 'en-US',
+    zh: 'zh-CN',
+    es: 'es-ES',
+    hi: 'hi-IN',
+    ar: 'ar',
+  };
+  const locale = localeMap[language] ?? 'en-US';
   const monthLabel = new Date(currentYear, currentMonth, 1).toLocaleDateString(locale, {
     year: 'numeric',
     month: 'long',

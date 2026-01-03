@@ -65,7 +65,6 @@ Mindwtr is built to be **simple by default and powerful when you need it**. We f
 
 ### Productivity Features
 - 🔍 **Global Search** - Search operators (status:, context:, due:<=7d)
-- 💾 **Saved Searches** - Save and reuse search filters
 - 📦 **Bulk Actions** - Multi-select, batch move/tag/delete
 - 🔗 **Task Dependencies** - Block tasks until prerequisites complete
 - 📎 **Attachments** - Files and links on tasks
@@ -83,7 +82,6 @@ Mindwtr is built to be **simple by default and powerful when you need it**. We f
 ### Data & Sync
 - 📁 **File Sync** - Dropbox, Google Drive, Syncthing, etc.
 - 🌐 **WebDAV Sync** - Nextcloud, ownCloud, self-hosted
-- ☁️ **Cloud Sync** - Self-hosted cloud backend
 - 🔀 **Smart Merge** - Last-write-wins prevents data loss
 - 📤 **Export/Backup** - Export data to JSON
 - 🗓️ **External Calendars (ICS)** - View-only calendar overlay
@@ -99,7 +97,7 @@ Mindwtr is built to be **simple by default and powerful when you need it**. We f
 - 📲 **Android Widget** - Home screen focus/next widget
 - ⌨️ **Keyboard Shortcuts** - Vim and Emacs presets
 - 🎨 **Themes** - Light/Dark
-- 🌍 **i18n** - English and Chinese
+- 🌍 **i18n** - English, Chinese, Spanish, Hindi, Arabic
 
 ## Installation
 

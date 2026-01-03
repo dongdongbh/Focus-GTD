@@ -137,7 +137,7 @@ export interface AppData {
             timeEstimates?: boolean;
         };
         theme?: 'light' | 'dark' | 'system';
-        language?: 'en' | 'zh' | 'system';
+        language?: 'en' | 'zh' | 'es' | 'hi' | 'ar' | 'system';
         weekStart?: 'monday' | 'sunday';
         dateFormat?: string;
         keybindingStyle?: 'vim' | 'emacs';

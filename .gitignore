@@ -74,6 +74,7 @@ aur/src/
 
 # Agent files
 AGENTS.md
+.codex/
 
 # Wiki (maintained in separate repo)
 wiki/

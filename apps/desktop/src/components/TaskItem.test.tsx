@@ -25,12 +25,13 @@ describe('TaskItem', () => {
     });
 
     it('enters edit mode when Edit is clicked', () => {
-        const { getByRole, getByDisplayValue } = render(
+        const { getAllByRole, getByDisplayValue } = render(
             <LanguageProvider>
                 <TaskItem task={mockTask} />
             </LanguageProvider>
         );
-        fireEvent.click(getByRole('button', { name: 'Edit' }));
+        const editButtons = getAllByRole('button', { name: 'Edit' });
+        fireEvent.click(editButtons[0]);
         expect(getByDisplayValue('Test Task')).toBeInTheDocument();
     });
 

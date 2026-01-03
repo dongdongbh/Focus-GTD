@@ -1,7 +1,6 @@
-export type Language = 'en' | 'zh';
+export type Language = 'en' | 'zh' | 'es' | 'hi' | 'ar';
 
-export const translations: Record<Language, Record<string, string>> = {
-    en: {
+const en: Record<string, string> = {
         // App
         'app.name': 'Mindwtr',
 
@@ -711,8 +710,9 @@ export const translations: Record<Language, Record<string, string>> = {
         'archived.empty': 'No archived tasks',
         'archived.emptyHint': 'Tasks you archive will appear here',
         'contexts.search': 'Search contexts...',
-    },
-    zh: {
+};
+
+const zh: Record<string, string> = {
         // App
         'app.name': 'Mindwtr',
 
@@ -1422,5 +1422,16 @@ export const translations: Record<Language, Record<string, string>> = {
         'archived.empty': '没有归档的任务',
         'archived.emptyHint': '你归档的任务将会显示在这里',
         'contexts.search': '搜索情境...',
-    },
+};
+
+const es: Record<string, string> = { ...en };
+const hi: Record<string, string> = { ...en };
+const ar: Record<string, string> = { ...en };
+
+export const translations: Record<Language, Record<string, string>> = {
+    en,
+    zh,
+    es,
+    hi,
+    ar,
 };

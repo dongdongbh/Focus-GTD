@@ -19,6 +19,7 @@ let storeSubscription: (() => void) | null = null;
 let Notifications: NotificationsApi | null = null;
 
 const LANGUAGE_STORAGE_KEY = 'mindwtr-language';
+const SUPPORTED_LANGUAGES: Language[] = ['en', 'zh', 'es', 'hi', 'ar'];
 
 const logNotificationError = (message: string, error: unknown) => {
   console.warn(`[Notifications] ${message}`, error);
@@ -54,7 +55,9 @@ async function loadNotifications(): Promise<NotificationsApi | null> {
 async function getCurrentLanguage(): Promise<Language> {
   try {
     const saved = await AsyncStorage.getItem(LANGUAGE_STORAGE_KEY);
-    if (saved === 'zh') return 'zh';
+    if (saved && SUPPORTED_LANGUAGES.includes(saved as Language)) {
+      return saved as Language;
+    }
     return 'en';
   } catch {
     return 'en';

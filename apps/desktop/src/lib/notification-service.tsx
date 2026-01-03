@@ -19,7 +19,7 @@ const CHECK_INTERVAL_MS = 15_000;
 function getCurrentLanguage(): Language {
     try {
         const raw = localStorage.getItem('mindwtr-language');
-        if (raw === 'zh') return 'zh';
+        if (raw === 'zh' || raw === 'es' || raw === 'hi' || raw === 'ar') return raw as Language;
         return 'en';
     } catch {
         return 'en';
