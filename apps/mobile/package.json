@@ -66,6 +66,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
+    "@types/react-test-renderer": "^19.1.0",
     "babel-preset-expo": "~54.0.9",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
