@@ -1188,7 +1188,7 @@ export function ProjectsView() {
                             {sortedAreas.length > 0 && (
                                 <DndContext sensors={areaSensors} collisionDetection={closestCenter} onDragEnd={handleAreaDragEnd}>
                                     <SortableContext items={sortedAreas.map((area) => area.id)} strategy={verticalListSortingStrategy}>
-                                        {sortedAreas.map((area, index) => (
+                                        {sortedAreas.map((area) => (
                                             <SortableAreaRow
                                                 key={area.id}
                                                 area={area}
