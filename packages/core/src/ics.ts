@@ -298,6 +298,66 @@ function expandRecurringEvent(event: ParsedVEvent, options: ParseIcsOptions): Ex
         return false;
     };
 
+    if (countLimit && countLimit > 0) {
+        if (rule.freq === 'DAILY') {
+            let current = event.start;
+            while (current.getTime() <= windowEnd.getTime() && !shouldStop(current)) {
+                addOccurrence(current);
+                generated += 1;
+                current = addDays(current, rule.interval);
+            }
+            return out;
+        }
+
+        if (rule.freq === 'WEEKLY') {
+            const byDays = rule.byDay && rule.byDay.length > 0 ? rule.byDay : [event.start.getDay()];
+            const eventTime = { h: event.start.getHours(), m: event.start.getMinutes(), s: event.start.getSeconds(), ms: event.start.getMilliseconds() };
+
+            const baseWeekStart = startOfWeek(event.start, { weekStartsOn: 1 });
+            let weekCursor = baseWeekStart;
+
+            while (weekCursor.getTime() <= windowEnd.getTime() && generated < maxPerEvent) {
+                for (const day of byDays) {
+                    const offset = (day - weekCursor.getDay() + 7) % 7;
+                    const candidate = addDays(weekCursor, offset);
+                    candidate.setHours(eventTime.h, eventTime.m, eventTime.s, eventTime.ms);
+                    if (candidate.getTime() < event.start.getTime()) continue;
+                    if (candidate.getTime() > windowEnd.getTime()) return out;
+                    if (shouldStop(candidate)) return out;
+                    addOccurrence(candidate);
+                    generated += 1;
+                    if (countLimit && generated >= countLimit) return out;
+                    if (generated >= maxPerEvent) return out;
+                }
+                weekCursor = addWeeks(weekCursor, rule.interval);
+            }
+
+            return out;
+        }
+
+        // MONTHLY
+        const byMonthDays = rule.byMonthDay && rule.byMonthDay.length > 0 ? rule.byMonthDay : [event.start.getDate()];
+        const eventTime = { h: event.start.getHours(), m: event.start.getMinutes(), s: event.start.getSeconds(), ms: event.start.getMilliseconds() };
+
+        let monthCursor = new Date(event.start.getFullYear(), event.start.getMonth(), 1, 0, 0, 0, 0);
+        while (monthCursor.getTime() <= windowEnd.getTime() && generated < maxPerEvent) {
+            for (const monthDay of byMonthDays) {
+                const candidate = new Date(monthCursor.getFullYear(), monthCursor.getMonth(), monthDay, eventTime.h, eventTime.m, eventTime.s, eventTime.ms);
+                if (candidate.getMonth() !== monthCursor.getMonth()) continue;
+                if (candidate.getTime() < event.start.getTime()) continue;
+                if (candidate.getTime() > windowEnd.getTime()) return out;
+                if (shouldStop(candidate)) return out;
+                addOccurrence(candidate);
+                generated += 1;
+                if (countLimit && generated >= countLimit) return out;
+                if (generated >= maxPerEvent) return out;
+            }
+            monthCursor = addMonths(monthCursor, rule.interval);
+        }
+
+        return out;
+    }
+
     if (rule.freq === 'DAILY') {
         let current = event.start;
         if (current.getTime() < windowStart.getTime()) {
@@ -485,4 +545,3 @@ export function parseIcs(input: string, options: ParseIcsOptions): ExternalCalen
     occurrences.sort((a, b) => a.start.localeCompare(b.start));
     return occurrences;
 }
-

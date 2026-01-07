@@ -103,4 +103,27 @@ describe('ics', () => {
             '2025-01-20T09:00:00.000Z',
         ]);
     });
+
+    it('does not surface COUNT-limited recurrences long after they ended', () => {
+        const ics = [
+            'BEGIN:VCALENDAR',
+            'VERSION:2.0',
+            'BEGIN:VEVENT',
+            'UID:event-5',
+            'SUMMARY:Old Standup',
+            'DTSTART:20121001T083000Z',
+            'DTEND:20121001T090000Z',
+            'RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=66',
+            'END:VEVENT',
+            'END:VCALENDAR',
+        ].join('\n');
+
+        const events = parseIcs(ics, {
+            sourceId: 'cal',
+            rangeStart: new Date('2026-01-01T00:00:00Z'),
+            rangeEnd: new Date('2026-02-01T00:00:00Z'),
+        });
+
+        expect(events).toHaveLength(0);
+    });
 });
