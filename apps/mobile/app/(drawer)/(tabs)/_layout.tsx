@@ -1,5 +1,5 @@
 import { Link, Tabs } from 'expo-router';
-import { Search } from 'lucide-react-native';
+import { Search, Inbox, ArrowRightCircle, CalendarDays, Folder, Menu } from 'lucide-react-native';
 import { Platform, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -18,15 +18,15 @@ export default function TabLayout() {
   const tabBarHeight = 58 + androidNavInset;
   const iconLift = Platform.OS === 'android' ? 6 : 0;
 
-  const activeTint = isDark ? '#93C5FD' : '#2563EB';
-  const inactiveTint = isDark ? '#6B7280' : '#9CA3AF';
-  const activeItemBg = isDark ? 'rgba(59, 130, 246, 0.18)' : 'rgba(37, 99, 235, 0.12)';
+  const iconTint = isDark ? '#E5E7EB' : '#1F2937';
+  const inactiveTint = isDark ? '#9CA3AF' : '#9CA3AF';
+  const activeIndicator = isDark ? '#60A5FA' : '#2563EB';
 
   return (
     <Tabs
       initialRouteName="inbox"
       screenOptions={({ route }) => ({
-        tabBarActiveTintColor: activeTint,
+        tabBarActiveTintColor: iconTint,
         tabBarInactiveTintColor: inactiveTint,
         tabBarShowLabel: false,
         headerShown: true,
@@ -52,8 +52,10 @@ export default function TabLayout() {
         tabBarButton: (props) => (
           <HapticTab
             {...props}
-            activeBackgroundColor={activeItemBg}
+            activeBackgroundColor="transparent"
             inactiveBackgroundColor="transparent"
+            activeIndicatorColor={activeIndicator}
+            indicatorHeight={2}
           />
         ),
         tabBarItemStyle: {
@@ -90,7 +92,7 @@ export default function TabLayout() {
         options={{
           title: t('tab.inbox'),
           tabBarIcon: ({ color, focused }) => (
-            <IconSymbol size={focused ? 28 : 24} name="tray.fill" color={color} style={{ opacity: focused ? 1 : 0.65 }} />
+            <Inbox size={focused ? 26 : 24} color={color} strokeWidth={2} opacity={focused ? 1 : 0.8} />
           ),
         }}
       />
@@ -99,7 +101,7 @@ export default function TabLayout() {
         options={{
           title: t('tab.next'),
           tabBarIcon: ({ color, focused }) => (
-            <IconSymbol size={focused ? 28 : 24} name="arrow.right.circle.fill" color={color} style={{ opacity: focused ? 1 : 0.65 }} />
+            <ArrowRightCircle size={focused ? 26 : 24} color={color} strokeWidth={2} opacity={focused ? 1 : 0.8} />
           ),
         }}
       />
@@ -108,7 +110,7 @@ export default function TabLayout() {
         options={{
           title: t('tab.agenda'),
           tabBarIcon: ({ color, focused }) => (
-            <IconSymbol size={focused ? 28 : 24} name="calendar.fill" color={color} style={{ opacity: focused ? 1 : 0.65 }} />
+            <CalendarDays size={focused ? 26 : 24} color={color} strokeWidth={2} opacity={focused ? 1 : 0.8} />
           ),
         }}
       />
@@ -117,7 +119,7 @@ export default function TabLayout() {
         options={{
           title: t('projects.title'),
           tabBarIcon: ({ color, focused }) => (
-            <IconSymbol size={focused ? 28 : 24} name="folder.fill" color={color} style={{ opacity: focused ? 1 : 0.65 }} />
+            <Folder size={focused ? 26 : 24} color={color} strokeWidth={2} opacity={focused ? 1 : 0.8} />
           ),
         }}
       />
@@ -126,7 +128,7 @@ export default function TabLayout() {
         options={{
           title: t('tab.menu'),
           tabBarIcon: ({ color, focused }) => (
-            <IconSymbol size={focused ? 28 : 24} name="line.3.horizontal" color={color} style={{ opacity: focused ? 1 : 0.65 }} />
+            <Menu size={focused ? 26 : 24} color={color} strokeWidth={2} opacity={focused ? 1 : 0.8} />
           ),
         }}
       />

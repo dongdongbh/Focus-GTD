@@ -6,11 +6,15 @@ import * as Haptics from 'expo-haptics';
 interface HapticTabProps extends BottomTabBarButtonProps {
   activeBackgroundColor?: string;
   inactiveBackgroundColor?: string;
+  activeIndicatorColor?: string;
+  indicatorHeight?: number;
 }
 
 export function HapticTab({
   activeBackgroundColor = 'transparent',
   inactiveBackgroundColor = 'transparent',
+  activeIndicatorColor = 'transparent',
+  indicatorHeight = 2,
   ...props
 }: HapticTabProps) {
   const isFocused = props.accessibilityState?.selected;
@@ -20,7 +24,11 @@ export function HapticTab({
       style={[
         styles.tabButton,
         props.style,
-        { backgroundColor: isFocused ? activeBackgroundColor : inactiveBackgroundColor },
+        {
+          backgroundColor: isFocused ? activeBackgroundColor : inactiveBackgroundColor,
+          borderBottomWidth: isFocused ? indicatorHeight : 0,
+          borderBottomColor: isFocused ? activeIndicatorColor : 'transparent',
+        },
       ]}
       onPressIn={(ev) => {
         if (process.env.EXPO_OS === 'ios') {
