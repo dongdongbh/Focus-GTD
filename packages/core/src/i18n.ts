@@ -1512,8 +1512,8 @@ const esOverrides: Record<string, string> = {
         'nav.addTask': 'Añadir tarea',
 
         // Quick Add
-        'quickAdd.help': 'Al capturar de forma rápida puedes usar los comandos /due:<fecha de vencimiento>, /note:<texto de la nota>, /next|/todo (siguiente|por hacer), @contexto, #etiqueta, +Project.',
-        'quickAdd.example': 'Ejemplo: Llamar a mamá /due:tomorrow 5pm @móvil #familia',
+        'quickAdd.help': 'Al capturar de forma rápida puedes usar los comandos /due:<fecha de vencimiento>, /note:<texto de la nota>, /next|/todo, @context, #tag, +Project.',
+        'quickAdd.example': 'Ejemplo: Llamar a mamá /due:tomorrow 5pm @movil #familia',
 
         // Checklist
         'checklist.progress': 'Progreso de la checklist',
