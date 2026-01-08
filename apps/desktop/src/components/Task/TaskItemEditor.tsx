@@ -31,6 +31,7 @@ interface TaskItemEditorProps {
     editProjectId: string;
     setEditProjectId: (value: string) => void;
     onCreateProject: (title: string) => Promise<string | null>;
+    showProjectField: boolean;
     editDueDate: string;
     setEditDueDate: (value: string) => void;
     showDetails: boolean;
@@ -73,6 +74,7 @@ export function TaskItemEditor({
     editProjectId,
     setEditProjectId,
     onCreateProject,
+    showProjectField,
     editDueDate,
     setEditDueDate,
     showDetails,
@@ -222,17 +224,19 @@ export function TaskItemEditor({
                 </div>
             )}
             <div className="flex flex-wrap gap-4">
-                <div className="flex flex-col gap-1 min-w-[200px]">
-                    <label className="text-xs text-muted-foreground font-medium">{t('projects.title')}</label>
-                    <ProjectSelector
-                        projects={projects}
-                        value={editProjectId}
-                        onChange={setEditProjectId}
-                        onCreateProject={onCreateProject}
-                        placeholder={t('taskEdit.noProjectOption')}
-                        noProjectLabel={t('taskEdit.noProjectOption')}
-                    />
-                </div>
+                {showProjectField && (
+                    <div className="flex flex-col gap-1 min-w-[200px]">
+                        <label className="text-xs text-muted-foreground font-medium">{t('projects.title')}</label>
+                        <ProjectSelector
+                            projects={projects}
+                            value={editProjectId}
+                            onChange={setEditProjectId}
+                            onCreateProject={onCreateProject}
+                            placeholder={t('taskEdit.noProjectOption')}
+                            noProjectLabel={t('taskEdit.noProjectOption')}
+                        />
+                    </div>
+                )}
                 <div className="flex flex-col gap-1">
                     <label className="text-xs text-muted-foreground font-medium">{t('taskEdit.dueDateLabel')}</label>
                     <input

@@ -38,6 +38,7 @@ import { TaskItemDisplay } from './Task/TaskItemDisplay';
 
 const DEFAULT_TASK_EDITOR_ORDER: TaskEditorFieldId[] = [
     'status',
+    'project',
     'priority',
     'contexts',
     'description',
@@ -233,14 +234,20 @@ export const TaskItem = memo(function TaskItem({
     }, [savedHidden, taskEditorOrder]);
 
     const editorFieldIds = useMemo(
-        () => taskEditorOrder.filter((fieldId) => fieldId !== 'dueDate'),
+        () => taskEditorOrder.filter((fieldId) => fieldId !== 'dueDate' && fieldId !== 'project'),
         [taskEditorOrder]
     );
+
+    const showProjectField = useMemo(() => {
+        return showDetails || !hiddenSet.has('project') || hasValue('project');
+    }, [hasValue, hiddenSet, showDetails]);
 
     const hasValue = useCallback((fieldId: TaskEditorFieldId) => {
         switch (fieldId) {
             case 'status':
                 return task.status !== 'inbox';
+            case 'project':
+                return Boolean(editProjectId || task.projectId);
             case 'priority':
                 if (!prioritiesEnabled) return false;
                 return Boolean(editPriority);
@@ -1065,6 +1072,7 @@ export const TaskItem = memo(function TaskItem({
                             editProjectId={editProjectId}
                             setEditProjectId={setEditProjectId}
                             onCreateProject={handleCreateProject}
+                            showProjectField={showProjectField}
                             editDueDate={editDueDate}
                             setEditDueDate={setEditDueDate}
                             showDetails={showDetails}

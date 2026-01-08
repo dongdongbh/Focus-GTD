@@ -422,6 +422,7 @@ export function SettingsView() {
             taskEditorLayoutHint: 'Hidden fields appear when they have content or after clicking “More options”.',
             taskEditorLayoutReset: 'Reset layout',
             taskEditorFieldStatus: 'Status',
+            taskEditorFieldProject: 'Project',
             taskEditorFieldPriority: 'Priority',
             taskEditorFieldContexts: 'Contexts',
             taskEditorFieldDescription: 'Description',
@@ -568,6 +569,7 @@ export function SettingsView() {
             taskEditorLayoutHint: '隐藏字段仅在有内容或点击“更多选项”后显示。',
             taskEditorLayoutReset: '重置布局',
             taskEditorFieldStatus: '状态',
+            taskEditorFieldProject: '项目',
             taskEditorFieldPriority: '优先级',
             taskEditorFieldContexts: '情境',
             taskEditorFieldDescription: '描述',
@@ -950,6 +952,7 @@ export function SettingsView() {
             if (!timeEstimatesEnabled) featureHiddenFields.add('timeEstimate');
             const baseTaskEditorOrder: TaskEditorFieldId[] = [
                 'status',
+                'project',
                 'priority',
                 'contexts',
                 'description',
@@ -976,6 +979,8 @@ export function SettingsView() {
                 switch (fieldId) {
                     case 'status':
                         return t.taskEditorFieldStatus;
+                    case 'project':
+                        return t.taskEditorFieldProject;
                     case 'priority':
                         return t.taskEditorFieldPriority;
                     case 'contexts':

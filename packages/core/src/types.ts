@@ -23,6 +23,7 @@ export interface Recurrence {
 
 export type TaskEditorFieldId =
     | 'status'
+    | 'project'
     | 'priority'
     | 'contexts'
     | 'tags'
