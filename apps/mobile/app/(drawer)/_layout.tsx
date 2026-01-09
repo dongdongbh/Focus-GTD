@@ -15,7 +15,6 @@ export default function AppLayout() {
         headerTintColor: tc.text,
         headerTitleAlign: 'center',
         headerShadowVisible: false,
-        headerShadowColor: tc.border,
       }}
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

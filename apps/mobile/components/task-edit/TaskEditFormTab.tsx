@@ -2,12 +2,13 @@ import React from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import type { Task, TaskEditorFieldId, TimeEstimate } from '@mindwtr/core';
+import type { ThemeColors } from '@/hooks/use-theme-colors';
 
 type CopilotSuggestion = { context?: string; timeEstimate?: TimeEstimate; tags?: string[] };
 
 type TaskEditFormTabProps = {
     t: (key: string) => string;
-    tc: Record<string, string>;
+    tc: ThemeColors;
     styles: Record<string, any>;
     inputStyle: Record<string, any>;
     editedTask: Partial<Task>;
@@ -20,7 +21,7 @@ type TaskEditFormTabProps = {
     copilotSuggestion: CopilotSuggestion | null;
     copilotApplied: boolean;
     applyCopilotSuggestion: () => void;
-    copilotContext: string | null;
+    copilotContext: string | undefined;
     copilotEstimate: TimeEstimate | undefined;
     copilotTags: string[];
     timeEstimatesEnabled: boolean;

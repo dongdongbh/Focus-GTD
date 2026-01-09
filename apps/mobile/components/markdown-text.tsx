@@ -10,7 +10,7 @@ function isSafeLink(href: string): boolean {
 }
 
 function renderInline(text: string, tc: ThemeColors, keyPrefix: string): React.ReactNode[] {
-  return parseInlineMarkdown(text).map((token, index) => {
+  const nodes: (string | React.ReactElement | null)[] = parseInlineMarkdown(text).map((token, index) => {
     if (token.type === 'text') return token.text;
     if (token.type === 'code') {
       return (
@@ -48,7 +48,8 @@ function renderInline(text: string, tc: ThemeColors, keyPrefix: string): React.R
       return token.text;
     }
     return null;
-  }).filter((node): node is React.ReactNode => node !== null);
+  });
+  return nodes.filter((node): node is string | React.ReactElement => node !== null);
 }
 
 export function MarkdownText({ markdown, tc }: { markdown: string; tc: ThemeColors }) {

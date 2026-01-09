@@ -15,7 +15,7 @@ type TaskEditViewTabProps = {
   t: (key: string) => string;
   tc: ThemeColors;
   styles: Record<string, any>;
-  mergedTask: Task;
+  mergedTask: Partial<Task>;
   projects: Project[];
   prioritiesEnabled: boolean;
   timeEstimatesEnabled: boolean;
