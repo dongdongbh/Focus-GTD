@@ -3,6 +3,7 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 import { AppData } from '@mindwtr/core';
 import { Platform } from 'react-native';
+import { logError, logInfo } from './app-log';
 
 // StorageAccessFramework is part of the legacy FileSystem module
 const StorageAccessFramework = (FileSystem as any).StorageAccessFramework;
@@ -92,6 +93,7 @@ export const pickAndParseSyncFile = async (): Promise<PickResult | null> => {
         };
     } catch (error) {
         console.error('Failed to import data:', error);
+        void logError(error, { scope: 'sync', extra: { operation: 'import' } });
         throw error;
     }
 };
@@ -121,9 +123,11 @@ export const readSyncFile = async (fileUri: string): Promise<AppData | null> => 
         }
         if (/JSON|Unexpected token|trailing characters|Invalid data format|Sync file is empty/i.test(message)) {
             console.warn('[Sync] Invalid JSON in sync file. Using local data and repairing file.');
+            void logInfo('Invalid JSON in sync file; using local data.', { scope: 'sync', extra: { operation: 'read' } });
             return null;
         }
         console.error('Failed to read sync file:', error);
+        void logError(error, { scope: 'sync', extra: { operation: 'read' } });
         throw error;
     }
 };
@@ -148,6 +152,7 @@ export const writeSyncFile = async (fileUri: string, data: AppData): Promise<voi
         }
     } catch (error) {
         console.error('Failed to write sync file:', error);
+        void logError(error, { scope: 'sync', extra: { operation: 'write' } });
         throw error;
     }
 };
