@@ -22,6 +22,7 @@ const RETRYABLE_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
 const DEFAULT_MAX_TOKENS = 1024;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const resolveTimeoutMs = (value?: number) => (Number.isFinite(value) && value > 0 ? value : DEFAULT_TIMEOUT_MS);
 
 async function fetchWithTimeout(
     url: string,
@@ -99,7 +100,7 @@ async function requestAnthropic(
                     },
                     body: JSON.stringify(body),
                 },
-                config.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+                resolveTimeoutMs(config.timeoutMs),
                 options?.signal
             );
         } catch (error) {

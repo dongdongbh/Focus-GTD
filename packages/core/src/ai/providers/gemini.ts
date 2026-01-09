@@ -20,6 +20,7 @@ interface GeminiResponse {
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const resolveTimeoutMs = (value?: number) => (Number.isFinite(value) && value > 0 ? value : DEFAULT_TIMEOUT_MS);
 
 async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number, externalSignal?: AbortSignal): Promise<Response> {
     const abortController = typeof AbortController === 'function' ? new AbortController() : null;
@@ -173,7 +174,7 @@ async function requestGemini(config: AIProviderConfig, prompt: { system: string;
                     },
                     body: JSON.stringify(body),
                 },
-                config.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+                resolveTimeoutMs(config.timeoutMs),
                 options?.signal
             );
         } catch (error) {
