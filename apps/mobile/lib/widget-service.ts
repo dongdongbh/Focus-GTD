@@ -4,6 +4,7 @@ import { type AppData, useTaskStore } from '@mindwtr/core';
 
 import { buildTasksWidgetTree } from '../components/TasksWidget';
 import { buildWidgetPayload, resolveWidgetLanguage, WIDGET_LANGUAGE_KEY } from './widget-data';
+import { logError } from './app-log';
 
 export function isAndroidWidgetSupported(): boolean {
     return Platform.OS === 'android';
@@ -24,10 +25,10 @@ async function getWidgetApi() {
     }
 }
 
-export async function updateAndroidWidgetFromData(data: AppData) {
-    if (Platform.OS !== 'android') return;
+export async function updateAndroidWidgetFromData(data: AppData): Promise<boolean> {
+    if (Platform.OS !== 'android') return false;
     const widgetApi = await getWidgetApi();
-    if (!widgetApi) return;
+    if (!widgetApi) return false;
 
     try {
         const languageValue = await AsyncStorage.getItem(WIDGET_LANGUAGE_KEY);
@@ -37,15 +38,18 @@ export async function updateAndroidWidgetFromData(data: AppData) {
             widgetName: 'TasksWidget',
             renderWidget: () => buildTasksWidgetTree(payload),
         });
+        return true;
     } catch (error) {
         if (__DEV__) {
             console.warn('[RNWidget] Failed to update Android widget', error);
         }
+        void logError(error, { scope: 'widget', extra: { platform: 'android' } });
+        return false;
     }
 }
 
-export async function updateAndroidWidgetFromStore() {
-    if (Platform.OS !== 'android') return;
+export async function updateAndroidWidgetFromStore(): Promise<boolean> {
+    if (Platform.OS !== 'android') return false;
     const { _allTasks, _allProjects, _allAreas, tasks, projects, areas, settings } = useTaskStore.getState();
     const data: AppData = {
         tasks: _allTasks?.length ? _allTasks : tasks,
@@ -53,7 +57,7 @@ export async function updateAndroidWidgetFromStore() {
         areas: _allAreas?.length ? _allAreas : areas,
         settings: settings ?? {},
     };
-    await updateAndroidWidgetFromData(data);
+    return await updateAndroidWidgetFromData(data);
 }
 
 export async function requestPinAndroidWidget(): Promise<boolean> {
