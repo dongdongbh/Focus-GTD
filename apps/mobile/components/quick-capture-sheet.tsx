@@ -11,11 +11,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 const PRIORITY_OPTIONS: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
 
 export function QuickCaptureSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const { addTask, addProject, projects } = useTaskStore();
+  const { addTask, addProject, projects, settings } = useTaskStore();
   const { t } = useLanguage();
   const tc = useThemeColors();
   const insets = useSafeAreaInsets();
   const inputRef = useRef<TextInput>(null);
+  const prioritiesEnabled = settings?.features?.priorities === true;
 
   const [value, setValue] = useState('');
   const [dueDate, setDueDate] = useState<Date | null>(null);
@@ -44,6 +45,12 @@ export function QuickCaptureSheet({ visible, onClose }: { visible: boolean; onCl
     const handle = setTimeout(() => inputRef.current?.focus(), 120);
     return () => clearTimeout(handle);
   }, [visible]);
+
+  useEffect(() => {
+    if (prioritiesEnabled) return;
+    setPriority(null);
+    setShowPriorityPicker(false);
+  }, [prioritiesEnabled]);
 
   const resetState = () => {
     setValue('');
@@ -76,7 +83,7 @@ export function QuickCaptureSheet({ visible, onClose }: { visible: boolean; onCl
     }
 
     if (projectId) initialProps.projectId = projectId;
-    if (priority) initialProps.priority = priority;
+    if (prioritiesEnabled && priority) initialProps.priority = priority;
     if (dueDate) initialProps.dueDate = dueDate.toISOString();
 
     await addTask(finalTitle, initialProps);
@@ -136,14 +143,16 @@ export function QuickCaptureSheet({ visible, onClose }: { visible: boolean; onCl
             <Text style={[styles.optionText, { color: tc.text }]} numberOfLines={1}>{projectLabel}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.optionChip, { backgroundColor: tc.filterBg, borderColor: tc.border }]}
-            onPress={() => setShowPriorityPicker(true)}
-            onLongPress={() => setPriority(null)}
-          >
-            <Flag size={16} color={tc.text} />
-            <Text style={[styles.optionText, { color: tc.text }]} numberOfLines={1}>{priorityLabel}</Text>
-          </TouchableOpacity>
+          {prioritiesEnabled && (
+            <TouchableOpacity
+              style={[styles.optionChip, { backgroundColor: tc.filterBg, borderColor: tc.border }]}
+              onPress={() => setShowPriorityPicker(true)}
+              onLongPress={() => setPriority(null)}
+            >
+              <Flag size={16} color={tc.text} />
+              <Text style={[styles.optionText, { color: tc.text }]} numberOfLines={1}>{priorityLabel}</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.footerRow}>
@@ -241,40 +250,42 @@ export function QuickCaptureSheet({ visible, onClose }: { visible: boolean; onCl
         </View>
       </Modal>
 
-      <Modal
-        visible={showPriorityPicker}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowPriorityPicker(false)}
-      >
-        <View style={styles.overlay}>
-          <Pressable style={styles.overlayBackdrop} onPress={() => setShowPriorityPicker(false)} />
-          <View style={[styles.pickerCard, { backgroundColor: tc.cardBg, borderColor: tc.border }]}>            
-            <Text style={[styles.pickerTitle, { color: tc.text }]}>{t('taskEdit.priorityLabel')}</Text>
-            <Pressable
-              onPress={() => {
-                setPriority(null);
-                setShowPriorityPicker(false);
-              }}
-              style={styles.pickerRow}
-            >
-              <Text style={[styles.pickerRowText, { color: tc.text }]}>{t('common.clear')}</Text>
-            </Pressable>
-            {PRIORITY_OPTIONS.map((option) => (
+      {prioritiesEnabled && (
+        <Modal
+          visible={showPriorityPicker}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowPriorityPicker(false)}
+        >
+          <View style={styles.overlay}>
+            <Pressable style={styles.overlayBackdrop} onPress={() => setShowPriorityPicker(false)} />
+            <View style={[styles.pickerCard, { backgroundColor: tc.cardBg, borderColor: tc.border }]}>            
+              <Text style={[styles.pickerTitle, { color: tc.text }]}>{t('taskEdit.priorityLabel')}</Text>
               <Pressable
-                key={option}
                 onPress={() => {
-                  setPriority(option);
+                  setPriority(null);
                   setShowPriorityPicker(false);
                 }}
                 style={styles.pickerRow}
               >
-                <Text style={[styles.pickerRowText, { color: tc.text }]}>{t(`priority.${option}`)}</Text>
+                <Text style={[styles.pickerRowText, { color: tc.text }]}>{t('common.clear')}</Text>
               </Pressable>
-            ))}
+              {PRIORITY_OPTIONS.map((option) => (
+                <Pressable
+                  key={option}
+                  onPress={() => {
+                    setPriority(option);
+                    setShowPriorityPicker(false);
+                  }}
+                  style={styles.pickerRow}
+                >
+                  <Text style={[styles.pickerRowText, { color: tc.text }]}>{t(`priority.${option}`)}</Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      )}
     </Modal>
   );
 }
