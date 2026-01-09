@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useTaskStore, parseQuickAdd, PRESET_CONTEXTS, Task } from '@mindwtr/core';
+import { useTaskStore, parseQuickAdd, PRESET_CONTEXTS, safeFormatDate, Task } from '@mindwtr/core';
 import { useLanguage } from '../contexts/language-context';
 import { cn } from '../lib/utils';
 import { isTauriRuntime } from '../lib/runtime';
@@ -10,6 +10,7 @@ export function QuickAddModal() {
     const { t } = useLanguage();
     const [isOpen, setIsOpen] = useState(false);
     const [value, setValue] = useState('');
+    const [initialProps, setInitialProps] = useState<Partial<Task> | null>(null);
 
     useEffect(() => {
         if (!isTauriRuntime()) return;
@@ -49,18 +50,26 @@ export function QuickAddModal() {
     }, []);
 
     useEffect(() => {
-        const handler = () => setIsOpen(true);
-        window.addEventListener('mindwtr:quick-add', handler);
-        return () => window.removeEventListener('mindwtr:quick-add', handler);
+        const handler = (event: Event) => {
+            const detail = (event as CustomEvent).detail as { initialProps?: Partial<Task>; initialValue?: string } | undefined;
+            setInitialProps(detail?.initialProps ?? null);
+            setValue(detail?.initialValue ?? '');
+            setIsOpen(true);
+        };
+        window.addEventListener('mindwtr:quick-add', handler as EventListener);
+        return () => window.removeEventListener('mindwtr:quick-add', handler as EventListener);
     }, []);
 
     useEffect(() => {
-        if (isOpen) {
-            setValue('');
-        }
-    }, [isOpen]);
+        if (!isOpen) return;
+        if (!value) setValue('');
+    }, [isOpen, value]);
 
-    const close = () => setIsOpen(false);
+    const close = () => {
+        setIsOpen(false);
+        setInitialProps(null);
+        setValue('');
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -68,16 +77,21 @@ export function QuickAddModal() {
         const { title, props, projectTitle } = parseQuickAdd(value, projects);
         const finalTitle = title || value;
         if (!finalTitle.trim()) return;
-        let projectId = props.projectId;
+        const baseProps: Partial<Task> = { ...initialProps, ...props };
+        let projectId = baseProps.projectId;
         if (!projectId && projectTitle) {
             const created = await addProject(projectTitle, '#94a3b8');
             projectId = created.id;
         }
-        const initialProps: Partial<Task> = { status: 'inbox', ...props, projectId };
-        if (!props.status) initialProps.status = 'inbox';
-        addTask(finalTitle, initialProps);
+        const mergedProps: Partial<Task> = { status: 'inbox', ...baseProps, projectId };
+        if (!baseProps.status) mergedProps.status = 'inbox';
+        addTask(finalTitle, mergedProps);
         close();
     };
+
+    const scheduledLabel = initialProps?.startTime
+        ? safeFormatDate(initialProps.startTime, "MMM d, HH:mm")
+        : null;
 
     if (!isOpen) return null;
 
@@ -126,6 +140,11 @@ export function QuickAddModal() {
                         )}
                     />
                     <p className="text-xs text-muted-foreground">{t('quickAdd.help')}</p>
+                    {scheduledLabel && (
+                        <p className="text-xs text-muted-foreground">
+                            {t('calendar.scheduleAction')}: {scheduledLabel}
+                        </p>
+                    )}
                     <div className="flex justify-end gap-2 pt-1">
                         <button
                             type="button"

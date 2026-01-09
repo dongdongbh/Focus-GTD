@@ -354,6 +354,19 @@ export function CalendarView() {
         setScheduleError(null);
     };
 
+    const openQuickAddForDate = (date: Date) => {
+        const durationMinutes = 30;
+        const slot = findFreeSlotForDay(date, durationMinutes);
+        const fallback = new Date(date);
+        fallback.setHours(9, 0, 0, 0);
+        const start = slot ?? fallback;
+        window.dispatchEvent(new CustomEvent('mindwtr:quick-add', {
+            detail: {
+                initialProps: { startTime: start.toISOString() },
+            },
+        }));
+    };
+
     const cancelEditScheduledTime = () => {
         setEditingTimeTaskId(null);
         setEditingTimeValue('');
@@ -451,16 +464,24 @@ export function CalendarView() {
                     <div className="rounded-lg border border-border bg-card p-4 space-y-3">
                         <div className="flex items-baseline justify-between gap-4">
                             <div className="text-sm font-semibold">{format(selectedDate, 'PPPP')}</div>
-                            <button
-                                className="text-xs text-muted-foreground hover:text-foreground"
-                                onClick={() => {
-                                    setSelectedDate(null);
-                                    setScheduleQuery('');
-                                    setScheduleError(null);
-                                }}
-                            >
-                                {t('common.close')}
-                            </button>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    className="text-xs px-2 py-1 rounded bg-muted hover:bg-muted/80"
+                                    onClick={() => openQuickAddForDate(selectedDate)}
+                                >
+                                    {t('calendar.addTask')}
+                                </button>
+                                <button
+                                    className="text-xs text-muted-foreground hover:text-foreground"
+                                    onClick={() => {
+                                        setSelectedDate(null);
+                                        setScheduleQuery('');
+                                        setScheduleError(null);
+                                    }}
+                                >
+                                    {t('common.close')}
+                                </button>
+                            </div>
                         </div>
 
                     <div className="space-y-2">

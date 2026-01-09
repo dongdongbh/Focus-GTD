@@ -2,12 +2,14 @@ import { Link, Tabs } from 'expo-router';
 import { Search, Inbox, ArrowRightCircle, Folder, Menu, Plus } from 'lucide-react-native';
 import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useLanguage } from '../../../contexts/language-context';
 import { QuickCaptureSheet } from '@/components/quick-capture-sheet';
+import { QuickCaptureProvider } from '../../../contexts/quick-capture-context';
+import type { Task } from '@mindwtr/core';
 
 export default function TabLayout() {
   const tc = useThemeColors();
@@ -18,7 +20,27 @@ export default function TabLayout() {
     : 0;
   const tabBarHeight = 58 + androidNavInset;
   const iconLift = Platform.OS === 'android' ? 6 : 0;
-  const [captureOpen, setCaptureOpen] = useState(false);
+  const [captureState, setCaptureState] = useState<{
+    visible: boolean;
+    initialValue?: string;
+    initialProps?: Partial<Task> | null;
+  }>({
+    visible: false,
+    initialValue: '',
+    initialProps: null,
+  });
+
+  const openQuickCapture = useCallback((options?: { initialValue?: string; initialProps?: Partial<Task> }) => {
+    setCaptureState({
+      visible: true,
+      initialValue: options?.initialValue ?? '',
+      initialProps: options?.initialProps ?? null,
+    });
+  }, []);
+
+  const closeQuickCapture = useCallback(() => {
+    setCaptureState({ visible: false, initialValue: '', initialProps: null });
+  }, []);
 
   const iconTint = tc.text;
   const inactiveTint = tc.secondaryText;
@@ -26,7 +48,7 @@ export default function TabLayout() {
   const captureColor = tc.tint;
 
   return (
-    <>
+    <QuickCaptureProvider value={{ openQuickCapture }}>
       <Tabs
         initialRouteName="inbox"
         screenOptions={({ route }) => ({
@@ -93,7 +115,7 @@ export default function TabLayout() {
         },
       })}
       >
-      <Tabs.Screen
+        <Tabs.Screen
         name="inbox"
         options={{
           title: t('tab.inbox'),
@@ -117,7 +139,7 @@ export default function TabLayout() {
           title: t('nav.addTask'),
           tabBarButton: () => (
             <TouchableOpacity
-              onPress={() => setCaptureOpen(true)}
+              onPress={() => openQuickCapture()}
               accessibilityRole="button"
               accessibilityLabel={t('nav.addTask')}
               style={styles.captureButton}
@@ -148,8 +170,13 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
-    <QuickCaptureSheet visible={captureOpen} onClose={() => setCaptureOpen(false)} />
-    </>
+    <QuickCaptureSheet
+      visible={captureState.visible}
+      initialValue={captureState.initialValue}
+      initialProps={captureState.initialProps ?? undefined}
+      onClose={closeQuickCapture}
+    />
+    </QuickCaptureProvider>
   );
 }
 

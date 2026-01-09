@@ -16,6 +16,7 @@ import { fetchExternalCalendarEvents } from '../../lib/external-calendar';
 import { GestureDetector, Gesture, ScrollView } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { TaskEditModal } from '@/components/task-edit-modal';
+import { useQuickCapture } from '../../contexts/quick-capture-context';
 
 // Simple date utilities (avoiding date-fns dependency)
 function getDaysInMonth(year: number, month: number): number {
@@ -75,6 +76,7 @@ export function CalendarView() {
   const timelineScrollRef = useRef<ScrollView | null>(null);
   const [pendingScrollMinutes, setPendingScrollMinutes] = useState<number | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const { openQuickCapture } = useQuickCapture();
 
   // Theme colors
   const daysInMonth = getDaysInMonth(currentYear, currentMonth);
@@ -338,6 +340,15 @@ export function CalendarView() {
     setViewMode('day');
   };
 
+  const openQuickAddForDate = (date: Date) => {
+    const durationMinutes = 30;
+    const slot = findFreeSlotForDay(date, durationMinutes);
+    const fallback = new Date(date);
+    fallback.setHours(DAY_START_HOUR, 0, 0, 0);
+    const start = slot ?? fallback;
+    openQuickCapture({ initialProps: { startTime: start.toISOString() } });
+  };
+
   useEffect(() => {
     if (viewMode !== 'day') return;
     if (!selectedDate) return;
@@ -557,6 +568,9 @@ export function CalendarView() {
             {selectedDate.toLocaleDateString(locale, { weekday: 'short', month: 'long', day: 'numeric' })}
           </Text>
           <View style={styles.dayModeNav}>
+            <Pressable onPress={() => openQuickAddForDate(selectedDate)} style={styles.dayNavButton}>
+              <Text style={[styles.dayNavText, { color: tc.text }]}>＋</Text>
+            </Pressable>
             <Pressable onPress={() => shiftSelectedDate(-1)} style={styles.dayNavButton}>
               <Text style={[styles.dayNavText, { color: tc.text }]}>‹</Text>
             </Pressable>
@@ -824,14 +838,19 @@ export function CalendarView() {
       {selectedDate && (
         <View style={[styles.monthDetailsPane, { backgroundColor: tc.cardBg, borderTopColor: tc.border }]}>
           <ScrollView contentContainerStyle={styles.monthDetailsContent} keyboardShouldPersistTaps="handled">
-            <Text style={[styles.selectedDateTitle, { color: tc.text }]}>
+            <View style={styles.monthDetailsHeader}>
+              <Text style={[styles.selectedDateTitle, { color: tc.text }]}>
               {selectedDate.toLocaleDateString(locale, {
                 weekday: 'long',
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
               })}
-            </Text>
+              </Text>
+              <Pressable onPress={() => openQuickAddForDate(selectedDate)} style={styles.addTaskButton}>
+                <Text style={[styles.addTaskButtonText, { color: tc.tint }]}>{t('calendar.addTask')}</Text>
+              </Pressable>
+            </View>
 
             {nextQuickScheduleCandidates.length > 0 && (
               <View style={styles.scheduleResults}>
@@ -1032,6 +1051,22 @@ const styles = StyleSheet.create({
   monthDetailsContent: {
     padding: 16,
     paddingBottom: 24,
+  },
+  monthDetailsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 6,
+  },
+  addTaskButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  addTaskButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   calendarScroll: {
     flex: 1,

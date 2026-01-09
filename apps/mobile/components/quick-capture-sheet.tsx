@@ -1,16 +1,26 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, View, Text, TextInput, TouchableOpacity, StyleSheet, Pressable, ScrollView, Switch, Platform } from 'react-native';
-import { CalendarDays, Folder, Flag, X } from 'lucide-react-native';
+import { CalendarDays, Folder, Flag, X, Clock } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
-import { parseQuickAdd, safeFormatDate, type Task, type TaskPriority, useTaskStore } from '@mindwtr/core';
+import { parseQuickAdd, safeFormatDate, safeParseDate, type Task, type TaskPriority, useTaskStore } from '@mindwtr/core';
 import { useLanguage } from '../contexts/language-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const PRIORITY_OPTIONS: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
 
-export function QuickCaptureSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+export function QuickCaptureSheet({
+  visible,
+  onClose,
+  initialProps,
+  initialValue,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  initialProps?: Partial<Task>;
+  initialValue?: string;
+}) {
   const { addTask, addProject, projects, settings } = useTaskStore();
   const { t } = useLanguage();
   const tc = useThemeColors();
@@ -20,7 +30,9 @@ export function QuickCaptureSheet({ visible, onClose }: { visible: boolean; onCl
 
   const [value, setValue] = useState('');
   const [dueDate, setDueDate] = useState<Date | null>(null);
+  const [startTime, setStartTime] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showStartPicker, setShowStartPicker] = useState(false);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [showProjectPicker, setShowProjectPicker] = useState(false);
   const [projectQuery, setProjectQuery] = useState('');
@@ -42,9 +54,14 @@ export function QuickCaptureSheet({ visible, onClose }: { visible: boolean; onCl
 
   useEffect(() => {
     if (!visible) return;
+    setValue(initialValue ?? '');
+    setDueDate(initialProps?.dueDate ? safeParseDate(initialProps.dueDate) : null);
+    setStartTime(initialProps?.startTime ? safeParseDate(initialProps.startTime) : null);
+    setProjectId(initialProps?.projectId ?? null);
+    setPriority((initialProps?.priority as TaskPriority) ?? null);
     const handle = setTimeout(() => inputRef.current?.focus(), 120);
     return () => clearTimeout(handle);
-  }, [visible]);
+  }, [visible, initialProps, initialValue]);
 
   useEffect(() => {
     if (prioritiesEnabled) return;
@@ -55,12 +72,14 @@ export function QuickCaptureSheet({ visible, onClose }: { visible: boolean; onCl
   const resetState = () => {
     setValue('');
     setDueDate(null);
+    setStartTime(null);
     setProjectId(null);
     setPriority(null);
     setProjectQuery('');
     setShowProjectPicker(false);
     setShowPriorityPicker(false);
     setShowDatePicker(false);
+    setShowStartPicker(false);
   };
 
   const handleClose = () => {
@@ -74,19 +93,20 @@ export function QuickCaptureSheet({ visible, onClose }: { visible: boolean; onCl
     const finalTitle = title || value;
     if (!finalTitle.trim()) return;
 
-    const initialProps: Partial<Task> = { status: 'inbox', ...props };
-    if (!props.status) initialProps.status = 'inbox';
+    const initialPropsMerged: Partial<Task> = { status: 'inbox', ...initialProps, ...props };
+    if (!initialPropsMerged.status) initialPropsMerged.status = 'inbox';
 
-    if (!initialProps.projectId && projectTitle) {
+    if (!initialPropsMerged.projectId && projectTitle) {
       const created = await addProject(projectTitle, '#94a3b8');
-      initialProps.projectId = created.id;
+      initialPropsMerged.projectId = created.id;
     }
 
-    if (projectId) initialProps.projectId = projectId;
-    if (prioritiesEnabled && priority) initialProps.priority = priority;
-    if (dueDate) initialProps.dueDate = dueDate.toISOString();
+    if (projectId) initialPropsMerged.projectId = projectId;
+    if (prioritiesEnabled && priority) initialPropsMerged.priority = priority;
+    if (dueDate) initialPropsMerged.dueDate = dueDate.toISOString();
+    if (startTime) initialPropsMerged.startTime = startTime.toISOString();
 
-    await addTask(finalTitle, initialProps);
+    await addTask(finalTitle, initialPropsMerged);
 
     if (addAnother) {
       setValue('');
@@ -99,6 +119,7 @@ export function QuickCaptureSheet({ visible, onClose }: { visible: boolean; onCl
 
   const selectedProject = projectId ? projects.find((project) => project.id === projectId) : null;
   const dueLabel = dueDate ? safeFormatDate(dueDate, 'MMM d') : t('taskEdit.dueDateLabel');
+  const startLabel = startTime ? safeFormatDate(startTime, 'MMM d, HH:mm') : t('calendar.scheduleAction');
   const projectLabel = selectedProject ? selectedProject.title : t('taskEdit.projectLabel');
   const priorityLabel = priority ? t(`priority.${priority}`) : t('taskEdit.priorityLabel');
 
@@ -125,6 +146,14 @@ export function QuickCaptureSheet({ visible, onClose }: { visible: boolean; onCl
         />
 
         <View style={styles.optionsRow}>
+          <TouchableOpacity
+            style={[styles.optionChip, { backgroundColor: tc.filterBg, borderColor: tc.border }]}
+            onPress={() => setShowStartPicker(true)}
+            onLongPress={() => setStartTime(null)}
+          >
+            <Clock size={16} color={tc.text} />
+            <Text style={[styles.optionText, { color: tc.text }]} numberOfLines={1}>{startLabel}</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.optionChip, { backgroundColor: tc.filterBg, borderColor: tc.border }]}
             onPress={() => setShowDatePicker(true)}
@@ -188,6 +217,23 @@ export function QuickCaptureSheet({ visible, onClose }: { visible: boolean; onCl
               }
             }
             if (selectedDate) setDueDate(selectedDate);
+          }}
+        />
+      )}
+
+      {showStartPicker && (
+        <DateTimePicker
+          value={startTime ?? new Date()}
+          mode="datetime"
+          display={Platform.OS === 'ios' ? 'inline' : 'default'}
+          onChange={(event, selectedDate) => {
+            if (Platform.OS !== 'ios') {
+              setShowStartPicker(false);
+              if (event.type !== 'set') {
+                return;
+              }
+            }
+            if (selectedDate) setStartTime(selectedDate);
           }}
         />
       )}
