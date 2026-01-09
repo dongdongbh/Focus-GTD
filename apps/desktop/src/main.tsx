@@ -11,18 +11,35 @@ import { setupGlobalErrorLogging } from './lib/app-log';
 
 // Initialize theme immediately before React renders to prevent flash
 const THEME_STORAGE_KEY = 'mindwtr-theme';
-const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+type ThemeMode = 'system' | 'light' | 'dark' | 'eink' | 'nord' | 'sepia';
+
+const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode | null;
 const root = document.documentElement;
-const nativeTheme = savedTheme === 'dark' ? 'dark' : savedTheme === 'light' ? 'light' : null;
-if (savedTheme === 'dark') {
-    root.classList.add('dark');
-} else if (savedTheme === 'light') {
-    root.classList.remove('dark');
-} else {
-    // System preference
-    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    root.classList.toggle('dark', isDark);
-}
+
+const applyTheme = (mode: ThemeMode | null) => {
+    root.classList.remove('theme-eink', 'theme-nord', 'theme-sepia');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    if (mode === 'system' || mode === null) {
+        root.classList.toggle('dark', prefersDark);
+    } else if (mode === 'dark' || mode === 'nord') {
+        root.classList.add('dark');
+    } else {
+        root.classList.remove('dark');
+    }
+
+    if (mode === 'eink') root.classList.add('theme-eink');
+    if (mode === 'nord') root.classList.add('theme-nord');
+    if (mode === 'sepia') root.classList.add('theme-sepia');
+};
+
+applyTheme(savedTheme);
+
+const nativeTheme = savedTheme === 'dark' || savedTheme === 'nord'
+    ? 'dark'
+    : savedTheme === 'light' || savedTheme === 'eink' || savedTheme === 'sepia'
+        ? 'light'
+        : null;
 if (isTauriRuntime()) {
     import('@tauri-apps/api/app')
         .then(({ setTheme }) => setTheme(nativeTheme))

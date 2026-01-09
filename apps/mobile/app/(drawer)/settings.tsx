@@ -108,7 +108,7 @@ const maskCalendarUrl = (url: string): string => {
 };
 
 export default function SettingsPage() {
-    const { themeMode, themeStyle, setThemeMode, setThemeStyle, isDark } = useTheme();
+    const { themeMode, themeStyle, setThemeMode, setThemeStyle } = useTheme();
     const { language, setLanguage, t } = useLanguage();
     const localize = (enText: string, zhText?: string) =>
         language === 'zh' && zhText ? zhText : translateText(enText, language);
@@ -294,8 +294,16 @@ export default function SettingsPage() {
         return () => subscription.remove();
     }, [currentScreen]);
 
-    const toggleDarkMode = () => setThemeMode(isDark ? 'light' : 'dark');
-    const toggleSystemMode = (useSystem: boolean) => setThemeMode(useSystem ? 'system' : (isDark ? 'dark' : 'light'));
+    const themeOptions: Array<{ value: typeof themeMode; label: string }> = [
+        { value: 'system', label: t('settings.system') },
+        { value: 'light', label: t('settings.light') },
+        { value: 'dark', label: t('settings.dark') },
+        { value: 'eink', label: t('settings.eink') },
+        { value: 'nord', label: t('settings.nord') },
+        { value: 'sepia', label: t('settings.sepia') },
+    ];
+    const [themePickerOpen, setThemePickerOpen] = useState(false);
+    const currentThemeLabel = themeOptions.find((opt) => opt.value === themeMode)?.label ?? t('settings.system');
     const openLink = (url: string) => Linking.openURL(url);
     const updateAISettings = (next: Partial<NonNullable<typeof settings.ai>>) => {
         updateSettings({ ai: { ...(settings.ai ?? {}), ...next } }).catch(console.error);
@@ -724,33 +732,16 @@ export default function SettingsPage() {
                 <ScrollView style={styles.scrollView}>
                     <Text style={[styles.sectionTitle, { color: tc.secondaryText }]}>{t('settings.appearance')}</Text>
                     <View style={[styles.settingCard, { backgroundColor: tc.cardBg }]}>
-                        <View style={styles.settingRow}>
+                        <TouchableOpacity style={styles.settingRow} onPress={() => setThemePickerOpen(true)}>
                             <View style={styles.settingInfo}>
-                                <Text style={[styles.settingLabel, { color: tc.text }]}>{t('settings.useSystem')}</Text>
-                                <Text style={[styles.settingDescription, { color: tc.secondaryText }]}>{t('settings.followDevice')}</Text>
+                                <Text style={[styles.settingLabel, { color: tc.text }]}>{t('settings.theme')}</Text>
+                                <Text style={[styles.settingDescription, { color: tc.secondaryText }]}>
+                                    {currentThemeLabel}
+                                </Text>
                             </View>
-                            <Switch
-                                value={themeMode === 'system'}
-                                onValueChange={toggleSystemMode}
-                                trackColor={{ false: '#767577', true: '#3B82F6' }}
-                            />
-                        </View>
-                        {themeMode !== 'system' && (
-                            <View style={[styles.settingRow, { borderTopWidth: 1, borderTopColor: tc.border }]}>
-                                <View style={styles.settingInfo}>
-                                    <Text style={[styles.settingLabel, { color: tc.text }]}>{t('settings.darkMode')}</Text>
-                                    <Text style={[styles.settingDescription, { color: tc.secondaryText }]}>
-                                        {isDark ? t('settings.darkEnabled') : t('settings.lightEnabled')}
-                                    </Text>
-                                </View>
-                                <Switch
-                                    value={isDark}
-                                    onValueChange={toggleDarkMode}
-                                    trackColor={{ false: '#767577', true: '#3B82F6' }}
-                                />
-                            </View>
-                        )}
-                        {Platform.OS === 'android' && (
+                            <Text style={{ color: tc.secondaryText, fontSize: 18 }}>▾</Text>
+                        </TouchableOpacity>
+                        {Platform.OS === 'android' && (themeMode === 'system' || themeMode === 'light' || themeMode === 'dark') && (
                             <View style={[styles.settingRow, { borderTopWidth: 1, borderTopColor: tc.border }]}>
                                 <View style={styles.settingInfo}>
                                     <Text style={[styles.settingLabel, { color: tc.text }]}>{t('settings.material3Theme')}</Text>
@@ -766,6 +757,44 @@ export default function SettingsPage() {
                             </View>
                         )}
                     </View>
+                    <Modal
+                        transparent
+                        visible={themePickerOpen}
+                        animationType="fade"
+                        onRequestClose={() => setThemePickerOpen(false)}
+                    >
+                        <Pressable style={styles.pickerOverlay} onPress={() => setThemePickerOpen(false)}>
+                            <View
+                                style={[styles.pickerCard, { backgroundColor: tc.cardBg, borderColor: tc.border }]}
+                                onStartShouldSetResponder={() => true}
+                            >
+                                <Text style={[styles.pickerTitle, { color: tc.text }]}>{t('settings.theme')}</Text>
+                                <ScrollView style={styles.pickerList} contentContainerStyle={styles.pickerListContent}>
+                                    {themeOptions.map((option) => {
+                                        const selected = option.value === themeMode;
+                                        return (
+                                            <TouchableOpacity
+                                                key={option.value}
+                                                style={[
+                                                    styles.pickerOption,
+                                                    { borderColor: tc.border, backgroundColor: selected ? tc.filterBg : 'transparent' },
+                                                ]}
+                                                onPress={() => {
+                                                    setThemeMode(option.value);
+                                                    setThemePickerOpen(false);
+                                                }}
+                                            >
+                                                <Text style={[styles.pickerOptionText, { color: selected ? tc.tint : tc.text }]}>
+                                                    {option.label}
+                                                </Text>
+                                                {selected && <Text style={{ color: tc.tint, fontSize: 18 }}>✓</Text>}
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </ScrollView>
+                            </View>
+                        </Pressable>
+                    </Modal>
 
                     <Text style={[styles.sectionTitle, { color: tc.secondaryText, marginTop: 16 }]}>{t('settings.language')}</Text>
                     <Text style={[styles.description, { color: tc.secondaryText }]}>{t('settings.selectLang')}</Text>

@@ -2,13 +2,15 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColorScheme as useSystemColorScheme } from 'react-native';
 
-type ThemeMode = 'system' | 'light' | 'dark';
+type ThemeMode = 'system' | 'light' | 'dark' | 'eink' | 'nord' | 'sepia';
+type ThemePreset = 'default' | 'eink' | 'nord' | 'sepia';
 type ThemeStyle = 'default' | 'material3';
 type ColorScheme = 'light' | 'dark';
 
 interface ThemeContextType {
     themeMode: ThemeMode;
     themeStyle: ThemeStyle;
+    themePreset: ThemePreset;
     colorScheme: ColorScheme;
     setThemeMode: (mode: ThemeMode) => void;
     setThemeStyle: (style: ThemeStyle) => void;
@@ -27,8 +29,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const [themeStyle, setThemeStyleState] = useState<ThemeStyle>('default');
     const [isReady, setIsReady] = useState(false);
 
+    const themePreset: ThemePreset =
+        themeMode === 'eink' ? 'eink' :
+        themeMode === 'nord' ? 'nord' :
+        themeMode === 'sepia' ? 'sepia' :
+        'default';
+
+    const resolvedMode: ColorScheme | 'system' =
+        themeMode === 'nord' ? 'dark'
+            : themeMode === 'eink' || themeMode === 'sepia' ? 'light'
+                : themeMode;
+
     // Determine actual color scheme based on mode and system
-    const colorScheme: ColorScheme = themeMode === 'system' ? systemColorScheme : themeMode;
+    const colorScheme: ColorScheme = resolvedMode === 'system' ? systemColorScheme : resolvedMode;
     const isDark = colorScheme === 'dark';
 
     useEffect(() => {
@@ -73,7 +86,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <ThemeContext.Provider value={{ themeMode, themeStyle, colorScheme, setThemeMode, setThemeStyle, isDark, isReady }}>
+        <ThemeContext.Provider value={{ themeMode, themeStyle, themePreset, colorScheme, setThemeMode, setThemeStyle, isDark, isReady }}>
             {children}
         </ThemeContext.Provider>
     );

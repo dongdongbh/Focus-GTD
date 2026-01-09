@@ -42,7 +42,7 @@ import { SettingsCalendarPage } from './settings/SettingsCalendarPage';
 import { SettingsSyncPage } from './settings/SettingsSyncPage';
 import { SettingsAboutPage } from './settings/SettingsAboutPage';
 
-type ThemeMode = 'system' | 'light' | 'dark';
+type ThemeMode = 'system' | 'light' | 'dark' | 'eink' | 'nord' | 'sepia';
 type SettingsPage = 'main' | 'gtd' | 'notifications' | 'sync' | 'calendar' | 'ai' | 'about';
 type LinuxDistroInfo = { id?: string; id_like?: string[] };
 
@@ -143,7 +143,14 @@ export function SettingsView() {
 
     useEffect(() => {
         const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
-        if (savedTheme === 'system' || savedTheme === 'light' || savedTheme === 'dark') {
+        if (
+            savedTheme === 'system'
+            || savedTheme === 'light'
+            || savedTheme === 'dark'
+            || savedTheme === 'eink'
+            || savedTheme === 'nord'
+            || savedTheme === 'sepia'
+        ) {
             setThemeMode(savedTheme);
         }
 
@@ -227,15 +234,29 @@ export function SettingsView() {
 
     useEffect(() => {
         const root = document.documentElement;
+        root.classList.remove('theme-eink', 'theme-nord', 'theme-sepia');
+
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         if (themeMode === 'system') {
-            const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            root.classList.toggle('dark', isDark);
+            root.classList.toggle('dark', prefersDark);
+        } else if (themeMode === 'dark' || themeMode === 'nord') {
+            root.classList.add('dark');
         } else {
-            root.classList.toggle('dark', themeMode === 'dark');
+            root.classList.remove('dark');
         }
+
+        if (themeMode === 'eink') root.classList.add('theme-eink');
+        if (themeMode === 'nord') root.classList.add('theme-nord');
+        if (themeMode === 'sepia') root.classList.add('theme-sepia');
+
         if (!isTauri) return;
+        const tauriTheme = themeMode === 'system'
+            ? null
+            : themeMode === 'dark' || themeMode === 'nord'
+                ? 'dark'
+                : 'light';
         import('@tauri-apps/api/app')
-            .then(({ setTheme }) => setTheme(themeMode === 'system' ? null : themeMode))
+            .then(({ setTheme }) => setTheme(tauriTheme))
             .catch(console.error);
     }, [isTauri, themeMode]);
 
@@ -651,6 +672,9 @@ export function SettingsView() {
             system: 'System',
             light: 'Light',
             dark: 'Dark',
+            eink: 'E-Ink',
+            nord: 'Nord',
+            sepia: 'Sepia',
         },
         zh: {
             title: '设置',
@@ -803,6 +827,9 @@ export function SettingsView() {
             system: '系统',
             light: '浅色',
             dark: '深色',
+            eink: '电子墨水',
+            nord: 'Nord',
+            sepia: '复古米黄',
         },
     } as const;
 

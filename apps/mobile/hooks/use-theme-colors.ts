@@ -1,4 +1,5 @@
 import { Colors, Material3 } from '../constants/theme';
+import { THEME_PRESETS } from '../constants/theme-presets';
 import { useTheme } from '../contexts/theme-context';
 
 export interface ThemeColors {
@@ -18,7 +19,12 @@ export interface ThemeColors {
 }
 
 export function useThemeColors() {
-    const { isDark, themeStyle } = useTheme();
+    const { isDark, themeStyle, themePreset } = useTheme();
+
+    if (themePreset !== 'default') {
+        return THEME_PRESETS[themePreset];
+    }
+
     const useMaterial3 = themeStyle === 'material3';
 
     if (useMaterial3) {

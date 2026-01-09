@@ -1,13 +1,16 @@
 import { Check, Monitor } from 'lucide-react';
 import type { Language } from '../../../contexts/language-context';
 
-type ThemeMode = 'system' | 'light' | 'dark';
+type ThemeMode = 'system' | 'light' | 'dark' | 'eink' | 'nord' | 'sepia';
 
 type Labels = {
     appearance: string;
     system: string;
     light: string;
     dark: string;
+    eink: string;
+    nord: string;
+    sepia: string;
     language: string;
     keybindings: string;
     keybindingsDesc: string;
@@ -47,7 +50,9 @@ export function SettingsMainPage({
                 <div className="p-4 flex items-center justify-between gap-6">
                     <div className="min-w-0">
                         <div className="text-sm font-medium">{t.appearance}</div>
-                        <div className="text-xs text-muted-foreground mt-1">{t.system} / {t.light} / {t.dark}</div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                            {t.system} / {t.light} / {t.dark} / {t.eink} / {t.nord} / {t.sepia}
+                        </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                         <Monitor className="w-4 h-4 text-muted-foreground" />
@@ -59,6 +64,9 @@ export function SettingsMainPage({
                             <option value="system">{t.system}</option>
                             <option value="light">{t.light}</option>
                             <option value="dark">{t.dark}</option>
+                            <option value="eink">{t.eink}</option>
+                            <option value="nord">{t.nord}</option>
+                            <option value="sepia">{t.sepia}</option>
                         </select>
                     </div>
                 </div>
