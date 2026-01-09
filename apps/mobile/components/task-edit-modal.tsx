@@ -36,6 +36,7 @@ import { AIResponseModal, type AIResponseAction } from './ai-response-modal';
 import { styles } from './task-edit/task-edit-modal.styles';
 import { TaskEditViewTab } from './task-edit/TaskEditViewTab';
 import { TaskEditFormTab } from './task-edit/TaskEditFormTab';
+import { TaskEditProjectPicker } from './task-edit/TaskEditProjectPicker';
 
 const MAX_SUGGESTED_TAGS = 8;
 
@@ -160,7 +161,6 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
     const [linkModalVisible, setLinkModalVisible] = useState(false);
     const [showProjectPicker, setShowProjectPicker] = useState(false);
     const [linkInput, setLinkInput] = useState('');
-    const [projectQuery, setProjectQuery] = useState('');
     const [customWeekdays, setCustomWeekdays] = useState<RecurrenceWeekday[]>([]);
     const [isAIWorking, setIsAIWorking] = useState(false);
     const [aiModal, setAiModal] = useState<{ title: string; message?: string; actions: AIResponseAction[] } | null>(null);
@@ -280,11 +280,6 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
             copilotMountedRef.current = false;
         };
     }, []);
-
-    useEffect(() => {
-        if (!showProjectPicker) return;
-        setProjectQuery('');
-    }, [showProjectPicker]);
 
     useEffect(() => {
         if (!aiEnabled || !aiKey) {
@@ -1661,22 +1656,6 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
         }
     };
 
-    const activeProjects = projects
-        .filter((p) => !p.deletedAt)
-        .sort((a, b) => a.title.localeCompare(b.title));
-
-    const normalizedProjectQuery = projectQuery.trim().toLowerCase();
-    const filteredProjects = useMemo(() => {
-        if (!normalizedProjectQuery) return activeProjects;
-        return activeProjects.filter((project) =>
-            project.title.toLowerCase().includes(normalizedProjectQuery)
-        );
-    }, [activeProjects, normalizedProjectQuery]);
-    const hasExactProjectMatch = useMemo(() => {
-        if (!normalizedProjectQuery) return false;
-        return activeProjects.some((project) => project.title.toLowerCase() === normalizedProjectQuery);
-    }, [activeProjects, normalizedProjectQuery]);
-
     if (!task) return null;
 
     return (
@@ -2024,93 +2003,17 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
                     </Pressable>
                 </Modal>
 
-                <Modal
+                <TaskEditProjectPicker
                     visible={showProjectPicker}
-                    transparent
-                    animationType="fade"
-                    onRequestClose={() => setShowProjectPicker(false)}
-                >
-                    <View style={styles.overlay}>
-                        <View style={[styles.modalCard, { backgroundColor: tc.cardBg, borderColor: tc.border }]}>
-                            <Text style={[styles.modalTitle, { color: tc.text }]}>{t('taskEdit.projectLabel')}</Text>
-                            <TextInput
-                                value={projectQuery}
-                                onChangeText={setProjectQuery}
-                                placeholder="Search projects"
-                                placeholderTextColor={tc.secondaryText}
-                                style={[styles.modalInput, { backgroundColor: tc.inputBg, borderColor: tc.border, color: tc.text }]}
-                                autoCapitalize="none"
-                                autoCorrect={false}
-                                returnKeyType="done"
-                                onSubmitEditing={async () => {
-                                    const title = projectQuery.trim();
-                                    if (!title || hasExactProjectMatch) return;
-                                    try {
-                                        const created = await addProject(title, '#94a3b8');
-                                        setEditedTask(prev => ({ ...prev, projectId: created.id }));
-                                        setShowProjectPicker(false);
-                                    } catch (error) {
-                                        console.error('Failed to create project', error);
-                                    }
-                                }}
-                            />
-                            {!hasExactProjectMatch && projectQuery.trim() && (
-                                <Pressable
-                                    onPress={async () => {
-                                        const title = projectQuery.trim();
-                                        if (!title) return;
-                                        try {
-                                            const created = await addProject(title, '#94a3b8');
-                                            setEditedTask(prev => ({ ...prev, projectId: created.id }));
-                                            setShowProjectPicker(false);
-                                        } catch (error) {
-                                            console.error('Failed to create project', error);
-                                        }
-                                    }}
-                                    style={styles.pickerItem}
-                                >
-                                    <Text style={[styles.pickerItemText, { color: tc.tint }]}>
-                                        + {t('projects.create')} "{projectQuery.trim()}"
-                                    </Text>
-                                </Pressable>
-                            )}
-                            <ScrollView
-                                style={[styles.pickerList, { borderColor: tc.border, backgroundColor: tc.inputBg }]}
-                                contentContainerStyle={{ paddingVertical: 4 }}
-                            >
-                                <Pressable
-                                    onPress={() => {
-                                        setEditedTask(prev => ({ ...prev, projectId: undefined }));
-                                        setShowProjectPicker(false);
-                                    }}
-                                    style={styles.pickerItem}
-                                >
-                                    <Text style={[styles.pickerItemText, { color: tc.text }]}>{t('taskEdit.noProjectOption')}</Text>
-                                </Pressable>
-                                {filteredProjects.map((project) => (
-                                    <Pressable
-                                        key={project.id}
-                                        onPress={() => {
-                                            setEditedTask(prev => ({ ...prev, projectId: project.id }));
-                                            setShowProjectPicker(false);
-                                        }}
-                                        style={styles.pickerItem}
-                                    >
-                                        <Text style={[styles.pickerItemText, { color: tc.text }]}>{project.title}</Text>
-                                    </Pressable>
-                                ))}
-                            </ScrollView>
-                            <View style={styles.modalButtons}>
-                                <TouchableOpacity
-                                    onPress={() => setShowProjectPicker(false)}
-                                    style={styles.modalButton}
-                                >
-                                    <Text style={[styles.modalButtonText, { color: tc.secondaryText }]}>{t('common.cancel')}</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    </View>
-                </Modal>
+                    projects={projects}
+                    tc={tc}
+                    t={t}
+                    onClose={() => setShowProjectPicker(false)}
+                    onSelectProject={(projectId) => {
+                        setEditedTask(prev => ({ ...prev, projectId }));
+                    }}
+                    onCreateProject={(title) => addProject(title, '#94a3b8')}
+                />
 
                 {aiModal && (
                     <AIResponseModal
