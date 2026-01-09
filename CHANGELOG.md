@@ -2,6 +2,18 @@
 
 All notable changes to Mindwtr will be documented in this file.
 
+## [0.5.0] - 2026-01-09
+
+### Features
+- **Themes**: Added E‑Ink, Nord, and Sepia themes on desktop; expanded mobile theme picker with Material 3 Light/Dark, E‑Ink, Nord, Sepia, and OLED (Midnight).
+
+### Changed
+- **Mobile UI**: Navigation headers and bars now follow the active theme.
+- **Projects**: Mobile project list actions now use a trash icon and place reorder on the right.
+
+### Security
+- **AI keys**: Stored in secure storage on mobile and native config on desktop.
+
 ## [0.4.2] - 2025-12-31
 
 ### Features

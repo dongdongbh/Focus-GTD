@@ -2,7 +2,7 @@
   "expo": {
     "name": "Mindwtr",
     "slug": "mindwtr",
-    "version": "0.4.9",
+    "version": "0.5.0",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "mindwtr",
