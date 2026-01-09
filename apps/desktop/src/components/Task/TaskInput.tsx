@@ -189,7 +189,7 @@ export function TaskInput({
                     updateTrigger(target.value, target.selectionStart ?? target.value.length);
                 }}
                 onBlur={() => {
-                    window.setTimeout(() => closeTrigger(), 100);
+                    window.setTimeout(() => closeTrigger(), 200);
                 }}
                 placeholder={placeholder}
                 className={className}
