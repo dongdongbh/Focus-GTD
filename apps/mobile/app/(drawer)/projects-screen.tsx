@@ -840,6 +840,7 @@ export default function ProjectsScreen() {
                   title={selectedProject.title}
                   showHeader={false}
                   projectId={selectedProject.id}
+                  enableReorder
                   allowAdd={true}
                   scrollEnabled={false}
                 />

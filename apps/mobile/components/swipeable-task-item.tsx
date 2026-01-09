@@ -14,6 +14,7 @@ export interface SwipeableTaskItemProps {
     onPress: () => void;
     onStatusChange: (status: TaskStatus) => void;
     onDelete: () => void;
+    onDragStart?: () => void;
     /** Hide context tags (useful when viewing a specific context) */
     hideContexts?: boolean;
     /** Multi-select mode for bulk actions */
@@ -41,6 +42,7 @@ export function SwipeableTaskItem({
     onPress,
     onStatusChange,
     onDelete,
+    onDragStart,
     hideContexts = false,
     selectionMode = false,
     isMultiSelected = false,
@@ -206,6 +208,10 @@ export function SwipeableTaskItem({
 
     const handleLongPress = () => {
         ignorePressUntil.current = Date.now() + 500;
+        if (onDragStart) {
+            onDragStart();
+            return;
+        }
         if (onToggleSelect) onToggleSelect();
     };
 

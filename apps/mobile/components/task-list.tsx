@@ -14,7 +14,7 @@ import {
   type AIProviderId,
   type TaskSortBy,
 } from '@mindwtr/core';
-
+import DraggableFlatList, { type RenderItemParams } from 'react-native-draggable-flatlist';
 
 import { TaskEditModal } from './task-edit-modal';
 import { SwipeableTaskItem } from './swipeable-task-item';
@@ -30,6 +30,7 @@ export interface TaskListProps {
   showHeader?: boolean;
   allowAdd?: boolean;
   projectId?: string;
+  enableReorder?: boolean;
   enableBulkActions?: boolean;
   showSort?: boolean;
   showQuickAddHelp?: boolean;
@@ -47,6 +48,7 @@ export function TaskList({
   showHeader = true,
   allowAdd = true,
   projectId,
+  enableReorder = false,
   enableBulkActions = true,
   showSort = true,
   showQuickAddHelp = true,
@@ -58,7 +60,7 @@ export function TaskList({
 }: TaskListProps) {
   const { isDark } = useTheme();
   const { t } = useLanguage();
-  const { tasks, projects, addTask, addProject, updateTask, deleteTask, fetchData, batchMoveTasks, batchDeleteTasks, batchUpdateTasks, settings, updateSettings, highlightTaskId, setHighlightTask } = useTaskStore();
+  const { tasks, projects, addTask, addProject, updateTask, deleteTask, fetchData, batchMoveTasks, batchDeleteTasks, batchUpdateTasks, reorderProjectTasks, settings, updateSettings, highlightTaskId, setHighlightTask } = useTaskStore();
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [aiKey, setAiKey] = useState('');
   const [copilotSuggestion, setCopilotSuggestion] = useState<{ context?: string; timeEstimate?: Task['timeEstimate']; tags?: string[] } | null>(null);
@@ -108,8 +110,25 @@ export function TaskList({
       }
       return matchesStatus && matchesProject;
     });
-    return sortTasksBy(filtered, sortBy);
+    return filtered;
   }, [tasks, statusFilter, projectId, sortBy]);
+
+  const orderedTasks = useMemo(() => {
+    if (enableReorder && projectId) {
+      const list = [...filteredTasks];
+      const hasOrder = list.some((task) => Number.isFinite(task.orderNum));
+      list.sort((a, b) => {
+        if (hasOrder) {
+          const aOrder = Number.isFinite(a.orderNum) ? (a.orderNum as number) : Number.POSITIVE_INFINITY;
+          const bOrder = Number.isFinite(b.orderNum) ? (b.orderNum as number) : Number.POSITIVE_INFINITY;
+          if (aOrder !== bOrder) return aOrder - bOrder;
+        }
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      });
+      return list;
+    }
+    return sortTasksBy(filteredTasks, sortBy);
+  }, [enableReorder, projectId, filteredTasks, sortBy]);
 
   const contextOptions = useMemo(() => {
     const taskContexts = tasks.flatMap((task) => task.contexts || []);
@@ -404,6 +423,22 @@ export function TaskList({
     updateTask,
   ]);
 
+  const renderDraggableTask = useCallback(({ item, drag, isActive }: RenderItemParams<Task>) => (
+    <View style={{ opacity: isActive ? 0.7 : 1 }}>
+      <SwipeableTaskItem
+        task={item}
+        isDark={isDark}
+        tc={themeColors}
+        onPress={() => handleEditTask(item)}
+        onDragStart={drag}
+        selectionMode={false}
+        onStatusChange={(status) => updateTask(item.id, { status: status as TaskStatus })}
+        onDelete={() => deleteTask(item.id)}
+        isHighlighted={item.id === highlightTaskId}
+      />
+    </View>
+  ), [deleteTask, handleEditTask, highlightTaskId, isDark, themeColors, updateTask]);
+
   return (
     <View style={[styles.container, { backgroundColor: themeColors.bg }]}>
       {showHeader ? (
@@ -412,8 +447,8 @@ export function TaskList({
             <Text style={[styles.title, { color: themeColors.text }]} accessibilityRole="header" numberOfLines={1}>
               {title}
             </Text>
-            <Text style={[styles.count, { color: themeColors.secondaryText }]} accessibilityLabel={`${filteredTasks.length} tasks`}>
-              {filteredTasks.length} {t('common.tasks')}
+            <Text style={[styles.count, { color: themeColors.secondaryText }]} accessibilityLabel={`${orderedTasks.length} tasks`}>
+              {orderedTasks.length} {t('common.tasks')}
             </Text>
           </View>
           <View style={styles.headerActions}>
@@ -582,29 +617,51 @@ export function TaskList({
         </>
       )}
 
-      <FlatList
-        data={filteredTasks}
-        renderItem={renderTask}
-        keyExtractor={(item) => item.id}
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        scrollEnabled={scrollEnabled}
-        initialNumToRender={12}
-        maxToRenderPerBatch={12}
-        windowSize={5}
-        updateCellsBatchingPeriod={50}
-        removeClippedSubviews
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyText, { color: themeColors.secondaryText }]}>
-              {emptyText || t('list.noTasks')}
-            </Text>
-          </View>
-        }
-      />
+      {enableReorder && projectId ? (
+        <DraggableFlatList
+          data={orderedTasks}
+          renderItem={renderDraggableTask}
+          keyExtractor={(item) => item.id}
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          activationDistance={12}
+          scrollEnabled={scrollEnabled}
+          onDragEnd={({ data }) => {
+            reorderProjectTasks(projectId, data.map((task) => task.id));
+          }}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={[styles.emptyText, { color: themeColors.secondaryText }]}>
+                {emptyText || t('list.noTasks')}
+              </Text>
+            </View>
+          }
+        />
+      ) : (
+        <FlatList
+          data={orderedTasks}
+          renderItem={renderTask}
+          keyExtractor={(item) => item.id}
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          scrollEnabled={scrollEnabled}
+          initialNumToRender={12}
+          maxToRenderPerBatch={12}
+          windowSize={5}
+          updateCellsBatchingPeriod={50}
+          removeClippedSubviews
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={[styles.emptyText, { color: themeColors.secondaryText }]}>
+                {emptyText || t('list.noTasks')}
+              </Text>
+            </View>
+          }
+        />
+      )}
 
       <Modal
         visible={tagModalVisible}
