@@ -50,9 +50,13 @@ export default function SearchScreen() {
     };
   }, [trimmedQuery, shouldUseFts]);
 
-  const { tasks: taskResults, projects: projectResults } = trimmedQuery === ''
+  const fallbackResults = trimmedQuery === ''
     ? { tasks: [] as Task[], projects: [] as Project[] }
-    : ftsResults ?? searchAll(_allTasks, projects, trimmedQuery);
+    : searchAll(_allTasks, projects, trimmedQuery);
+  const effectiveResults = ftsResults && (ftsResults.tasks.length + ftsResults.projects.length) > 0
+    ? ftsResults
+    : fallbackResults;
+  const { tasks: taskResults, projects: projectResults } = effectiveResults;
     const totalResults = projectResults.length + taskResults.length;
     const results = trimmedQuery === '' ? [] : [
         ...projectResults.map(p => ({ type: 'project' as const, item: p })),
