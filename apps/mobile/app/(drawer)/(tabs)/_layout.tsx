@@ -112,7 +112,6 @@ export default function TabLayout() {
         name="capture"
         options={{
           title: t('nav.addTask'),
-          href: null,
           tabBarButton: () => (
             <TouchableOpacity
               onPress={() => setCaptureOpen(true)}
