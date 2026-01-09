@@ -205,10 +205,19 @@ export class SqliteAdapter {
         await this.ensureSchema();
         await this.client.run('BEGIN IMMEDIATE');
         try {
-            await this.client.run('DELETE FROM tasks');
-            await this.client.run('DELETE FROM projects');
-            await this.client.run('DELETE FROM areas');
-            await this.client.run('DELETE FROM settings');
+            const syncIds = async (table: 'tasks' | 'projects' | 'areas', ids: string[]) => {
+                const tempTable = `temp_${table}_ids`;
+                await this.client.run(`CREATE TEMP TABLE IF NOT EXISTS ${tempTable} (id TEXT PRIMARY KEY)`);
+                await this.client.run(`DELETE FROM ${tempTable}`);
+                for (const id of ids) {
+                    await this.client.run(`INSERT OR IGNORE INTO ${tempTable} (id) VALUES (?)`, [id]);
+                }
+                await this.client.run(`DELETE FROM ${table} WHERE id NOT IN (SELECT id FROM ${tempTable})`);
+            };
+
+            await syncIds('tasks', data.tasks.map((task) => task.id));
+            await syncIds('projects', data.projects.map((project) => project.id));
+            await syncIds('areas', data.areas.map((area) => area.id));
 
             for (const task of data.tasks) {
                 await this.client.run(
@@ -216,7 +225,30 @@ export class SqliteAdapter {
                         id, title, status, priority, taskMode, startTime, dueDate, recurrence, pushCount,
                         tags, contexts, checklist, description, attachments, location, projectId,
                         isFocusedToday, timeEstimate, reviewAt, completedAt, createdAt, updatedAt, deletedAt
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(id) DO UPDATE SET
+                        title=excluded.title,
+                        status=excluded.status,
+                        priority=excluded.priority,
+                        taskMode=excluded.taskMode,
+                        startTime=excluded.startTime,
+                        dueDate=excluded.dueDate,
+                        recurrence=excluded.recurrence,
+                        pushCount=excluded.pushCount,
+                        tags=excluded.tags,
+                        contexts=excluded.contexts,
+                        checklist=excluded.checklist,
+                        description=excluded.description,
+                        attachments=excluded.attachments,
+                        location=excluded.location,
+                        projectId=excluded.projectId,
+                        isFocusedToday=excluded.isFocusedToday,
+                        timeEstimate=excluded.timeEstimate,
+                        reviewAt=excluded.reviewAt,
+                        completedAt=excluded.completedAt,
+                        createdAt=excluded.createdAt,
+                        updatedAt=excluded.updatedAt,
+                        deletedAt=excluded.deletedAt`,
                     [
                         task.id,
                         task.title,
@@ -250,7 +282,23 @@ export class SqliteAdapter {
                     `INSERT INTO projects (
                         id, title, status, color, orderNum, tagIds, isSequential, isFocused, supportNotes, attachments,
                         reviewAt, areaId, areaTitle, createdAt, updatedAt, deletedAt
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(id) DO UPDATE SET
+                        title=excluded.title,
+                        status=excluded.status,
+                        color=excluded.color,
+                        orderNum=excluded.orderNum,
+                        tagIds=excluded.tagIds,
+                        isSequential=excluded.isSequential,
+                        isFocused=excluded.isFocused,
+                        supportNotes=excluded.supportNotes,
+                        attachments=excluded.attachments,
+                        reviewAt=excluded.reviewAt,
+                        areaId=excluded.areaId,
+                        areaTitle=excluded.areaTitle,
+                        createdAt=excluded.createdAt,
+                        updatedAt=excluded.updatedAt,
+                        deletedAt=excluded.deletedAt`,
                     [
                         project.id,
                         project.title,
@@ -276,7 +324,14 @@ export class SqliteAdapter {
                 await this.client.run(
                     `INSERT INTO areas (
                         id, name, color, icon, orderNum, createdAt, updatedAt
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(id) DO UPDATE SET
+                        name=excluded.name,
+                        color=excluded.color,
+                        icon=excluded.icon,
+                        orderNum=excluded.orderNum,
+                        createdAt=excluded.createdAt,
+                        updatedAt=excluded.updatedAt`,
                     [
                         area.id,
                         area.name,
@@ -289,9 +344,10 @@ export class SqliteAdapter {
                 );
             }
 
-            await this.client.run('INSERT INTO settings (id, data) VALUES (1, ?)', [
-                toJson(data.settings ?? {}),
-            ]);
+            await this.client.run(
+                'INSERT INTO settings (id, data) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET data=excluded.data',
+                [toJson(data.settings ?? {})]
+            );
 
             await this.client.run('COMMIT');
         } catch (error) {
