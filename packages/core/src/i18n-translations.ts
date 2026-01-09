@@ -757,6 +757,9 @@ const en: Record<string, string> = {
         'trash.deletedAt': 'Deleted',
         'trash.deleteConfirm': 'Delete permanently?',
         'trash.deleteConfirmBody': 'This action cannot be undone.',
+        'trash.clearAll': 'Clear Trash',
+        'trash.clearAllConfirm': 'Clear all trashed tasks?',
+        'trash.clearAllConfirmBody': 'This will permanently delete all trashed tasks.',
         'contexts.search': 'Search contexts...',
 };
 

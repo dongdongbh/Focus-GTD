@@ -102,6 +102,8 @@ interface TaskStore {
     restoreTask: (id: string) => Promise<void>;
     /** Permanently remove a task from storage */
     purgeTask: (id: string) => Promise<void>;
+    /** Permanently remove all soft-deleted tasks from storage */
+    purgeDeletedTasks: () => Promise<void>;
     /** Duplicate a task (useful for reusable lists/templates) */
     duplicateTask: (id: string, asNextAction?: boolean) => Promise<void>;
     /** Reset checklist items to unchecked */
@@ -546,6 +548,20 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     purgeTask: async (id: string) => {
         const changeAt = Date.now();
         const newAllTasks = get()._allTasks.filter((task) => task.id !== id);
+        const newVisibleTasks = newAllTasks.filter((task) => !task.deletedAt && task.status !== 'archived');
+        set({ tasks: newVisibleTasks, _allTasks: newAllTasks, lastDataChangeAt: changeAt });
+        debouncedSave(
+            { tasks: newAllTasks, projects: get()._allProjects, areas: get()._allAreas, settings: get().settings },
+            (msg) => set({ error: msg })
+        );
+    },
+
+    /**
+     * Permanently delete all soft-deleted tasks.
+     */
+    purgeDeletedTasks: async () => {
+        const changeAt = Date.now();
+        const newAllTasks = get()._allTasks.filter((task) => !task.deletedAt);
         const newVisibleTasks = newAllTasks.filter((task) => !task.deletedAt && task.status !== 'archived');
         set({ tasks: newVisibleTasks, _allTasks: newAllTasks, lastDataChangeAt: changeAt });
         debouncedSave(

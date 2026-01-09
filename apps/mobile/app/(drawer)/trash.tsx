@@ -82,7 +82,7 @@ function TrashTaskItem({
 }
 
 export default function TrashScreen() {
-  const { _allTasks, restoreTask, purgeTask, highlightTaskId, setHighlightTask } = useTaskStore();
+  const { _allTasks, restoreTask, purgeTask, purgeDeletedTasks, highlightTaskId, setHighlightTask } = useTaskStore();
   const { t } = useLanguage();
   useTheme();
   const tc = useThemeColors();
@@ -124,6 +124,22 @@ export default function TrashScreen() {
     );
   };
 
+  const handleClearAll = () => {
+    if (trashedTasks.length === 0) return;
+    Alert.alert(
+      t('trash.clearAllConfirm') || 'Clear trash?',
+      t('trash.clearAllConfirmBody') || 'This will permanently delete all trashed tasks.',
+      [
+        { text: t('common.cancel') || 'Cancel', style: 'cancel' },
+        {
+          text: t('trash.clearAll') || 'Clear Trash',
+          style: 'destructive',
+          onPress: () => purgeDeletedTasks(),
+        },
+      ]
+    );
+  };
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={[styles.container, { backgroundColor: tc.bg }]}>
@@ -132,6 +148,14 @@ export default function TrashScreen() {
             <Text style={[styles.summaryText, { color: tc.secondaryText }]}>
               {trashedTasks.length} {t('common.tasks') || 'tasks'}
             </Text>
+            <Pressable
+              onPress={handleClearAll}
+              style={[styles.clearButton, { borderColor: tc.border, backgroundColor: tc.cardBg }]}
+            >
+              <Text style={[styles.clearButtonText, { color: tc.secondaryText }]}>
+                {t('trash.clearAll') || 'Clear Trash'}
+              </Text>
+            </Pressable>
           </View>
         )}
         <ScrollView style={styles.taskList} showsVerticalScrollIndicator={false}>
@@ -171,10 +195,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
   },
   summaryText: {
     fontSize: 13,
     fontWeight: '500',
+  },
+  clearButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  clearButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   taskList: {
     flex: 1,

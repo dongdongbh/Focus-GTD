@@ -5,7 +5,7 @@ import { Undo2, Trash2 } from 'lucide-react';
 import { useLanguage } from '../../contexts/language-context';
 
 export function TrashView() {
-    const { _allTasks, restoreTask, purgeTask, settings } = useTaskStore();
+    const { _allTasks, restoreTask, purgeTask, purgeDeletedTasks, settings } = useTaskStore();
     const { t } = useLanguage();
     const [searchQuery, setSearchQuery] = useState('');
     const sortBy = (settings?.taskSortBy ?? 'default') as TaskSortBy;
@@ -18,12 +18,28 @@ export function TrashView() {
         return sorted.filter((task) => task.title.toLowerCase().includes(query));
     }, [_allTasks, searchQuery, sortBy]);
 
+    const handleClearTrash = () => {
+        if (trashedTasks.length === 0) return;
+        const confirmMessage = `${t('trash.clearAllConfirm')}\n${t('trash.clearAllConfirmBody')}`;
+        if (!window.confirm(confirmMessage)) return;
+        purgeDeletedTasks();
+    };
+
     return (
         <div className="space-y-6">
             <header className="flex items-center justify-between">
                 <h2 className="text-3xl font-bold tracking-tight">{t('trash.title')}</h2>
-                <div className="text-sm text-muted-foreground">
-                    {trashedTasks.length} {t('common.tasks')}
+                <div className="flex items-center gap-3">
+                    <div className="text-sm text-muted-foreground">
+                        {trashedTasks.length} {t('common.tasks')}
+                    </div>
+                    <button
+                        onClick={handleClearTrash}
+                        disabled={trashedTasks.length === 0}
+                        className="text-xs px-3 py-1 rounded-md border transition-colors bg-muted/50 text-muted-foreground border-border hover:bg-muted hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {t('trash.clearAll')}
+                    </button>
                 </div>
             </header>
 
