@@ -33,6 +33,7 @@ const flags = parseArgs(args);
 
 const dbPath = typeof flags.db === 'string' ? flags.db : undefined;
 const readonly = Boolean(flags.readonly);
+const keepAlive = Boolean(flags.wait || flags.keepalive || process.env.MINDWTR_MCP_WAIT) || Boolean(process.stdin.isTTY);
 
 const server = new Server(
   {
@@ -154,6 +155,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
+  if (keepAlive) {
+    process.stdin.resume();
+    process.stdin.on('end', () => process.exit(0));
+    await new Promise(() => {});
+  }
 }
 
 main().catch((error) => {
