@@ -4,7 +4,8 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import * as z from 'zod';
 
 import { openMindwtrDb, closeDb } from './db.js';
-import { addTask, completeTask, deleteTask, listProjects, listTasks, updateTask } from './queries.js';
+import { addTask, completeTask, deleteTask, getTask, listProjects, listTasks, parseQuickAdd, restoreTask, updateTask } from './queries.js';
+import { runCoreService } from './core-service.js';
 
 const args = process.argv.slice(2);
 
@@ -31,6 +32,7 @@ const dbPath = typeof flags.db === 'string' ? flags.db : undefined;
 const allowWrite = Boolean(flags.write || flags.allowWrite || flags.allowWrites);
 const readonly = Boolean(flags.readonly) || !allowWrite;
 const keepAlive = !(flags.nowait || flags.noWait);
+const useCoreWrites = typeof (globalThis as any).Bun !== 'undefined';
 
 const server = new McpServer({
   name: 'mindwtr-mcp-server',
@@ -44,6 +46,10 @@ const listTasksSchema = z.object({
   limit: z.number().int().optional(),
   offset: z.number().int().optional(),
   search: z.string().optional(),
+  dueDateFrom: z.string().optional(),
+  dueDateTo: z.string().optional(),
+  sortBy: z.enum(['updatedAt', 'createdAt', 'dueDate', 'title', 'priority']).optional(),
+  sortOrder: z.enum(['asc', 'desc']).optional(),
 });
 
 const addTaskSchema = z.object({
@@ -58,6 +64,8 @@ const addTaskSchema = z.object({
   description: z.string().optional(),
   priority: z.string().optional(),
   timeEstimate: z.string().optional(),
+}).refine((data) => data.title || data.quickAdd, {
+  message: 'Either title or quickAdd is required',
 });
 
 const completeTaskSchema = z.object({
@@ -83,6 +91,15 @@ const deleteTaskSchema = z.object({
   id: z.string(),
 });
 
+const getTaskSchema = z.object({
+  id: z.string(),
+  includeDeleted: z.boolean().optional(),
+});
+
+const restoreTaskSchema = z.object({
+  id: z.string(),
+});
+
 const listProjectsSchema = z.object({});
 
 const withDb = async <T>(fn: (db: Awaited<ReturnType<typeof openMindwtrDb>>['db']) => T): Promise<T> => {
@@ -97,11 +114,16 @@ const withDb = async <T>(fn: (db: Awaited<ReturnType<typeof openMindwtrDb>>['db'
 server.registerTool(
   'mindwtr.list_tasks',
   {
-    description: 'List tasks from the local Mindwtr SQLite database.',
+    description: 'List tasks from the local Mindwtr SQLite database. Supports filtering by status, project, date range, and search. Supports sorting by various fields.',
     inputSchema: listTasksSchema,
   },
   async (input) => {
-    const tasks = await withDb((db) => listTasks(db, { ...input, status: input.status as any }));
+    const tasks = await withDb((db) => listTasks(db, {
+      ...input,
+      status: input.status as any,
+      sortBy: input.sortBy as any,
+      sortOrder: input.sortOrder as any,
+    }));
     return {
       content: [{ type: 'text', text: JSON.stringify({ tasks }, null, 2) }],
     };
@@ -130,7 +152,42 @@ server.registerTool(
   },
   async (input) => {
     if (readonly) throw new Error('Database opened read-only. Start the server with --write to enable edits.');
-    const task = await withDb((db) => addTask(db, { ...input, status: input.status as any }));
+    const task = useCoreWrites
+      ? await runCoreService({ dbPath, readonly }, async (core) => {
+          if (input.quickAdd) {
+            const projects = await withDb((db) => listProjects(db));
+            const quick = parseQuickAdd(input.quickAdd, projects);
+            const title = input.title ?? quick.title ?? input.quickAdd;
+            const props = {
+              ...quick.props,
+              status: (input.status as any) ?? quick.props.status,
+              projectId: input.projectId ?? quick.props.projectId,
+              dueDate: input.dueDate ?? quick.props.dueDate,
+              startTime: input.startTime ?? quick.props.startTime,
+              contexts: input.contexts ?? quick.props.contexts,
+              tags: input.tags ?? quick.props.tags,
+              description: input.description ?? quick.props.description,
+              priority: input.priority ?? quick.props.priority,
+              timeEstimate: input.timeEstimate ?? quick.props.timeEstimate,
+            };
+            return core.addTask({ title, props });
+          }
+          return core.addTask({
+            title: input.title ?? '',
+            props: {
+              status: input.status as any,
+              projectId: input.projectId,
+              dueDate: input.dueDate,
+              startTime: input.startTime,
+              contexts: input.contexts,
+              tags: input.tags,
+              description: input.description,
+              priority: input.priority,
+              timeEstimate: input.timeEstimate,
+            },
+          });
+        })
+      : await withDb((db) => addTask(db, { ...input, status: input.status as any }));
     return {
       content: [{ type: 'text', text: JSON.stringify({ task }, null, 2) }],
     };
@@ -145,7 +202,43 @@ server.registerTool(
   },
   async (input) => {
     if (readonly) throw new Error('Database opened read-only. Start the server with --write to enable edits.');
-    const task = await withDb((db) => updateTask(db, { ...input, status: input.status as any }));
+    const task = useCoreWrites
+      ? await runCoreService({ dbPath, readonly }, async (core) => {
+          return core.updateTask({
+            id: input.id,
+            updates: {
+              title: input.title,
+              status: input.status as any,
+              projectId: input.projectId ?? undefined,
+              dueDate: input.dueDate ?? undefined,
+              startTime: input.startTime ?? undefined,
+              contexts: input.contexts ?? undefined,
+              tags: input.tags ?? undefined,
+              description: input.description ?? undefined,
+              priority: input.priority ?? undefined,
+              timeEstimate: input.timeEstimate ?? undefined,
+              reviewAt: input.reviewAt ?? undefined,
+              isFocusedToday: input.isFocusedToday,
+            },
+          });
+        })
+      : await withDb((db) =>
+          updateTask(db, {
+            id: input.id,
+            title: input.title,
+            status: input.status as any,
+            projectId: input.projectId,
+            dueDate: input.dueDate,
+            startTime: input.startTime,
+            contexts: input.contexts,
+            tags: input.tags,
+            description: input.description,
+            priority: input.priority,
+            timeEstimate: input.timeEstimate,
+            reviewAt: input.reviewAt,
+            isFocusedToday: input.isFocusedToday,
+          }),
+        );
     return {
       content: [{ type: 'text', text: JSON.stringify({ task }, null, 2) }],
     };
@@ -160,7 +253,9 @@ server.registerTool(
   },
   async (input) => {
     if (readonly) throw new Error('Database opened read-only. Start the server with --write to enable edits.');
-    const task = await withDb((db) => completeTask(db, { id: input.id }));
+    const task = useCoreWrites
+      ? await runCoreService({ dbPath, readonly }, async (core) => core.completeTask(input.id))
+      : await withDb((db) => completeTask(db, { id: input.id }));
     return {
       content: [{ type: 'text', text: JSON.stringify({ task }, null, 2) }],
     };
@@ -175,7 +270,40 @@ server.registerTool(
   },
   async (input) => {
     if (readonly) throw new Error('Database opened read-only. Start the server with --write to enable edits.');
-    const task = await withDb((db) => deleteTask(db, { id: input.id }));
+    const task = useCoreWrites
+      ? await runCoreService({ dbPath, readonly }, async (core) => core.deleteTask(input.id))
+      : await withDb((db) => deleteTask(db, { id: input.id }));
+    return {
+      content: [{ type: 'text', text: JSON.stringify({ task }, null, 2) }],
+    };
+  },
+);
+
+server.registerTool(
+  'mindwtr.get_task',
+  {
+    description: 'Get a single task by ID from the local Mindwtr SQLite database.',
+    inputSchema: getTaskSchema,
+  },
+  async (input) => {
+    const task = await withDb((db) => getTask(db, { id: input.id, includeDeleted: input.includeDeleted }));
+    return {
+      content: [{ type: 'text', text: JSON.stringify({ task }, null, 2) }],
+    };
+  },
+);
+
+server.registerTool(
+  'mindwtr.restore_task',
+  {
+    description: 'Restore a soft-deleted task in the local Mindwtr SQLite database.',
+    inputSchema: restoreTaskSchema,
+  },
+  async (input) => {
+    if (readonly) throw new Error('Database opened read-only. Start the server with --write to enable edits.');
+    const task = useCoreWrites
+      ? await runCoreService({ dbPath, readonly }, async (core) => core.restoreTask(input.id))
+      : await withDb((db) => restoreTask(db, { id: input.id }));
     return {
       content: [{ type: 'text', text: JSON.stringify({ task }, null, 2) }],
     };
@@ -193,6 +321,10 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error('[mindwtr-mcp] Failed to start:', error);
+  console.error('[mindwtr-mcp] Failed to start server:');
+  console.error(error instanceof Error ? error.message : String(error));
+  if (error instanceof Error && error.stack) {
+    console.error('\nStack trace:', error.stack);
+  }
   process.exit(1);
 });

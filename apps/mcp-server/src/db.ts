@@ -20,7 +20,11 @@ export type DbClient = {
 export async function openMindwtrDb(options: DbOptions = {}) {
   const path = resolveMindwtrDbPath(options.dbPath);
   if (!existsSync(path)) {
-    throw new Error(`Mindwtr database not found at: ${path}`);
+    throw new Error(
+      `Mindwtr database not found at: ${path}\n` +
+      `Please ensure the Mindwtr app has been run at least once to create the database, ` +
+      `or specify a custom path using --db /path/to/mindwtr.db or MINDWTR_DB_PATH environment variable.`
+    );
   }
   const isBun = typeof (globalThis as any).Bun !== 'undefined';
 
@@ -40,9 +44,17 @@ export async function openMindwtrDb(options: DbOptions = {}) {
     });
   }
 
-  db.pragma?.('journal_mode = WAL');
-  db.pragma?.('foreign_keys = ON');
-  db.pragma?.('busy_timeout = 5000');
+  // Configure pragmas - use pragma method if available, otherwise fall back to exec
+  const runPragma = (sql: string) => {
+    if (db.pragma) {
+      db.pragma(sql);
+    } else {
+      db.prepare(`PRAGMA ${sql}`).run();
+    }
+  };
+  runPragma('journal_mode = WAL');
+  runPragma('foreign_keys = ON');
+  runPragma('busy_timeout = 5000');
 
   return { db, path };
 }

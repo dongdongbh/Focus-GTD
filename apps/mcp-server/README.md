@@ -270,6 +270,8 @@ Any MCP-compatible client can work as long as it can launch a **stdio** server w
   - Input: `{ status?: "inbox"|"next"|"waiting"|"someday"|"done"|"archived"|"all", projectId?, limit?, offset?, search?, includeDeleted? }`
 - `mindwtr.list_projects`
   - Input: `{}`
+- `mindwtr.get_task`
+  - Input: `{ id, includeDeleted? }`
 - `mindwtr.add_task` **(requires `--write`)**
   - Input: `{ title? | quickAdd?, status?, projectId?, dueDate?, startTime?, contexts?, tags?, description?, priority?, timeEstimate? }`
 - `mindwtr.update_task` **(requires `--write`)**
@@ -277,6 +279,8 @@ Any MCP-compatible client can work as long as it can launch a **stdio** server w
 - `mindwtr.complete_task` **(requires `--write`)**
   - Input: `{ id }`
 - `mindwtr.delete_task` **(requires `--write`)**
+  - Input: `{ id }`
+- `mindwtr.restore_task` **(requires `--write`)**
   - Input: `{ id }`
 
 All tools return JSON text payloads with the resulting task(s).
@@ -327,6 +331,8 @@ claude mcp add mindwtr -- \
 - The server uses **SQLite WAL mode** and a 5s busy timeout.
 - Writes will fail if the DB is locked; clients should retry.
 - Writes are **disabled by default**. Use `--write` to enable edits.
+- When running under **Bun**, write operations go through the shared **@mindwtr/core** store to enforce business rules.
+- When running under **Node**, write operations fall back to direct SQL.
 
 ---
 
