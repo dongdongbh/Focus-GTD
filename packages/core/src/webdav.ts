@@ -28,17 +28,6 @@ function bytesToBase64(bytes: Uint8Array): string {
 }
 
 function encodeBase64Utf8(value: string): string {
-    const btoaFn = typeof globalThis !== 'undefined' && typeof globalThis.btoa === 'function'
-        ? globalThis.btoa.bind(globalThis)
-        : undefined;
-    if (btoaFn) {
-        try {
-            return btoaFn(unescape(encodeURIComponent(value)));
-        } catch {
-            // fall through
-        }
-    }
-
     const Encoder = typeof TextEncoder === 'function' ? TextEncoder : undefined;
     if (Encoder) {
         return bytesToBase64(new Encoder().encode(value));
