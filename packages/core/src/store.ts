@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { generateUUID as uuidv4 } from './uuid';
-import { Task, TaskStatus, AppData, Project, Area } from './types';
+import { Task, TaskStatus, AppData, Project, Area, TaskEditorFieldId } from './types';
 import { StorageAdapter, TaskQueryOptions, noopStorage } from './storage';
 import { createNextRecurringTask } from './recurrence';
 import { safeParseDate } from './date';
@@ -180,6 +180,8 @@ let savedVersion = 0;
 let saveInFlight: Promise<void> | null = null;
 const MIGRATION_VERSION = 1;
 const AUTO_ARCHIVE_INTERVAL_MS = 12 * 60 * 60 * 1000;
+const TASK_EDITOR_DEFAULTS_VERSION = 1;
+const TASK_EDITOR_ALWAYS_VISIBLE: TaskEditorFieldId[] = ['status', 'project', 'description', 'checklist'];
 
 const normalizeTagId = (value: string): string => {
     const trimmed = String(value || '').trim();
@@ -314,9 +316,27 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
                 didSettingsUpdate = true;
             }
 
-            const nextSettings = didSettingsUpdate
+            let nextSettings = didSettingsUpdate
                 ? { ...settings, migrations: nextMigrationState }
                 : settings;
+
+            const taskEditorDefaultsVersion = nextSettings.gtd?.taskEditor?.defaultsVersion ?? 0;
+            if (taskEditorDefaultsVersion < TASK_EDITOR_DEFAULTS_VERSION) {
+                const hidden = new Set(nextSettings.gtd?.taskEditor?.hidden ?? []);
+                TASK_EDITOR_ALWAYS_VISIBLE.forEach((fieldId) => hidden.delete(fieldId));
+                nextSettings = {
+                    ...nextSettings,
+                    gtd: {
+                        ...(nextSettings.gtd ?? {}),
+                        taskEditor: {
+                            ...(nextSettings.gtd?.taskEditor ?? {}),
+                            hidden: Array.from(hidden),
+                            defaultsVersion: TASK_EDITOR_DEFAULTS_VERSION,
+                        },
+                    },
+                };
+                didSettingsUpdate = true;
+            }
 
             let allTasks = (shouldRunMigrations || shouldRunAutoArchive)
                 ? rawTasks.map((task) => normalizeTaskForLoad(task, nowIso))

@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import type { AppData, TaskEditorFieldId } from '@mindwtr/core';
 import { translateText } from '@mindwtr/core';
 
@@ -49,7 +48,6 @@ export function SettingsGtdPage({
     showSaved,
     autoArchiveDays,
 }: SettingsGtdPageProps) {
-    const [showAdvanced, setShowAdvanced] = useState(false);
     const autoArchiveOptions = [0, 1, 3, 7, 14, 30, 60];
     const formatArchiveLabel = (days: number) => {
         if (days <= 0) return t.autoArchiveNever;
@@ -71,7 +69,6 @@ export function SettingsGtdPage({
         const label = dayLabelMap[language] ?? 'days';
         return `${days} ${label}`;
     };
-    const advancedLabel = translateText('Advanced', language);
     const featureHiddenFields = new Set<TaskEditorFieldId>();
     if (settings.features?.priorities === false) {
         featureHiddenFields.add('priority');
@@ -232,22 +229,6 @@ export function SettingsGtdPage({
                     </div>
                 </div>
             </div>
-            <div className="bg-card border border-border rounded-lg p-4 flex items-center justify-between">
-                <div className="text-sm font-medium">{advancedLabel}</div>
-                <button
-                    type="button"
-                    onClick={() => setShowAdvanced((prev) => !prev)}
-                    className={cn(
-                        "px-3 py-1.5 rounded-md text-xs font-medium transition-colors border",
-                        showAdvanced
-                            ? "bg-primary/10 text-primary border-primary ring-1 ring-primary"
-                            : "bg-muted/50 text-muted-foreground border-border hover:bg-muted hover:text-foreground",
-                    )}
-                >
-                    {showAdvanced ? t.on : t.off}
-                </button>
-            </div>
-            {showAdvanced && (
             <div className="bg-card border border-border rounded-lg p-4 space-y-3">
                 <div className="flex items-center justify-between">
                     <div>
@@ -327,7 +308,6 @@ export function SettingsGtdPage({
                     })}
                 </div>
             </div>
-            )}
         </div>
     );
 }
