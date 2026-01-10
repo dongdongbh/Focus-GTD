@@ -82,7 +82,12 @@ function isAllowedInsecureUrl(rawUrl: string): boolean {
         if (parsed.protocol === 'https:') return true;
         if (parsed.protocol !== 'http:') return false;
         const host = parsed.hostname;
-        return host === 'localhost' || host === '127.0.0.1' || host === '::1' || host === '10.0.2.2';
+        if (host === 'localhost' || host === '127.0.0.1' || host === '::1') return true;
+        if (host === '10.0.2.2') {
+            const isDev = typeof globalThis !== 'undefined' && (globalThis as any).__DEV__ === true;
+            return isDev;
+        }
+        return false;
     } catch {
         return false;
     }
