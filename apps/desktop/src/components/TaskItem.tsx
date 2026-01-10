@@ -143,7 +143,6 @@ export const TaskItem = memo(function TaskItem({
     const [editAttachments, setEditAttachments] = useState<Attachment[]>(task.attachments || []);
     const [attachmentError, setAttachmentError] = useState<string | null>(null);
     const [showLinkPrompt, setShowLinkPrompt] = useState(false);
-    const [showDetails, setShowDetails] = useState(false);
     const [isViewOpen, setIsViewOpen] = useState(false);
     const [aiClarifyResponse, setAiClarifyResponse] = useState<ClarifyResponse | null>(null);
     const [aiError, setAiError] = useState<string | null>(null);
@@ -312,11 +311,6 @@ export const TaskItem = memo(function TaskItem({
         return new Set(savedHidden.filter((id) => known.has(id)));
     }, [savedHidden, taskEditorOrder]);
 
-    const editorFieldIds = useMemo(
-        () => taskEditorOrder.filter((fieldId) => fieldId !== 'dueDate' && fieldId !== 'project'),
-        [taskEditorOrder]
-    );
-
     const hasValue = useCallback((fieldId: TaskEditorFieldId) => {
         switch (fieldId) {
             case 'status':
@@ -367,14 +361,43 @@ export const TaskItem = memo(function TaskItem({
         visibleEditAttachments.length,
     ]);
 
-    const showProjectField = useMemo(() => {
-        return showDetails || !hiddenSet.has('project') || hasValue('project');
-    }, [hasValue, hiddenSet, showDetails]);
-
-    const fieldIdsToRender = useMemo(() => {
-        if (showDetails) return editorFieldIds;
-        return editorFieldIds.filter((fieldId) => !hiddenSet.has(fieldId) || hasValue(fieldId));
-    }, [editorFieldIds, hasValue, hiddenSet, showDetails]);
+    const showProjectField = true;
+    const orderFields = useCallback(
+        (fields: TaskEditorFieldId[]) => {
+            const ordered = taskEditorOrder.filter((id) => fields.includes(id));
+            const missing = fields.filter((id) => !ordered.includes(id));
+            return [...ordered, ...missing];
+        },
+        [taskEditorOrder]
+    );
+    const filterVisibleFields = useCallback(
+        (fields: TaskEditorFieldId[]) => fields.filter((fieldId) => !hiddenSet.has(fieldId) || hasValue(fieldId)),
+        [hiddenSet, hasValue]
+    );
+    const alwaysFields = useMemo(
+        () => orderFields(['status']),
+        [orderFields]
+    );
+    const schedulingFields = useMemo(
+        () => filterVisibleFields(orderFields(['startTime', 'recurrence', 'reviewAt'])),
+        [filterVisibleFields, orderFields]
+    );
+    const organizationFields = useMemo(
+        () => filterVisibleFields(orderFields(['contexts', 'tags', 'priority', 'timeEstimate'])),
+        [filterVisibleFields, orderFields]
+    );
+    const detailsFields = useMemo(
+        () => filterVisibleFields(orderFields(['description', 'attachments', 'checklist'])),
+        [filterVisibleFields, orderFields]
+    );
+    const sectionCounts = useMemo(
+        () => ({
+            scheduling: schedulingFields.filter((fieldId) => hasValue(fieldId)).length,
+            organization: organizationFields.filter((fieldId) => hasValue(fieldId)).length,
+            details: detailsFields.filter((fieldId) => hasValue(fieldId)).length,
+        }),
+        [detailsFields, hasValue, organizationFields, schedulingFields]
+    );
 
     const renderField = (fieldId: TaskEditorFieldId) => (
         <TaskItemFieldRenderer
@@ -428,9 +451,6 @@ export const TaskItem = memo(function TaskItem({
     );
 
     useEffect(() => {
-        if (isEditing && !wasEditingRef.current) {
-            setShowDetails(false);
-        }
         if (!isEditing) {
             wasEditingRef.current = false;
             return;
@@ -815,9 +835,11 @@ export const TaskItem = memo(function TaskItem({
                                 showProjectField={showProjectField}
                                 editDueDate={editDueDate}
                                 setEditDueDate={setEditDueDate}
-                                showDetails={showDetails}
-                                toggleDetails={() => setShowDetails((prev) => !prev)}
-                                fieldIdsToRender={fieldIdsToRender}
+                                alwaysFields={alwaysFields}
+                                schedulingFields={schedulingFields}
+                                organizationFields={organizationFields}
+                                detailsFields={detailsFields}
+                                sectionCounts={sectionCounts}
                                 renderField={renderField}
                                 editLocation={editLocation}
                                 setEditLocation={setEditLocation}

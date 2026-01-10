@@ -1,4 +1,4 @@
-import type { FormEvent, ReactNode } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import { hasTimeComponent, safeFormatDate, safeParseDate, type ClarifyResponse, type Project, type TaskEditorFieldId, type TimeEstimate } from '@mindwtr/core';
 import { ProjectSelector } from '../ui/ProjectSelector';
 import { TaskInput } from './TaskInput';
@@ -34,9 +34,15 @@ interface TaskItemEditorProps {
     showProjectField: boolean;
     editDueDate: string;
     setEditDueDate: (value: string) => void;
-    showDetails: boolean;
-    toggleDetails: () => void;
-    fieldIdsToRender: TaskEditorFieldId[];
+    alwaysFields: TaskEditorFieldId[];
+    schedulingFields: TaskEditorFieldId[];
+    organizationFields: TaskEditorFieldId[];
+    detailsFields: TaskEditorFieldId[];
+    sectionCounts: {
+        scheduling: number;
+        organization: number;
+        details: number;
+    };
     renderField: (fieldId: TaskEditorFieldId) => ReactNode;
     editLocation: string;
     setEditLocation: (value: string) => void;
@@ -77,9 +83,11 @@ export function TaskItemEditor({
     showProjectField,
     editDueDate,
     setEditDueDate,
-    showDetails,
-    toggleDetails,
-    fieldIdsToRender,
+    alwaysFields,
+    schedulingFields,
+    organizationFields,
+    detailsFields,
+    sectionCounts,
     renderField,
     editLocation,
     setEditLocation,
@@ -114,6 +122,9 @@ export function TaskItemEditor({
         const datePart = dueDateValue || safeFormatDate(new Date(), 'yyyy-MM-dd');
         setEditDueDate(`${datePart}T${value}`);
     };
+    const [schedulingOpen, setSchedulingOpen] = useState(sectionCounts.scheduling > 0);
+    const [organizationOpen, setOrganizationOpen] = useState(sectionCounts.organization > 0);
+    const [detailsOpen, setDetailsOpen] = useState(sectionCounts.details > 0);
     return (
         <form
             onSubmit={onSubmit}
@@ -283,37 +294,77 @@ export function TaskItemEditor({
                     </div>
                 </div>
             </div>
-            <div>
-                <button
-                    type="button"
-                    onClick={toggleDetails}
-                    className="text-xs px-2 py-1 rounded bg-muted/50 hover:bg-muted transition-colors text-muted-foreground"
-                >
-                    {showDetails ? t('taskEdit.hideOptions') : t('taskEdit.moreOptions')}
-                </button>
-            </div>
-            {fieldIdsToRender.length > 0 && (
+            {alwaysFields.length > 0 && (
                 <div className="space-y-3">
-                    {fieldIdsToRender.map((fieldId) => (
-                        <div key={fieldId}>
-                            {renderField(fieldId)}
-                        </div>
+                    {alwaysFields.map((fieldId) => (
+                        <div key={fieldId}>{renderField(fieldId)}</div>
                     ))}
                 </div>
             )}
-            {(showDetails || Boolean(editLocation.trim())) && (
-                <div className="flex flex-col gap-1">
-                    <label className="text-xs text-muted-foreground font-medium">{t('taskEdit.locationLabel')}</label>
-                    <input
-                        type="text"
-                        aria-label="Location"
-                        value={editLocation}
-                        onChange={(e) => setEditLocation(e.target.value)}
-                        placeholder={t('taskEdit.locationPlaceholder')}
-                        className="text-xs bg-muted/50 border border-border rounded px-2 py-1 text-foreground placeholder:text-muted-foreground"
-                    />
+            <div className="space-y-3">
+                <div className="border-t border-border pt-3">
+                    <button
+                        type="button"
+                        onClick={() => setSchedulingOpen((prev) => !prev)}
+                        className="w-full flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground font-semibold"
+                    >
+                        <span>{t('taskEdit.scheduling')}</span>
+                        <span className="text-[10px]">{schedulingOpen ? '▾' : '▸'}</span>
+                    </button>
+                    {schedulingOpen && (
+                        <div className="mt-3 space-y-3">
+                            {schedulingFields.map((fieldId) => (
+                                <div key={fieldId}>{renderField(fieldId)}</div>
+                            ))}
+                        </div>
+                    )}
                 </div>
-            )}
+                <div className="border-t border-border pt-3">
+                    <button
+                        type="button"
+                        onClick={() => setOrganizationOpen((prev) => !prev)}
+                        className="w-full flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground font-semibold"
+                    >
+                        <span>{t('taskEdit.organization')}</span>
+                        <span className="text-[10px]">{organizationOpen ? '▾' : '▸'}</span>
+                    </button>
+                    {organizationOpen && (
+                        <div className="mt-3 space-y-3">
+                            {organizationFields.map((fieldId) => (
+                                <div key={fieldId}>{renderField(fieldId)}</div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                <div className="border-t border-border pt-3">
+                    <button
+                        type="button"
+                        onClick={() => setDetailsOpen((prev) => !prev)}
+                        className="w-full flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground font-semibold"
+                    >
+                        <span>{t('taskEdit.details')}</span>
+                        <span className="text-[10px]">{detailsOpen ? '▾' : '▸'}</span>
+                    </button>
+                    {detailsOpen && (
+                        <div className="mt-3 space-y-3">
+                            {detailsFields.map((fieldId) => (
+                                <div key={fieldId}>{renderField(fieldId)}</div>
+                            ))}
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs text-muted-foreground font-medium">{t('taskEdit.locationLabel')}</label>
+                                <input
+                                    type="text"
+                                    aria-label="Location"
+                                    value={editLocation}
+                                    onChange={(e) => setEditLocation(e.target.value)}
+                                    placeholder={t('taskEdit.locationPlaceholder')}
+                                    className="text-xs bg-muted/50 border border-border rounded px-2 py-1 text-foreground placeholder:text-muted-foreground"
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
             </div>
             <div className="flex gap-2 pt-1">
                 <button
