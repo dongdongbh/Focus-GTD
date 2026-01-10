@@ -31,7 +31,7 @@ import { isTauriRuntime } from '../../lib/runtime';
 import { SyncService } from '../../lib/sync-service';
 import { clearLog, getLogPath, logDiagnosticsEnabled } from '../../lib/app-log';
 import { ExternalCalendarService } from '../../lib/external-calendar-service';
-import { checkForUpdates, type UpdateInfo, GITHUB_RELEASES_URL } from '../../lib/update-service';
+import { checkForUpdates, type UpdateInfo, GITHUB_RELEASES_URL, verifyDownloadChecksum } from '../../lib/update-service';
 import { loadAIKey, saveAIKey } from '../../lib/ai-config';
 import { cn } from '../../lib/utils';
 import { SettingsMainPage } from './settings/SettingsMainPage';
@@ -115,8 +115,6 @@ export function SettingsView() {
     const aiCopilotOptions = getCopilotModelOptions(aiProvider);
     const loggingEnabled = settings?.diagnostics?.loggingEnabled === true;
     const didWriteLogRef = useRef(false);
-    const prioritiesEnabled = settings?.features?.priorities === true;
-    const timeEstimatesEnabled = settings?.features?.timeEstimates === true;
 
     const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
     const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
@@ -134,6 +132,7 @@ export function SettingsView() {
     const [webdavUrl, setWebdavUrl] = useState('');
     const [webdavUsername, setWebdavUsername] = useState('');
     const [webdavPassword, setWebdavPassword] = useState('');
+    const [webdavHasPassword, setWebdavHasPassword] = useState(false);
     const [cloudUrl, setCloudUrl] = useState('');
     const [cloudToken, setCloudToken] = useState('');
     const [externalCalendars, setExternalCalendars] = useState<ExternalCalendarSubscription[]>([]);
@@ -193,7 +192,8 @@ export function SettingsView() {
             .then((cfg) => {
                 setWebdavUrl(cfg.url);
                 setWebdavUsername(cfg.username);
-                setWebdavPassword(cfg.password);
+                setWebdavPassword(cfg.password ?? '');
+                setWebdavHasPassword(cfg.hasPassword === true);
             })
             .catch(console.error);
         SyncService.getCloudConfig()
@@ -384,11 +384,19 @@ export function SettingsView() {
     };
 
     const handleSaveWebDav = async () => {
+        const trimmedUrl = webdavUrl.trim();
+        const trimmedPassword = webdavPassword.trim();
         await SyncService.setWebDavConfig({
-            url: webdavUrl.trim(),
+            url: trimmedUrl,
             username: webdavUsername.trim(),
-            password: webdavPassword,
+            ...(trimmedPassword ? { password: trimmedPassword } : {}),
         });
+        if (!trimmedUrl) {
+            setWebdavHasPassword(false);
+            setWebdavPassword('');
+        } else if (trimmedPassword) {
+            setWebdavHasPassword(true);
+        }
         showSaved();
     };
 
@@ -488,6 +496,14 @@ export function SettingsView() {
         setDownloadNotice(t.downloadStarting);
 
         try {
+            if (updateInfo?.assets?.length) {
+                const verified = await verifyDownloadChecksum(targetUrl, updateInfo.assets);
+                if (!verified) {
+                    setDownloadNotice(t.downloadFailed);
+                    setIsDownloadingUpdate(false);
+                    return;
+                }
+            }
             if (isTauri) {
                 const { open } = await import('@tauri-apps/plugin-shell');
                 await open(targetUrl);
@@ -1100,6 +1116,7 @@ export function SettingsView() {
                     webdavUrl={webdavUrl}
                     webdavUsername={webdavUsername}
                     webdavPassword={webdavPassword}
+                    webdavHasPassword={webdavHasPassword}
                     onWebdavUrlChange={setWebdavUrl}
                     onWebdavUsernameChange={setWebdavUsername}
                     onWebdavPasswordChange={setWebdavPassword}

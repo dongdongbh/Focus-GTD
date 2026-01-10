@@ -16,6 +16,39 @@ export interface UpdateInfo {
     assets: Array<{ name: string; url: string }>;
 }
 
+type UpdateAsset = { name: string; url: string };
+
+const getAssetNameFromUrl = (url: string): string => {
+    try {
+        const parsed = new URL(url);
+        const name = parsed.pathname.split('/').pop() || '';
+        return decodeURIComponent(name);
+    } catch {
+        return '';
+    }
+};
+
+const findChecksumAsset = (assets: UpdateAsset[], downloadUrl: string): UpdateAsset | null => {
+    const baseName = getAssetNameFromUrl(downloadUrl);
+    if (!baseName) return null;
+    const candidates = new Set([
+        `${baseName}.sha256`,
+        `${baseName}.sha256.txt`,
+        `${baseName}.sha256sum`,
+    ]);
+    return assets.find((asset) => candidates.has(asset.name)) ?? null;
+};
+
+const parseChecksum = (text: string): string | null => {
+    const token = text.trim().split(/\s+/)[0];
+    return token && token.length >= 32 ? token.toLowerCase() : null;
+};
+
+const bufferToHex = (buffer: ArrayBuffer): string => {
+    const bytes = new Uint8Array(buffer);
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+};
+
 interface GitHubAsset {
     name: string;
     browser_download_url: string;
@@ -131,6 +164,29 @@ export async function downloadUpdate(downloadUrl: string): Promise<void> {
     // Open the download URL in the default browser
     // The user will download the installer and run it
     window.open(downloadUrl, '_blank');
+}
+
+export async function verifyDownloadChecksum(downloadUrl: string, assets: UpdateAsset[]): Promise<boolean> {
+    const checksumAsset = findChecksumAsset(assets, downloadUrl);
+    if (!checksumAsset || typeof crypto === 'undefined' || !crypto.subtle) {
+        return false;
+    }
+    const [fileRes, checksumRes] = await Promise.all([
+        fetch(downloadUrl),
+        fetch(checksumAsset.url),
+    ]);
+    if (!fileRes.ok || !checksumRes.ok) {
+        throw new Error('Checksum verification failed to download assets.');
+    }
+    const [fileBuffer, checksumText] = await Promise.all([
+        fileRes.arrayBuffer(),
+        checksumRes.text(),
+    ]);
+    const expected = parseChecksum(checksumText);
+    if (!expected) return false;
+    const digest = await crypto.subtle.digest('SHA-256', fileBuffer);
+    const actual = bufferToHex(digest);
+    return actual === expected;
 }
 
 export { GITHUB_RELEASES_URL };
