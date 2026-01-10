@@ -216,10 +216,40 @@ MINDWTR_DB_PATH = "/path/to/mindwtr.db"
 
 Restart Codex after saving.
 
-### Gemini / Other MCP clients
+### Gemini CLI
+
+Gemini CLI uses a JSON `settings.json` with `mcpServers`, either:
+- User scope: `~/.gemini/settings.json`
+- Project scope: `.gemini/settings.json` in your repo
+
+You can add Mindwtr MCP two ways:
+
+**1) CLI (recommended):**
+
+```bash
+gemini mcp add mindwtr \
+  bun /absolute/path/to/Mindwtr/apps/mcp-server/src/index.ts \
+  --db "/path/to/mindwtr.db"
+```
+
+**2) Edit settings.json manually:**
+
+```json
+{
+  "mcpServers": {
+    "mindwtr": {
+      "command": "bun",
+      "args": ["/absolute/path/to/Mindwtr/apps/mcp-server/src/index.ts", "--db", "/path/to/mindwtr.db"]
+    }
+  }
+}
+```
+
+Restart the Gemini CLI session after saving.
+
+### Other MCP clients
 
 Any MCP-compatible client can work as long as it can launch a **stdio** server with the command + args above.
-If your Gemini client supports MCP, use the same command/args and DB path shown above.
 
 ---
 
