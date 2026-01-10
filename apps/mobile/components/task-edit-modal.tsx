@@ -41,6 +41,7 @@ import { TaskEditFormTab } from './task-edit/TaskEditFormTab';
 import { TaskEditProjectPicker } from './task-edit/TaskEditProjectPicker';
 
 const MAX_SUGGESTED_TAGS = 8;
+const MAX_VISIBLE_SUGGESTIONS = 4;
 
 interface TaskEditModalProps {
     visible: boolean;
@@ -183,6 +184,8 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
     const [copilotTags, setCopilotTags] = useState<string[]>([]);
     const copilotMountedRef = useRef(true);
     const copilotAbortRef = useRef<AbortController | null>(null);
+    const [showAllContexts, setShowAllContexts] = useState(false);
+    const [showAllTags, setShowAllTags] = useState(false);
 
     // Compute most frequent tags from all tasks
     const suggestedTags = React.useMemo(() => {
@@ -233,6 +236,13 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
 
         return Array.from(unique).slice(0, MAX_SUGGESTED_TAGS);
     }, [tasks]);
+
+    const visibleContextSuggestions = showAllContexts
+        ? suggestedTags
+        : suggestedTags.slice(0, MAX_VISIBLE_SUGGESTIONS);
+    const visibleTagSuggestions = showAllTags
+        ? suggestedHashtags
+        : suggestedHashtags.slice(0, MAX_VISIBLE_SUGGESTIONS);
 
     const resolveInitialTab = (target?: TaskEditTab, currentTask?: Task | null): TaskEditTab => {
         if (target) return target;
@@ -1184,7 +1194,7 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
                         />
                         <View style={styles.suggestionsContainer}>
                             <View style={styles.suggestionTags}>
-                                {suggestedTags.map(tag => {
+                                {visibleContextSuggestions.map(tag => {
                                     const isActive = Boolean(editedTask.contexts?.includes(tag));
                                     return (
                                         <TouchableOpacity
@@ -1196,6 +1206,16 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
                                         </TouchableOpacity>
                                     );
                                 })}
+                                {!showAllContexts && suggestedTags.length > MAX_VISIBLE_SUGGESTIONS && (
+                                    <TouchableOpacity
+                                        style={getSuggestionChipStyle(false)}
+                                        onPress={() => setShowAllContexts(true)}
+                                    >
+                                        <Text style={getSuggestionTextStyle(false)}>
+                                            +{suggestedTags.length - MAX_VISIBLE_SUGGESTIONS}
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
                             </View>
                         </View>
                     </View>
@@ -1217,7 +1237,7 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
                         />
                         <View style={styles.suggestionsContainer}>
                             <View style={styles.suggestionTags}>
-                                {suggestedHashtags.map(tag => {
+                                {visibleTagSuggestions.map(tag => {
                                     const isActive = Boolean(editedTask.tags?.includes(tag));
                                     return (
                                         <TouchableOpacity
@@ -1233,6 +1253,16 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
                                         </TouchableOpacity>
                                     );
                                 })}
+                                {!showAllTags && suggestedHashtags.length > MAX_VISIBLE_SUGGESTIONS && (
+                                    <TouchableOpacity
+                                        style={getSuggestionChipStyle(false)}
+                                        onPress={() => setShowAllTags(true)}
+                                    >
+                                        <Text style={getSuggestionTextStyle(false)}>
+                                            +{suggestedHashtags.length - MAX_VISIBLE_SUGGESTIONS}
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
                             </View>
                         </View>
                     </View>
