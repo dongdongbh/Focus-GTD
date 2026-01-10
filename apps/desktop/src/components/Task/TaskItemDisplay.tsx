@@ -90,7 +90,7 @@ export function TaskItemDisplay({
                     data-task-edit-trigger
                     onClick={onEdit}
                     className="sr-only"
-                    aria-hidden="true"
+                    aria-label={t('common.edit')}
                     tabIndex={-1}
                 />
                 <button
