@@ -1,3 +1,5 @@
+import { existsSync } from 'fs';
+
 import { resolveMindwtrDbPath } from './paths.js';
 
 export type DbOptions = {
@@ -17,6 +19,9 @@ export type DbClient = {
 
 export async function openMindwtrDb(options: DbOptions = {}) {
   const path = resolveMindwtrDbPath(options.dbPath);
+  if (!existsSync(path)) {
+    throw new Error(`Mindwtr database not found at: ${path}`);
+  }
   const isBun = typeof (globalThis as any).Bun !== 'undefined';
 
   let db: DbClient;

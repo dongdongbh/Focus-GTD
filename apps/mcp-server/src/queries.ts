@@ -30,7 +30,20 @@ export type Task = {
   purgedAt?: string;
 };
 
-type Project = { id: string; title: string };
+export type Project = {
+  id: string;
+  title: string;
+  status?: string;
+  color?: string;
+  areaId?: string;
+  areaTitle?: string;
+  isSequential?: boolean;
+  isFocused?: boolean;
+  reviewAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  deletedAt?: string;
+};
 
 const STATUS_TOKENS: Record<string, TaskStatus> = {
   inbox: 'inbox',
@@ -227,7 +240,7 @@ export function listTasks(db: DbClient, input: ListTasksInput): TaskRow[] {
   return rows.map(mapTaskRow);
 }
 
-function getProjects(db: DbClient): Project[] {
+export function listProjects(db: DbClient): Project[] {
   const rows = db.prepare('SELECT id, title, status, areaId, areaTitle, color, orderNum, tagIds, isSequential, isFocused, supportNotes, attachments, reviewAt, createdAt, updatedAt, deletedAt FROM projects WHERE deletedAt IS NULL').all();
   return rows.map((row: any) => ({
     id: row.id,
@@ -255,7 +268,7 @@ export function addTask(db: DbClient, input: AddTaskInput): TaskRow {
   let props: Partial<Task> = {};
 
   if (input.quickAdd) {
-    const projects = getProjects(db);
+    const projects = listProjects(db);
     const quick = parseQuickAdd(input.quickAdd, projects);
     title = quick.title || title || input.quickAdd;
     props = quick.props;
@@ -347,6 +360,103 @@ export function completeTask(db: DbClient, input: CompleteTaskInput): TaskRow {
     throw new Error('Task not found.');
   }
 
+  const row = db.prepare(`SELECT ${taskSelectColumns} FROM tasks WHERE id = ?`).get(input.id);
+  return mapTaskRow(row);
+}
+
+export type UpdateTaskInput = {
+  id: string;
+  title?: string;
+  status?: TaskStatus;
+  projectId?: string | null;
+  dueDate?: string | null;
+  startTime?: string | null;
+  contexts?: string[] | null;
+  tags?: string[] | null;
+  description?: string | null;
+  priority?: string | null;
+  timeEstimate?: string | null;
+  reviewAt?: string | null;
+  isFocusedToday?: boolean;
+};
+
+export function updateTask(db: DbClient, input: UpdateTaskInput): TaskRow {
+  const existing = db.prepare(`SELECT ${taskSelectColumns} FROM tasks WHERE id = ?`).get(input.id);
+  if (!existing) {
+    throw new Error('Task not found.');
+  }
+  const current = mapTaskRow(existing);
+  const now = new Date().toISOString();
+
+  const updated: TaskRow = {
+    ...current,
+    title: input.title ?? current.title,
+    status: input.status ?? current.status,
+    projectId: input.projectId === null ? undefined : input.projectId ?? current.projectId,
+    dueDate: input.dueDate === null ? undefined : input.dueDate ?? current.dueDate,
+    startTime: input.startTime === null ? undefined : input.startTime ?? current.startTime,
+    contexts: input.contexts === null ? [] : input.contexts ?? current.contexts ?? [],
+    tags: input.tags === null ? [] : input.tags ?? current.tags ?? [],
+    description: input.description === null ? undefined : input.description ?? current.description,
+    priority: input.priority === null ? undefined : input.priority ?? current.priority,
+    timeEstimate: input.timeEstimate === null ? undefined : input.timeEstimate ?? current.timeEstimate,
+    reviewAt: input.reviewAt === null ? undefined : input.reviewAt ?? current.reviewAt,
+    isFocusedToday: input.isFocusedToday ?? current.isFocusedToday,
+    updatedAt: now,
+  };
+
+  const update = db.prepare(`
+    UPDATE tasks
+    SET title = @title,
+        status = @status,
+        projectId = @projectId,
+        dueDate = @dueDate,
+        startTime = @startTime,
+        contexts = @contexts,
+        tags = @tags,
+        description = @description,
+        priority = @priority,
+        timeEstimate = @timeEstimate,
+        reviewAt = @reviewAt,
+        isFocusedToday = @isFocusedToday,
+        updatedAt = @updatedAt
+    WHERE id = @id
+  `);
+
+  update.run({
+    id: updated.id,
+    title: updated.title,
+    status: updated.status,
+    projectId: updated.projectId ?? null,
+    dueDate: updated.dueDate ?? null,
+    startTime: updated.startTime ?? null,
+    contexts: JSON.stringify(updated.contexts ?? []),
+    tags: JSON.stringify(updated.tags ?? []),
+    description: updated.description ?? null,
+    priority: updated.priority ?? null,
+    timeEstimate: updated.timeEstimate ?? null,
+    reviewAt: updated.reviewAt ?? null,
+    isFocusedToday: updated.isFocusedToday ? 1 : 0,
+    updatedAt: updated.updatedAt,
+  });
+
+  const row = db.prepare(`SELECT ${taskSelectColumns} FROM tasks WHERE id = ?`).get(input.id);
+  return mapTaskRow(row);
+}
+
+export type DeleteTaskInput = { id: string };
+
+export function deleteTask(db: DbClient, input: DeleteTaskInput): TaskRow {
+  const now = new Date().toISOString();
+  const update = db.prepare(`
+    UPDATE tasks
+    SET deletedAt = ?, updatedAt = ?
+    WHERE id = ?
+  `);
+  const info = update.run(now, now, input.id);
+  if (info.changes === 0) {
+    throw new Error('Task not found.');
+  }
   const row = db.prepare(`SELECT ${taskSelectColumns} FROM tasks WHERE id = ?`).get(input.id);
   return mapTaskRow(row);
 }

@@ -29,8 +29,14 @@ You can override with:
 ### 1) Run directly from the repo (recommended)
 
 ```bash
-# from repo root
+# from repo root (read-only by default)
 bun run mindwtr:mcp -- --db "/path/to/mindwtr.db"
+```
+
+Enable writes (required for add/update/complete/delete tools):
+
+```bash
+bun run mindwtr:mcp -- --db "/path/to/mindwtr.db" --write
 ```
 
 Stop:
@@ -108,7 +114,7 @@ mindwtr-mcp --db "/path/to/mindwtr.db"
 
 ### Desktop app toggle?
 
-Not yet. The desktop settings page shows a **copy‑paste command**, but start/stop is still manual.
+Not yet. Start/stop is still manual.
 
 ---
 
@@ -135,6 +141,8 @@ MCP clients run the server as a subprocess. You point them to **the command** an
 }
 ```
 
+Add `--write` to the args if you want to enable **add/update/complete/delete** tools.
+
 If your client doesn't support Bun, build first and use Node:
 
 ```bash
@@ -157,6 +165,8 @@ cd /path/to/Mindwtr && bun run --filter mindwtr-mcp-server build
 }
 ```
 
+Add `--write` to the args if you want to enable **add/update/complete/delete** tools.
+
 ### Claude Desktop
 
 Claude Desktop supports MCP (stdio). Add a server entry in its MCP configuration.
@@ -173,7 +183,7 @@ Add a server via the CLI:
 
 ```bash
 claude mcp add mindwtr -- \
-  bun /path/to/Mindwtr/apps/mcp-server/src/index.ts --db "/path/to/mindwtr.db"
+  bun /path/to/Mindwtr/apps/mcp-server/src/index.ts --db "/path/to/mindwtr.db" --write
 ```
 
 Or edit `~/.claude.json` directly:
@@ -189,7 +199,8 @@ Or edit `~/.claude.json` directly:
           "args": [
             "/absolute/path/to/Mindwtr/apps/mcp-server/src/index.ts",
             "--db",
-            "/home/dd/.local/share/mindwtr/mindwtr.db"
+            "/home/dd/.local/share/mindwtr/mindwtr.db",
+            "--write"
           ]
         }
       }
@@ -207,7 +218,7 @@ Codex stores MCP config in `~/.codex/config.toml`. Add:
 ```toml
 [mcp_servers.mindwtr]
 command = "bun"
-args = ["/absolute/path/to/Mindwtr/apps/mcp-server/src/index.ts", "--db", "/path/to/mindwtr.db"]
+args = ["/absolute/path/to/Mindwtr/apps/mcp-server/src/index.ts", "--db", "/path/to/mindwtr.db", "--write"]
 
 # Optional: pass env vars to the server
 [mcp_servers.mindwtr.env]
@@ -229,7 +240,7 @@ You can add Mindwtr MCP two ways:
 ```bash
 gemini mcp add mindwtr \
   bun /absolute/path/to/Mindwtr/apps/mcp-server/src/index.ts \
-  --db "/path/to/mindwtr.db"
+  --db "/path/to/mindwtr.db" --write
 ```
 
 **2) Edit settings.json manually:**
@@ -239,7 +250,7 @@ gemini mcp add mindwtr \
   "mcpServers": {
     "mindwtr": {
       "command": "bun",
-      "args": ["/absolute/path/to/Mindwtr/apps/mcp-server/src/index.ts", "--db", "/path/to/mindwtr.db"]
+      "args": ["/absolute/path/to/Mindwtr/apps/mcp-server/src/index.ts", "--db", "/path/to/mindwtr.db", "--write"]
     }
   }
 }
@@ -257,9 +268,15 @@ Any MCP-compatible client can work as long as it can launch a **stdio** server w
 
 - `mindwtr.list_tasks`
   - Input: `{ status?: "inbox"|"next"|"waiting"|"someday"|"done"|"archived"|"all", projectId?, limit?, offset?, search?, includeDeleted? }`
-- `mindwtr.add_task`
-  - Input: `{ title? | quickAdd?, status?, projectId?, dueDate?, startTime?, contexts?, tags?, description? }`
-- `mindwtr.complete_task`
+- `mindwtr.list_projects`
+  - Input: `{}`
+- `mindwtr.add_task` **(requires `--write`)**
+  - Input: `{ title? | quickAdd?, status?, projectId?, dueDate?, startTime?, contexts?, tags?, description?, priority?, timeEstimate? }`
+- `mindwtr.update_task` **(requires `--write`)**
+  - Input: `{ id, title?, status?, projectId?, dueDate?, startTime?, contexts?, tags?, description?, priority?, timeEstimate?, reviewAt?, isFocusedToday? }`
+- `mindwtr.complete_task` **(requires `--write`)**
+  - Input: `{ id }`
+- `mindwtr.delete_task` **(requires `--write`)**
   - Input: `{ id }`
 
 All tools return JSON text payloads with the resulting task(s).
@@ -270,15 +287,23 @@ All tools return JSON text payloads with the resulting task(s).
 
 ### Quick smoke test (CLI)
 
-1) Start the server:
+1) Start the server (read‑only):
 ```bash
 bun run mindwtr:mcp -- --db "/home/dd/.local/share/mindwtr/mindwtr.db"
 ```
 
 2) Connect via your MCP client and run:
 - `mindwtr.list_tasks` (limit 5)
+
+If you want to test writes, restart with `--write`:
+```bash
+bun run mindwtr:mcp -- --db "/home/dd/.local/share/mindwtr/mindwtr.db" --write
+```
+
+Then test:
 - `mindwtr.add_task` (quickAdd: "Test task @home /due:tomorrow")
 - `mindwtr.complete_task` (use returned task id)
+- `mindwtr.update_task` (e.g. set status or dueDate)
 
 If the list returns tasks and add/complete works, the server is healthy.
 
@@ -287,7 +312,7 @@ If the list returns tasks and add/complete works, the server is healthy.
 1) Add the server:
 ```bash
 claude mcp add mindwtr -- \
-  bun /path/to/Mindwtr/apps/mcp-server/src/index.ts --db "/path/to/mindwtr.db"
+  bun /path/to/Mindwtr/apps/mcp-server/src/index.ts --db "/path/to/mindwtr.db" --write
 ```
 2) Restart Claude Code, run `/mcp`, and verify **mindwtr** is connected.
 3) Ask the model to call:
@@ -301,7 +326,7 @@ claude mcp add mindwtr -- \
 
 - The server uses **SQLite WAL mode** and a 5s busy timeout.
 - Writes will fail if the DB is locked; clients should retry.
-- Start with `--readonly` to block all writes.
+- Writes are **disabled by default**. Use `--write` to enable edits.
 
 ---
 

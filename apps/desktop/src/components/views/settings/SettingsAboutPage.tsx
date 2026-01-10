@@ -14,11 +14,6 @@ type Labels = {
     checkForUpdates: string;
     checking: string;
     checkFailed: string;
-    mcpServerTitle: string;
-    mcpServerDesc: string;
-    mcpServerCommandLabel: string;
-    mcpServerCopy: string;
-    mcpServerCopied: string;
 };
 
 type SettingsAboutPageProps = {
@@ -48,17 +43,6 @@ export function SettingsAboutPage({
     updateError,
     updateNotice,
 }: SettingsAboutPageProps) {
-    const mcpCommand = dbPath
-        ? `bun run mindwtr:mcp -- --db \"${dbPath}\"`
-        : 'bun run mindwtr:mcp -- --db <path-to-mindwtr.db>';
-    const handleCopyMcpCommand = async () => {
-        try {
-            await navigator.clipboard.writeText(mcpCommand);
-        } catch {
-            // no-op
-        }
-    };
-
     return (
         <div className="bg-muted/30 rounded-lg p-6 space-y-4 border border-border">
             <div className="space-y-1">
@@ -90,27 +74,6 @@ export function SettingsAboutPage({
                         </div>
                     </div>
                 </div>
-            )}
-            {isTauri && (
-                <>
-                    <div className="border-t border-border/50"></div>
-                    <div className="space-y-2">
-                        <div className="text-sm font-medium">{t.mcpServerTitle}</div>
-                        <div className="text-xs text-muted-foreground">{t.mcpServerDesc}</div>
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="text-xs font-medium text-muted-foreground">{t.mcpServerCommandLabel}</div>
-                            <button
-                                onClick={handleCopyMcpCommand}
-                                className="text-xs px-3 py-1 rounded-md bg-muted/50 hover:bg-muted transition-colors"
-                            >
-                                {t.mcpServerCopy}
-                            </button>
-                        </div>
-                        <div className="text-xs font-mono bg-muted/60 border border-border rounded px-2 py-1 break-all">
-                            {mcpCommand}
-                        </div>
-                    </div>
-                </>
             )}
             <div className="border-t border-border/50"></div>
             <div className="flex justify-between items-center">
