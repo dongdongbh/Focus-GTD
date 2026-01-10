@@ -410,19 +410,21 @@ function TaskListComponent({
   const hideStatusBadgeForList = statusFilter === 'next' || statusFilter === 'waiting';
 
   const renderTask = useCallback(({ item }: { item: Task }) => (
-    <SwipeableTaskItem
-      task={item}
-      isDark={isDark}
-      tc={themeColors}
-      onPress={() => handleEditTask(item)}
-      selectionMode={enableBulkActions ? selectionMode : false}
-      isMultiSelected={enableBulkActions && multiSelectedIds.has(item.id)}
-      onToggleSelect={enableBulkActions ? () => toggleMultiSelect(item.id) : undefined}
-      onStatusChange={(status) => updateTask(item.id, { status: status as TaskStatus })}
-      onDelete={() => deleteTask(item.id)}
-      isHighlighted={item.id === highlightTaskId}
-      hideStatusBadge={hideStatusBadgeForList}
-    />
+    <ErrorBoundary>
+      <SwipeableTaskItem
+        task={item}
+        isDark={isDark}
+        tc={themeColors}
+        onPress={() => handleEditTask(item)}
+        selectionMode={enableBulkActions ? selectionMode : false}
+        isMultiSelected={enableBulkActions && multiSelectedIds.has(item.id)}
+        onToggleSelect={enableBulkActions ? () => toggleMultiSelect(item.id) : undefined}
+        onStatusChange={(status) => updateTask(item.id, { status: status as TaskStatus })}
+        onDelete={() => deleteTask(item.id)}
+        isHighlighted={item.id === highlightTaskId}
+        hideStatusBadge={hideStatusBadgeForList}
+      />
+    </ErrorBoundary>
   ), [
     deleteTask,
     enableBulkActions,
