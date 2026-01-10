@@ -356,7 +356,7 @@ export function createNextRecurringTask(
         : undefined;
 
     let newStatus: TaskStatus = previousStatus;
-    if (newStatus === 'done') {
+    if (newStatus === 'done' || newStatus === 'archived') {
         newStatus = 'next';
     }
 
