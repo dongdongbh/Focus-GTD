@@ -13,6 +13,10 @@ interface UiState {
     };
     setListFilters: (partial: Partial<UiState['listFilters']>) => void;
     resetListFilters: () => void;
+    listOptions: {
+        showDetails: boolean;
+    };
+    setListOptions: (partial: Partial<UiState['listOptions']>) => void;
     boardFilters: {
         selectedProjectIds: string[];
         open: boolean;
@@ -41,6 +45,11 @@ export const useUiStore = create<UiState>((set) => ({
                 estimates: [],
             },
         })),
+    listOptions: {
+        showDetails: true,
+    },
+    setListOptions: (partial) =>
+        set((state) => ({ listOptions: { ...state.listOptions, ...partial } })),
     boardFilters: {
         selectedProjectIds: [],
         open: false,

@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
-import { Plus, Filter, AlertTriangle } from 'lucide-react';
+import { Plus, Filter, AlertTriangle, List } from 'lucide-react';
 import { useTaskStore, TaskStatus, Task, TaskPriority, TimeEstimate, PRESET_CONTEXTS, PRESET_TAGS, sortTasksBy, Project, parseQuickAdd, matchesHierarchicalToken, safeParseDate, createAIProvider, type AIProviderId } from '@mindwtr/core';
 import type { TaskSortBy } from '@mindwtr/core';
 import { TaskItem } from '../TaskItem';
+import { ErrorBoundary } from '../ErrorBoundary';
 import { TaskInput } from '../Task/TaskInput';
 import { cn } from '../../lib/utils';
 import { PromptModal } from '../PromptModal';
@@ -37,6 +38,7 @@ type VirtualTaskRowProps = {
     onMeasure: (id: string, height: number) => void;
     showQuickDone: boolean;
     readOnly: boolean;
+    compactMetaEnabled?: boolean;
 };
 
 const VirtualTaskRow = React.memo(function VirtualTaskRow({
@@ -52,6 +54,7 @@ const VirtualTaskRow = React.memo(function VirtualTaskRow({
     onMeasure,
     showQuickDone,
     readOnly,
+    compactMetaEnabled = true,
 }: VirtualTaskRowProps) {
     const rowRef = useRef<HTMLDivElement | null>(null);
 
@@ -63,11 +66,7 @@ const VirtualTaskRow = React.memo(function VirtualTaskRow({
             onMeasure(task.id, nextHeight);
         };
         measure();
-        if (typeof ResizeObserver === 'undefined') return undefined;
-        const observer = new ResizeObserver(() => measure());
-        observer.observe(node);
-        return () => observer.disconnect();
-    }, [task.id, onMeasure]);
+    }, [task.id, task.updatedAt, onMeasure]);
 
     return (
         <div ref={rowRef} style={{ position: 'absolute', top, left: 0, right: 0 }}>
@@ -83,6 +82,7 @@ const VirtualTaskRow = React.memo(function VirtualTaskRow({
                     onToggleSelect={() => onToggleSelectId(task.id)}
                     showQuickDone={showQuickDone}
                     readOnly={readOnly}
+                    compactMetaEnabled={compactMetaEnabled}
                 />
             </div>
         </div>
@@ -98,6 +98,8 @@ export function ListView({ title, statusFilter }: ListViewProps) {
     const listFilters = useUiStore((state) => state.listFilters);
     const setListFilters = useUiStore((state) => state.setListFilters);
     const resetListFilters = useUiStore((state) => state.resetListFilters);
+    const showListDetails = useUiStore((state) => state.listOptions.showDetails);
+    const setListOptions = useUiStore((state) => state.setListOptions);
     const [baseTasks, setBaseTasks] = useState<Task[]>([]);
     const selectedTokens = listFilters.tokens;
     const selectedPriorities = listFilters.priorities;
@@ -699,6 +701,7 @@ export function ListView({ title, statusFilter }: ListViewProps) {
     }, [resolveText, statusFilter, t]);
 
     return (
+        <ErrorBoundary>
         <>
         <div className="flex h-full flex-col">
             <div className="space-y-6">
@@ -741,6 +744,21 @@ export function ListView({ title, statusFilter }: ListViewProps) {
                         )}
                     >
                         {selectionMode ? t('bulk.exitSelect') : t('bulk.select')}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setListOptions({ showDetails: !showListDetails })}
+                        aria-pressed={showListDetails}
+                        className={cn(
+                            "text-xs px-3 py-1 rounded-md border transition-colors inline-flex items-center gap-1.5",
+                            showListDetails
+                                ? "bg-primary/10 text-primary border-primary"
+                                : "bg-muted/50 text-muted-foreground border-border hover:bg-muted hover:text-foreground"
+                        )}
+                        title={showListDetails ? (t('list.details') || 'Details on') : (t('list.detailsOff') || 'Details off')}
+                    >
+                        <List className="w-3.5 h-3.5" />
+                        {showListDetails ? (t('list.details') || 'Details') : (t('list.compact') || 'Compact')}
                     </button>
                 </div>
             </header>
@@ -1021,6 +1039,7 @@ export function ListView({ title, statusFilter }: ListViewProps) {
                                     onMeasure={handleRowMeasure}
                                     showQuickDone={showQuickDone}
                                     readOnly={readOnly}
+                                    compactMetaEnabled={showListDetails}
                                 />
                             );
                         })}
@@ -1039,6 +1058,7 @@ export function ListView({ title, statusFilter }: ListViewProps) {
                                 onToggleSelect={() => toggleMultiSelect(task.id)}
                                 showQuickDone={showQuickDone}
                                 readOnly={readOnly}
+                                compactMetaEnabled={showListDetails}
                             />
                         ))}
                     </div>
@@ -1069,5 +1089,6 @@ export function ListView({ title, statusFilter }: ListViewProps) {
             }}
         />
         </>
+        </ErrorBoundary>
     );
 }

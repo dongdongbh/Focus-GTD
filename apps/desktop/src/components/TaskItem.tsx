@@ -106,6 +106,7 @@ interface TaskItemProps {
     onToggleSelect?: () => void;
     showQuickDone?: boolean;
     readOnly?: boolean;
+    compactMetaEnabled?: boolean;
 }
 
 export const TaskItem = memo(function TaskItem({
@@ -118,6 +119,7 @@ export const TaskItem = memo(function TaskItem({
     onToggleSelect,
     showQuickDone = false,
     readOnly = false,
+    compactMetaEnabled = true,
 }: TaskItemProps) {
     const { updateTask, deleteTask, moveTask, projects, tasks, areas, settings, duplicateTask, resetTaskChecklist, highlightTaskId, setHighlightTask, addProject } = useTaskStore();
     const { t } = useLanguage();
@@ -656,6 +658,15 @@ export const TaskItem = memo(function TaskItem({
         };
     }, [aiEnabled, aiKey, editTitle, editDescription, editContexts, aiProvider, copilotModel, copilotSettings, timeEstimatesEnabled, tagOptions]);
 
+    useEffect(() => {
+        return () => {
+            if (copilotAbortRef.current) {
+                copilotAbortRef.current.abort();
+                copilotAbortRef.current = null;
+            }
+        };
+    }, []);
+
     const logAIDebug = async (context: string, message: string) => {
         if (!isTauriRuntime()) return;
         try {
@@ -877,12 +888,12 @@ export const TaskItem = memo(function TaskItem({
                             />
                         </div>
                     ) : (
-                        <TaskItemDisplay
-                            task={task}
-                            project={project}
-                            projectColor={projectColor}
-                            selectionMode={selectionMode}
-                            isViewOpen={isViewOpen}
+            <TaskItemDisplay
+                task={task}
+                project={project}
+                projectColor={projectColor}
+                selectionMode={selectionMode}
+                isViewOpen={isViewOpen}
                             onToggleSelect={onToggleSelect}
                             onToggleView={() => setIsViewOpen((prev) => !prev)}
                             onEdit={() => {
@@ -898,13 +909,14 @@ export const TaskItem = memo(function TaskItem({
                             visibleAttachments={visibleAttachments}
                             recurrenceRule={recurrenceRule}
                             recurrenceStrategy={recurrenceStrategy}
-                            prioritiesEnabled={prioritiesEnabled}
-                            timeEstimatesEnabled={timeEstimatesEnabled}
-                            isStagnant={isStagnant}
-                            showQuickDone={showQuickDone}
-                            readOnly={readOnly}
-                            t={t}
-                        />
+                prioritiesEnabled={prioritiesEnabled}
+                timeEstimatesEnabled={timeEstimatesEnabled}
+                isStagnant={isStagnant}
+                showQuickDone={showQuickDone}
+                readOnly={readOnly}
+                compactMetaEnabled={compactMetaEnabled}
+                t={t}
+            />
                     )}
                 </div>
             </div>

@@ -25,6 +25,7 @@ interface TaskItemDisplayProps {
     isStagnant: boolean;
     showQuickDone: boolean;
     readOnly: boolean;
+    compactMetaEnabled?: boolean;
     t: (key: string) => string;
 }
 
@@ -67,11 +68,13 @@ export function TaskItemDisplay({
     isStagnant,
     showQuickDone,
     readOnly,
+    compactMetaEnabled = true,
     t,
 }: TaskItemDisplayProps) {
     const checklistProgress = getChecklistProgress(task);
     const ageLabel = getTaskAgeLabel(task.createdAt);
-    const showCompactMeta = !isViewOpen
+    const showCompactMeta = compactMetaEnabled
+        && !isViewOpen
         && (project || (task.contexts?.length ?? 0) > 0);
 
     return (
