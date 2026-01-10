@@ -696,6 +696,8 @@ const en: Record<string, string> = {
         'bulk.moveTo': 'Move to',
         'bulk.addTag': 'Add tag',
         'bulk.delete': 'Delete selected',
+        'bulk.confirmDeleteTitle': 'Delete tasks',
+        'bulk.confirmDeleteBody': 'Delete selected tasks?',
 
         // Sorting
         'sort.label': 'Sort',
@@ -1493,6 +1495,8 @@ const zh: Record<string, string> = {
         'bulk.moveTo': '移动到',
         'bulk.addTag': '添加标签',
         'bulk.delete': '删除所选',
+        'bulk.confirmDeleteTitle': '删除任务',
+        'bulk.confirmDeleteBody': '删除选中的任务？',
 
         // Sorting
         'sort.label': '排序',

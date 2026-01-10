@@ -359,9 +359,22 @@ export function TaskList({
 
   const handleBatchDelete = useCallback(async () => {
     if (!hasSelection) return;
-    await batchDeleteTasks(selectedIdsArray);
-    exitSelectionMode();
-    Alert.alert(t('common.done'), `${selectedIdsArray.length} ${t('common.tasks')}`);
+    Alert.alert(
+      t('bulk.confirmDeleteTitle') || t('common.delete'),
+      t('bulk.confirmDeleteBody') || t('list.confirmBatchDelete'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            await batchDeleteTasks(selectedIdsArray);
+            exitSelectionMode();
+            Alert.alert(t('common.done'), `${selectedIdsArray.length} ${t('common.tasks')}`);
+          },
+        },
+      ]
+    );
   }, [batchDeleteTasks, selectedIdsArray, hasSelection, exitSelectionMode, t]);
 
   const handleBatchAddTag = useCallback(async () => {
