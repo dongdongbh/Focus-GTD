@@ -98,26 +98,34 @@ export class SyncService {
         return {
             url: localStorage.getItem(WEBDAV_URL_KEY) || '',
             username: localStorage.getItem(WEBDAV_USERNAME_KEY) || '',
-            password: localStorage.getItem(WEBDAV_PASSWORD_KEY) || '',
+            password: sessionStorage.getItem(WEBDAV_PASSWORD_KEY) || '',
         };
     }
 
     private static setWebDavConfigLocal(config: { url: string; username?: string; password?: string }) {
         localStorage.setItem(WEBDAV_URL_KEY, config.url);
         localStorage.setItem(WEBDAV_USERNAME_KEY, config.username || '');
-        localStorage.setItem(WEBDAV_PASSWORD_KEY, config.password || '');
+        if (config.password) {
+            sessionStorage.setItem(WEBDAV_PASSWORD_KEY, config.password);
+        } else {
+            sessionStorage.removeItem(WEBDAV_PASSWORD_KEY);
+        }
     }
 
     private static getCloudConfigLocal(): CloudConfig {
         return {
             url: localStorage.getItem(CLOUD_URL_KEY) || '',
-            token: localStorage.getItem(CLOUD_TOKEN_KEY) || '',
+            token: sessionStorage.getItem(CLOUD_TOKEN_KEY) || '',
         };
     }
 
     private static setCloudConfigLocal(config: { url: string; token?: string }) {
         localStorage.setItem(CLOUD_URL_KEY, config.url);
-        localStorage.setItem(CLOUD_TOKEN_KEY, config.token || '');
+        if (config.token) {
+            sessionStorage.setItem(CLOUD_TOKEN_KEY, config.token);
+        } else {
+            sessionStorage.removeItem(CLOUD_TOKEN_KEY);
+        }
     }
 
     private static async maybeMigrateLegacyLocalStorageToConfig() {
@@ -162,6 +170,8 @@ export class SyncService {
                 localStorage.removeItem(WEBDAV_PASSWORD_KEY);
                 localStorage.removeItem(CLOUD_URL_KEY);
                 localStorage.removeItem(CLOUD_TOKEN_KEY);
+                sessionStorage.removeItem(WEBDAV_PASSWORD_KEY);
+                sessionStorage.removeItem(CLOUD_TOKEN_KEY);
             }
         } catch (error) {
             console.error('Failed to migrate legacy sync config:', error);
