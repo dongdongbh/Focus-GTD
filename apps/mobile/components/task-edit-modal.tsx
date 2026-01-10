@@ -271,30 +271,37 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
             return;
         }
         let cancelled = false;
+        let localAbortController: AbortController | null = null;
             const handle = setTimeout(async () => {
-                try {
-                    if (copilotAbortRef.current) copilotAbortRef.current.abort();
-                    const abortController = typeof AbortController === 'function' ? new AbortController() : null;
+                const abortController = typeof AbortController === 'function' ? new AbortController() : null;
+                localAbortController = abortController;
+                const previousController = copilotAbortRef.current;
+                if (abortController) {
                     copilotAbortRef.current = abortController;
+                }
+                if (previousController) {
+                    previousController.abort();
+                }
+                try {
                     const provider = createAIProvider(buildCopilotConfig(settings, aiKey));
                     const suggestion = await provider.predictMetadata(
                         { title: input, contexts: contextOptionsRef.current, tags: tagOptionsRef.current },
                         abortController ? { signal: abortController.signal } : undefined
                     );
                     if (cancelled || !copilotMountedRef.current) return;
-                if (!suggestion.context && (!timeEstimatesEnabled || !suggestion.timeEstimate) && !suggestion.tags?.length) {
-                    setCopilotSuggestion(null);
-                } else {
-                    setCopilotSuggestion(suggestion);
+                    if (!suggestion.context && (!timeEstimatesEnabled || !suggestion.timeEstimate) && !suggestion.tags?.length) {
+                        setCopilotSuggestion(null);
+                    } else {
+                        setCopilotSuggestion(suggestion);
+                    }
+                } catch {
+                    if (!cancelled && copilotMountedRef.current) setCopilotSuggestion(null);
                 }
-            } catch {
-                if (!cancelled && copilotMountedRef.current) setCopilotSuggestion(null);
-            }
-        }, 800);
+            }, 800);
             return () => {
                 cancelled = true;
                 clearTimeout(handle);
-                if (copilotAbortRef.current) {
+                if (copilotAbortRef.current && copilotAbortRef.current === localAbortController) {
                     copilotAbortRef.current.abort();
                     copilotAbortRef.current = null;
                 }
@@ -1761,6 +1768,7 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
                             pendingDueDate={pendingDueDate}
                             getSafePickerDateValue={getSafePickerDateValue}
                             onDateChange={onDateChange}
+                            onCloseDatePicker={() => setShowDatePicker(null)}
                             containerWidth={containerWidth}
                         />
                         <View style={[styles.tabPage, { width: containerWidth || '100%' }]}>
