@@ -437,8 +437,11 @@ export function SwipeableTaskItem({
                         <Pressable
                             onPressIn={(event) => {
                                 event.stopPropagation();
+                            }}
+                            onLongPress={() => {
                                 if (onDragHandlePress) onDragHandlePress();
                             }}
+                            delayLongPress={120}
                             style={[styles.dragHandle, { borderColor: tc.border, backgroundColor: tc.cardBg }]}
                             accessibilityLabel={t('projects.reorder') || 'Reorder task'}
                             accessibilityRole="button"
