@@ -6,6 +6,7 @@ RUN mkdir -p /app/cloud_data
 
 FROM base AS cloud
 RUN apk add --no-cache curl
+RUN apk add --no-cache python3 make g++
 ENV MINDWTR_CLOUD_DATA_DIR=/app/cloud_data
 
 COPY --chown=1000:1000 . .

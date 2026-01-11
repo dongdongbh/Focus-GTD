@@ -3,6 +3,8 @@
 FROM oven/bun:alpine AS base
 WORKDIR /app
 
+RUN apk add --no-cache python3 make g++
+
 COPY --chown=1000:1000 . .
 RUN chown bun:bun /app
 USER bun
