@@ -2,14 +2,16 @@
 # see all versions at https://hub.docker.com/r/oven/bun/tags
 FROM oven/bun:alpine AS base
 WORKDIR /app
+RUN mkdir -p /app/cloud_data
 
 FROM base AS cloud
 RUN apk add --no-cache curl
+ENV MINDWTR_CLOUD_DATA_DIR=/app/cloud_data
+
 COPY --chown=1000:1000 . .
 RUN chown bun:bun /app
 USER bun
 RUN bun install
-# RUN chown bun:bun -R /app/apps/cloud
 
 # Run the cloud service
 EXPOSE 8787/tcp
