@@ -1,7 +1,9 @@
 services:
   mindwtr-cloud:
-    # image: ghcr.io/dongdongbh/mindwtr-cloud:latest
     image: mindwtr-cloud:latest
+    build:
+      context: ..
+      dockerfile: docker/cloud/Dockerfile
     container_name: mindwtr-cloud
     hostname: mindwtr-cloud
     restart: always
@@ -19,8 +21,10 @@ services:
       - /path/data_dir:/app/cloud_data
 
   mindwtr-app:
-    # image: ghcr.io/dongdongbh/mindwtr-app:latest
     image: mindwtr-app:latest
+    build:
+      context: ..
+      dockerfile: docker/app/Dockerfile
     container_name: mindwtr-app
     hostname: mindwtr-app
     restart: always
