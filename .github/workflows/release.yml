@@ -103,6 +103,8 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MACOSX_DEPLOYMENT_TARGET: "10.15"
+          CMAKE_OSX_DEPLOYMENT_TARGET: "10.15"
 
       - name: Build Tauri app (default)
         if: matrix.rust_target == '' || matrix.rust_target == null
@@ -112,6 +114,8 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MACOSX_DEPLOYMENT_TARGET: "10.15"
+          CMAKE_OSX_DEPLOYMENT_TARGET: "10.15"
 
       - name: Sign macOS app (ad-hoc)
         if: runner.os == 'macOS'
