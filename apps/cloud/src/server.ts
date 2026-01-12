@@ -233,6 +233,18 @@ async function main() {
                     return jsonResponse({ ok: true });
                 }
 
+                if (req.method === 'DELETE') {
+                    if (!existsSync(filePath)) {
+                        return jsonResponse({ ok: true });
+                    }
+                    try {
+                        unlinkSync(filePath);
+                        return jsonResponse({ ok: true });
+                    } catch {
+                        return errorResponse('Failed to delete attachment', 500);
+                    }
+                }
+
                 return errorResponse('Method not allowed', 405);
             }
 

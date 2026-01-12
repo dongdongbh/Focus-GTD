@@ -242,3 +242,24 @@ export async function cloudGetFile(
     const merged = concatChunks(chunks, total || received);
     return merged.buffer.slice(merged.byteOffset, merged.byteOffset + merged.byteLength);
 }
+
+export async function cloudDeleteFile(
+    url: string,
+    options: CloudOptions = {},
+): Promise<void> {
+    assertSecureUrl(url);
+    const fetcher = options.fetcher ?? fetch;
+    const res = await fetchWithTimeout(
+        url,
+        {
+            method: 'DELETE',
+            headers: buildHeaders(options),
+        },
+        options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+        fetcher,
+    );
+
+    if (!res.ok && res.status !== 404) {
+        throw new Error(`Cloud DELETE failed (${res.status}): ${res.statusText}`);
+    }
+}

@@ -307,3 +307,21 @@ export async function webdavGetFile(
     const merged = concatChunks(chunks, total || received);
     return merged.buffer.slice(merged.byteOffset, merged.byteOffset + merged.byteLength);
 }
+
+export async function webdavDeleteFile(
+    url: string,
+    options: WebDavOptions = {}
+): Promise<void> {
+    assertSecureUrl(url);
+    const fetcher = options.fetcher ?? fetch;
+    const res = await fetchWithTimeout(
+        url,
+        { method: 'DELETE', headers: buildHeaders(options) },
+        options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+        fetcher,
+    );
+
+    if (!res.ok && res.status !== 404) {
+        throw new Error(`WebDAV DELETE failed (${res.status})`);
+    }
+}

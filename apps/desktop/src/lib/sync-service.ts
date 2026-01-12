@@ -14,10 +14,12 @@ import {
     webdavGetFile,
     webdavPutFile,
     webdavMakeDirectory,
+    webdavDeleteFile,
     cloudGetFile,
     cloudPutFile,
     cloudGetJson,
     cloudPutJson,
+    cloudDeleteFile,
     flushPendingSave,
     performSyncCycle,
     normalizeAppData,
@@ -1117,8 +1119,46 @@ export class SyncService {
                 step = 'attachments_cleanup';
                 const orphaned = findOrphanedAttachments(mergedData);
                 if (orphaned.length > 0) {
+                    let webdavConfig: WebDavConfig | null = null;
+                    let cloudConfig: CloudConfig | null = null;
+                    let fileBaseDir: string | null = null;
+                    if (backend === 'webdav') {
+                        webdavConfig = await SyncService.getWebDavConfig();
+                    } else if (backend === 'cloud') {
+                        cloudConfig = await SyncService.getCloudConfig();
+                    } else if (backend === 'file') {
+                        const syncPath = await SyncService.getSyncPath();
+                        const baseDir = getFileSyncDir(syncPath);
+                        fileBaseDir = baseDir || null;
+                    }
+
                     for (const attachment of orphaned) {
                         await deleteAttachmentFile(attachment);
+                        if (attachment.cloudKey) {
+                            try {
+                                if (backend === 'webdav' && webdavConfig?.url) {
+                                    const baseUrl = getBaseSyncUrl(webdavConfig.url);
+                                    await webdavDeleteFile(`${baseUrl}/${attachment.cloudKey}`, {
+                                        username: webdavConfig.username,
+                                        password: webdavConfig.password || '',
+                                        fetcher: await getTauriFetch(),
+                                    });
+                                } else if (backend === 'cloud' && cloudConfig?.url) {
+                                    const baseUrl = getCloudBaseUrl(cloudConfig.url);
+                                    await cloudDeleteFile(`${baseUrl}/${attachment.cloudKey}`, {
+                                        token: cloudConfig.token,
+                                        fetcher: await getTauriFetch(),
+                                    });
+                                } else if (backend === 'file' && fileBaseDir) {
+                                    const { remove } = await import('@tauri-apps/plugin-fs');
+                                    const { join } = await import('@tauri-apps/api/path');
+                                    const targetPath = await join(fileBaseDir, attachment.cloudKey);
+                                    await remove(targetPath);
+                                }
+                            } catch (error) {
+                                console.warn(`Failed to delete remote attachment ${attachment.title}`, error);
+                            }
+                        }
                     }
                     mergedData = removeOrphanedAttachmentsFromData(mergedData);
                 }

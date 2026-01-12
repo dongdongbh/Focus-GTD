@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppData, MergeStats, useTaskStore, webdavGetJson, webdavPutJson, cloudGetJson, cloudPutJson, flushPendingSave, performSyncCycle, findOrphanedAttachments, removeOrphanedAttachmentsFromData } from '@mindwtr/core';
+import { AppData, MergeStats, useTaskStore, webdavGetJson, webdavPutJson, cloudGetJson, cloudPutJson, flushPendingSave, performSyncCycle, findOrphanedAttachments, removeOrphanedAttachmentsFromData, webdavDeleteFile, cloudDeleteFile } from '@mindwtr/core';
 import { mobileStorage } from './storage-adapter';
 import { logSyncError, sanitizeLogMessage } from './app-log';
 import { readSyncFile, writeSyncFile } from './storage-file';
@@ -17,6 +17,8 @@ import {
 
 const DEFAULT_SYNC_TIMEOUT_MS = 30_000;
 const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const SYNC_FILE_NAME = 'data.json';
+const LEGACY_SYNC_FILE_NAME = 'mindwtr-sync.json';
 
 const shouldRunAttachmentCleanup = (lastCleanupAt?: string): boolean => {
   if (!lastCleanupAt) return true;
@@ -33,6 +35,17 @@ const deleteAttachmentFile = async (uri?: string): Promise<void> => {
   } catch (error) {
     console.warn('Failed to delete attachment file', error);
   }
+};
+
+const isSyncFilePath = (path: string) =>
+  path.endsWith(`/${SYNC_FILE_NAME}`) || path.endsWith(`/${LEGACY_SYNC_FILE_NAME}`);
+
+const getFileSyncBaseDir = (syncPath: string) => {
+  const trimmed = syncPath.replace(/\/+$/, '');
+  if (isSyncFilePath(trimmed)) {
+    return trimmed.replace(/\/[^/]+$/, '');
+  }
+  return trimmed;
 };
 
 let syncInFlight: Promise<{ success: boolean; stats?: MergeStats; error?: string }> | null = null;
@@ -150,8 +163,38 @@ export async function performMobileSync(syncPathOverride?: string): Promise<{ su
         step = 'attachments_cleanup';
         const orphaned = findOrphanedAttachments(mergedData);
         if (orphaned.length > 0) {
+          const isFileBackend = backend === 'file';
+          const isWebdavBackend = backend === 'webdav' && webdavConfig?.url;
+          const isCloudBackend = backend === 'cloud' && cloudConfig?.url;
+          const fileBaseDir = isFileBackend && fileSyncPath && !fileSyncPath.startsWith('content://')
+            ? getFileSyncBaseDir(fileSyncPath)
+            : null;
+
           for (const attachment of orphaned) {
             await deleteAttachmentFile(attachment.uri);
+            if (attachment.cloudKey) {
+              try {
+                if (isWebdavBackend && webdavConfig) {
+                  const baseSyncUrl = getBaseSyncUrl(webdavConfig.url);
+                  await webdavDeleteFile(`${baseSyncUrl}/${attachment.cloudKey}`, {
+                    username: webdavConfig.username,
+                    password: webdavConfig.password,
+                    timeoutMs: DEFAULT_SYNC_TIMEOUT_MS,
+                  });
+                } else if (isCloudBackend && cloudConfig) {
+                  const baseSyncUrl = getCloudBaseUrl(cloudConfig.url);
+                  await cloudDeleteFile(`${baseSyncUrl}/${attachment.cloudKey}`, {
+                    token: cloudConfig.token,
+                    timeoutMs: DEFAULT_SYNC_TIMEOUT_MS,
+                  });
+                } else if (fileBaseDir) {
+                  const targetPath = `${fileBaseDir}/${attachment.cloudKey}`;
+                  await FileSystem.deleteAsync(targetPath, { idempotent: true });
+                }
+              } catch (error) {
+                console.warn('Failed to delete remote attachment', error);
+              }
+            }
           }
           mergedData = removeOrphanedAttachmentsFromData(mergedData);
         }
