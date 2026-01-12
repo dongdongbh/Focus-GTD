@@ -18,4 +18,4 @@ USER bun
 RUN bun install
 
 EXPOSE 8787/tcp
-ENTRYPOINT ["bun", "run", "--filter", "mindwtr-cloud", "--", "--host", "0.0.0.0", "--port", "8787"]
+ENTRYPOINT ["bun", "run", "--filter", "mindwtr-cloud", "prod", "--", "--host", "0.0.0.0", "--port", "8787"]
