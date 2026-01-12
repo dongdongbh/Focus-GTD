@@ -29,4 +29,4 @@ services:
     hostname: mindwtr-app
     restart: always
     ports:
-      - 5173:80
+      - 5173:5173
