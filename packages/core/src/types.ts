@@ -161,6 +161,9 @@ export interface AppData {
             defaultCaptureMethod?: 'text' | 'audio';
             saveAudioAttachments?: boolean;
         };
+        attachments?: {
+            lastCleanupAt?: string;
+        };
         features?: {
             priorities?: boolean;
             timeEstimates?: boolean;

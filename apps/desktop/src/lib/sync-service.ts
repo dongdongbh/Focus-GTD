@@ -6,6 +6,8 @@ import {
     MergeStats,
     computeSha256Hex,
     globalProgressTracker,
+    findOrphanedAttachments,
+    removeOrphanedAttachmentsFromData,
     validateAttachmentForUpload,
     webdavGetJson,
     webdavPutJson,
@@ -77,6 +79,7 @@ const FILE_BACKEND_VALIDATION_CONFIG = {
     maxFileSizeBytes: Number.POSITIVE_INFINITY,
     blockedMimeTypes: [],
 };
+const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 const stripFileScheme = (uri: string): string => {
     if (!/^file:\/\//i.test(uri)) return uri;
@@ -132,6 +135,32 @@ const reportProgress = (
         status,
         error,
     });
+};
+
+const shouldRunAttachmentCleanup = (lastCleanupAt?: string): boolean => {
+    if (!lastCleanupAt) return true;
+    const parsed = Date.parse(lastCleanupAt);
+    if (Number.isNaN(parsed)) return true;
+    return Date.now() - parsed >= CLEANUP_INTERVAL_MS;
+};
+
+const deleteAttachmentFile = async (attachment: Attachment): Promise<void> => {
+    if (!attachment.uri) return;
+    const rawUri = stripFileScheme(attachment.uri);
+    if (/^https?:\/\//i.test(rawUri) || rawUri.startsWith('content://')) return;
+    try {
+        const { remove, BaseDirectory } = await import('@tauri-apps/plugin-fs');
+        const { dataDir } = await import('@tauri-apps/api/path');
+        const baseDataDir = await dataDir();
+        if (rawUri.startsWith(baseDataDir)) {
+            const relative = rawUri.slice(baseDataDir.length).replace(/^[\\/]/, '');
+            await remove(relative, { baseDir: BaseDirectory.Data });
+        } else {
+            await remove(rawUri);
+        }
+    } catch (error) {
+        console.warn(`Failed to delete attachment file ${attachment.title}`, error);
+    }
 };
 
 const getBaseSyncUrl = (fullUrl: string): string => {
@@ -1046,7 +1075,7 @@ export class SyncService {
                 },
             });
             const stats = syncResult.stats;
-            const mergedData = syncResult.data;
+            let mergedData = syncResult.data;
 
             if ((backend === 'webdav' || backend === 'file' || backend === 'cloud') && isTauriRuntime()) {
                 step = 'attachments';
@@ -1082,6 +1111,22 @@ export class SyncService {
                 } catch (error) {
                     console.warn('Attachment sync warning', error);
                 }
+            }
+
+            if (isTauriRuntime() && shouldRunAttachmentCleanup(mergedData.settings.attachments?.lastCleanupAt)) {
+                step = 'attachments_cleanup';
+                const orphaned = findOrphanedAttachments(mergedData);
+                if (orphaned.length > 0) {
+                    for (const attachment of orphaned) {
+                        await deleteAttachmentFile(attachment);
+                    }
+                    mergedData = removeOrphanedAttachmentsFromData(mergedData);
+                }
+                mergedData.settings.attachments = {
+                    ...mergedData.settings.attachments,
+                    lastCleanupAt: new Date().toISOString(),
+                };
+                await tauriInvoke('save_data', { data: mergedData });
             }
 
             // 7. Refresh UI Store

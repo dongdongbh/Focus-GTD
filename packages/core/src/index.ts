@@ -26,6 +26,7 @@ export * from './retry-utils';
 export * from './attachment-hash';
 export * from './attachment-validation';
 export * from './attachment-progress';
+export * from './attachment-cleanup';
 export * from './ics';
 export * from './task-status';
 export * from './text-direction';

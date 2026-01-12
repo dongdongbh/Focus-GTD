@@ -1,9 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppData, MergeStats, useTaskStore, webdavGetJson, webdavPutJson, cloudGetJson, cloudPutJson, flushPendingSave, performSyncCycle } from '@mindwtr/core';
+import { AppData, MergeStats, useTaskStore, webdavGetJson, webdavPutJson, cloudGetJson, cloudPutJson, flushPendingSave, performSyncCycle, findOrphanedAttachments, removeOrphanedAttachmentsFromData } from '@mindwtr/core';
 import { mobileStorage } from './storage-adapter';
 import { logSyncError, sanitizeLogMessage } from './app-log';
 import { readSyncFile, writeSyncFile } from './storage-file';
 import { getBaseSyncUrl, getCloudBaseUrl, sanitizeAppDataForRemote, syncCloudAttachments, syncFileAttachments, syncWebdavAttachments } from './attachment-sync';
+import * as FileSystem from 'expo-file-system/legacy';
 import {
   SYNC_PATH_KEY,
   SYNC_BACKEND_KEY,
@@ -15,6 +16,24 @@ import {
 } from './sync-constants';
 
 const DEFAULT_SYNC_TIMEOUT_MS = 30_000;
+const CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+const shouldRunAttachmentCleanup = (lastCleanupAt?: string): boolean => {
+  if (!lastCleanupAt) return true;
+  const parsed = Date.parse(lastCleanupAt);
+  if (Number.isNaN(parsed)) return true;
+  return Date.now() - parsed >= CLEANUP_INTERVAL_MS;
+};
+
+const deleteAttachmentFile = async (uri?: string): Promise<void> => {
+  if (!uri) return;
+  if (uri.startsWith('content://') || /^https?:\/\//i.test(uri)) return;
+  try {
+    await FileSystem.deleteAsync(uri, { idempotent: true });
+  } catch (error) {
+    console.warn('Failed to delete attachment file', error);
+  }
+};
 
 let syncInFlight: Promise<{ success: boolean; stats?: MergeStats; error?: string }> | null = null;
 let syncQueued = false;
@@ -96,12 +115,14 @@ export async function performMobileSync(syncPathOverride?: string): Promise<{ su
         },
       });
 
+      let mergedData = syncResult.data;
+
       if (backend === 'webdav' && webdavConfig?.url) {
         step = 'attachments';
         const baseSyncUrl = getBaseSyncUrl(webdavConfig.url);
-        const mutated = await syncWebdavAttachments(syncResult.data, webdavConfig, baseSyncUrl);
+        const mutated = await syncWebdavAttachments(mergedData, webdavConfig, baseSyncUrl);
         if (mutated) {
-          await mobileStorage.saveData(syncResult.data);
+          await mobileStorage.saveData(mergedData);
           wroteLocal = true;
         }
       }
@@ -109,20 +130,37 @@ export async function performMobileSync(syncPathOverride?: string): Promise<{ su
       if (backend === 'cloud' && cloudConfig?.url) {
         step = 'attachments';
         const baseSyncUrl = getCloudBaseUrl(cloudConfig.url);
-        const mutated = await syncCloudAttachments(syncResult.data, cloudConfig, baseSyncUrl);
+        const mutated = await syncCloudAttachments(mergedData, cloudConfig, baseSyncUrl);
         if (mutated) {
-          await mobileStorage.saveData(syncResult.data);
+          await mobileStorage.saveData(mergedData);
           wroteLocal = true;
         }
       }
 
       if (backend === 'file' && fileSyncPath) {
         step = 'attachments';
-        const mutated = await syncFileAttachments(syncResult.data, fileSyncPath);
+        const mutated = await syncFileAttachments(mergedData, fileSyncPath);
         if (mutated) {
-          await mobileStorage.saveData(syncResult.data);
+          await mobileStorage.saveData(mergedData);
           wroteLocal = true;
         }
+      }
+
+      if (shouldRunAttachmentCleanup(mergedData.settings.attachments?.lastCleanupAt)) {
+        step = 'attachments_cleanup';
+        const orphaned = findOrphanedAttachments(mergedData);
+        if (orphaned.length > 0) {
+          for (const attachment of orphaned) {
+            await deleteAttachmentFile(attachment.uri);
+          }
+          mergedData = removeOrphanedAttachmentsFromData(mergedData);
+        }
+        mergedData.settings.attachments = {
+          ...mergedData.settings.attachments,
+          lastCleanupAt: new Date().toISOString(),
+        };
+        await mobileStorage.saveData(mergedData);
+        wroteLocal = true;
       }
 
       step = 'refresh';
