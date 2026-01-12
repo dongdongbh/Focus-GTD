@@ -7,9 +7,9 @@ const toHex = (bytes: Uint8Array): string => {
 };
 
 export async function computeSha256Hex(data: ArrayBuffer | Uint8Array): Promise<string | null> {
-    const buffer = data instanceof Uint8Array ? data : new Uint8Array(data);
+    const bytes = data instanceof Uint8Array ? new Uint8Array(data) : new Uint8Array(data);
     const subtle = typeof crypto === 'object' && crypto?.subtle ? crypto.subtle : null;
     if (!subtle) return null;
-    const hash = await subtle.digest('SHA-256', buffer);
+    const hash = await subtle.digest('SHA-256', bytes.buffer);
     return toHex(new Uint8Array(hash));
 }

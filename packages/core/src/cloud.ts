@@ -40,10 +40,19 @@ function assertSecureUrl(url: string) {
     }
 }
 
-const toUint8Array = async (data: ArrayBuffer | Uint8Array | Blob): Promise<Uint8Array> => {
-    if (data instanceof Uint8Array) return data;
+const toUint8Array = async (
+    data: ArrayBuffer | Uint8Array | Blob
+): Promise<Uint8Array<ArrayBuffer>> => {
+    if (data instanceof Uint8Array) return new Uint8Array(data);
     if (data instanceof ArrayBuffer) return new Uint8Array(data);
     return new Uint8Array(await data.arrayBuffer());
+};
+
+const toArrayBuffer = (bytes: Uint8Array): ArrayBuffer => {
+    if (bytes.buffer instanceof ArrayBuffer) {
+        return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    }
+    return new Uint8Array(bytes).buffer;
 };
 
 const concatChunks = (chunks: Uint8Array[], total: number): Uint8Array => {
@@ -175,7 +184,7 @@ export async function cloudPutFile(
     const headers = buildHeaders(options);
     headers['Content-Type'] = contentType || 'application/octet-stream';
 
-    let body: BodyInit = data;
+    let body: BodyInit = data instanceof Uint8Array ? new Uint8Array(data) : data;
     if (options.onProgress) {
         const bytes = await toUint8Array(data);
         const stream = createProgressStream(bytes, options.onProgress);
@@ -240,7 +249,7 @@ export async function cloudGetFile(
         }
     }
     const merged = concatChunks(chunks, total || received);
-    return merged.buffer.slice(merged.byteOffset, merged.byteOffset + merged.byteLength);
+    return toArrayBuffer(merged);
 }
 
 export async function cloudDeleteFile(
