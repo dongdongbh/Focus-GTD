@@ -24,6 +24,14 @@ MINDWTR_CLOUD_TOKEN=your_token_here
 
 Use the **same token** in Mindwtr Settings → Sync → Cloud.
 
+Example to generate a token:
+
+```
+cat /dev/urandom | LC_ALL=C tr -dc 'a-zA-Z0-9' | fold -w 50 | head -n 1
+```
+
+Or you can use https://it-tools.tech/token-generator
+
 ## Volumes
 
 Persist cloud data by mounting a host path:
