@@ -365,8 +365,11 @@ jobs:
 
       - name: Update .SRCINFO
         run: |
-          cd aur
-          makepkg --printsrcinfo > .SRCINFO
+          docker run --rm \
+            -v "$PWD/aur:/aur" \
+            -w /aur \
+            archlinux:latest \
+            bash -lc "pacman -Sy --noconfirm --needed base-devel git && makepkg --printsrcinfo > .SRCINFO"
         shell: bash
 
       - name: Publish to AUR
@@ -448,10 +451,24 @@ jobs:
              '.version = $v
               | .architecture."64bit".url = $url
               | .architecture."64bit".hash = $hash
-              | .autoupdate.architecture."64bit".url = "https://github.com/dongdongbh/Mindwtr/releases/download/v\($v)/Mindwtr_\($v)_x64-setup.exe#/dl.7z"' \
+             | .autoupdate.architecture."64bit".url = "https://github.com/dongdongbh/Mindwtr/releases/download/v\($v)/Mindwtr_\($v)_x64-setup.exe#/dl.7z"' \
              "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
 
+      - name: Check Winget package exists
+        id: winget_check
+        run: |
+          PKG_ID="dongdongbh.Mindwtr"
+          URL="https://github.com/microsoft/winget-pkgs/tree/master/manifests/${PKG_ID,,0:1}/${PKG_ID//./\/}"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || true)
+          if [ "$STATUS" = "200" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Winget package not found yet; skipping submission."
+          fi
+
       - name: Submit to Winget
+        if: steps.winget_check.outputs.exists == 'true'
         uses: vedantmgoyal2009/winget-releaser@v2
         with:
           identifier: dongdongbh.Mindwtr
