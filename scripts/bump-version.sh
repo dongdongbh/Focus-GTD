@@ -19,8 +19,41 @@ if [ -z "$NEW_VERSION" ]; then
     exit 1
 fi
 
+# Bump Android versionCode in apps/mobile/app.json
+bump_android_version_code() {
+    local app_json="apps/mobile/app.json"
+    if [ ! -f "$app_json" ]; then
+        echo "Warning: $app_json not found, skipping Android versionCode bump"
+        return 0
+    fi
+
+    node - <<'NODE'
+const fs = require('fs');
+const path = require('path');
+
+const appJsonPath = path.resolve(__dirname, '..', 'apps/mobile/app.json');
+const content = fs.readFileSync(appJsonPath, 'utf8');
+const json = JSON.parse(content);
+
+if (!json.expo) {
+  console.warn('Warning: app.json has no "expo" object, skipping versionCode bump');
+  process.exit(0);
+}
+
+const android = json.expo.android || {};
+const current = Number(android.versionCode || 0);
+const next = Number.isFinite(current) && current >= 1 ? current + 1 : 1;
+
+json.expo.android = { ...android, versionCode: next };
+
+fs.writeFileSync(appJsonPath, JSON.stringify(json, null, 2) + '\n');
+console.log(`Bumped Android versionCode: ${current || 0} -> ${next}`);
+NODE
+}
+
 # Use Node.js script for safe JSON updates
 node scripts/update-versions.js "$NEW_VERSION"
+bump_android_version_code
 
 # Regenerate lockfile with new versions
 echo ""
