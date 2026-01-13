@@ -10,18 +10,8 @@ import {
     Sparkles,
 } from 'lucide-react';
 import {
-    DEFAULT_GEMINI_THINKING_BUDGET,
     DEFAULT_ANTHROPIC_THINKING_BUDGET,
-    DEFAULT_REASONING_EFFORT,
     generateUUID,
-    getDefaultAIConfig,
-    getDefaultCopilotModel,
-    getCopilotModelOptions,
-    getModelOptions,
-    type AIProviderId,
-    type AIReasoningEffort,
-    type AudioCaptureMode,
-    type AudioFieldStrategy,
     safeFormatDate,
     type ExternalCalendarSubscription,
     useTaskStore,
@@ -34,14 +24,6 @@ import { SyncService } from '../../lib/sync-service';
 import { clearLog, getLogPath, logDiagnosticsEnabled } from '../../lib/app-log';
 import { ExternalCalendarService } from '../../lib/external-calendar-service';
 import { checkForUpdates, type UpdateInfo, GITHUB_RELEASES_URL, verifyDownloadChecksum } from '../../lib/update-service';
-import { loadAIKey, saveAIKey } from '../../lib/ai-config';
-import {
-    DEFAULT_WHISPER_MODEL,
-    GEMINI_SPEECH_MODELS,
-    OPENAI_SPEECH_MODELS,
-    WHISPER_MODEL_BASE_URL,
-    WHISPER_MODELS,
-} from '../../lib/speech-models';
 import { cn } from '../../lib/utils';
 import { SettingsMainPage } from './settings/SettingsMainPage';
 import { SettingsGtdPage } from './settings/SettingsGtdPage';
@@ -50,9 +32,8 @@ import { SettingsNotificationsPage } from './settings/SettingsNotificationsPage'
 import { SettingsCalendarPage } from './settings/SettingsCalendarPage';
 import { SettingsSyncPage } from './settings/SettingsSyncPage';
 import { SettingsAboutPage } from './settings/SettingsAboutPage';
+import { useAiSettings } from './settings/useAiSettings';
 import { useSyncSettings } from './settings/useSyncSettings';
-import { BaseDirectory, exists, mkdir, remove, size, writeFile } from '@tauri-apps/plugin-fs';
-import { dataDir, join } from '@tauri-apps/api/path';
 
 type ThemeMode = 'system' | 'light' | 'dark' | 'eink' | 'nord' | 'sepia';
 type SettingsPage = 'main' | 'gtd' | 'notifications' | 'sync' | 'calendar' | 'ai' | 'about';
@@ -106,13 +87,6 @@ export function SettingsView() {
     const [dbPath, setDbPath] = useState('');
     const [configPath, setConfigPath] = useState('');
     const [logPath, setLogPath] = useState('');
-    const [aiApiKey, setAiApiKey] = useState('');
-    const [speechApiKey, setSpeechApiKey] = useState('');
-    const [speechDownloadState, setSpeechDownloadState] = useState<'idle' | 'downloading' | 'success' | 'error'>('idle');
-    const [speechDownloadError, setSpeechDownloadError] = useState<string | null>(null);
-    const [speechOfflinePath, setSpeechOfflinePath] = useState<string | null>(null);
-    const [speechOfflineSize, setSpeechOfflineSize] = useState<number | null>(null);
-
     const notificationsEnabled = settings?.notificationsEnabled !== false;
     const dailyDigestMorningEnabled = settings?.dailyDigestMorningEnabled === true;
     const dailyDigestEveningEnabled = settings?.dailyDigestEveningEnabled === true;
@@ -121,34 +95,6 @@ export function SettingsView() {
     const autoArchiveDays = Number.isFinite(settings?.gtd?.autoArchiveDays)
         ? Math.max(0, Math.floor(settings?.gtd?.autoArchiveDays as number))
         : 7;
-    const aiProvider = (settings?.ai?.provider ?? 'openai') as AIProviderId;
-    const aiEnabled = settings?.ai?.enabled === true;
-    const aiDefaults = getDefaultAIConfig(aiProvider);
-    const aiModel = settings?.ai?.model ?? aiDefaults.model;
-    const aiReasoningEffort = (settings?.ai?.reasoningEffort ?? DEFAULT_REASONING_EFFORT) as AIReasoningEffort;
-    const aiThinkingBudget = settings?.ai?.thinkingBudget ?? aiDefaults.thinkingBudget ?? DEFAULT_GEMINI_THINKING_BUDGET;
-    const anthropicThinkingEnabled = aiProvider === 'anthropic' && aiThinkingBudget > 0;
-    const aiModelOptions = getModelOptions(aiProvider);
-    const aiCopilotModel = settings?.ai?.copilotModel ?? getDefaultCopilotModel(aiProvider);
-    const aiCopilotOptions = getCopilotModelOptions(aiProvider);
-    const speechSettings = settings?.ai?.speechToText ?? {};
-    const speechProvider = speechSettings.provider ?? 'gemini';
-    const speechEnabled = speechSettings.enabled === true;
-    const speechModel = speechSettings.model ?? (
-        speechProvider === 'openai'
-            ? OPENAI_SPEECH_MODELS[0]
-            : speechProvider === 'gemini'
-                ? GEMINI_SPEECH_MODELS[0]
-                : DEFAULT_WHISPER_MODEL
-    );
-    const speechLanguage = speechSettings.language ?? '';
-    const speechMode = (speechSettings.mode ?? 'smart_parse') as AudioCaptureMode;
-    const speechFieldStrategy = (speechSettings.fieldStrategy ?? 'smart') as AudioFieldStrategy;
-    const speechModelOptions = speechProvider === 'openai'
-        ? OPENAI_SPEECH_MODELS
-        : speechProvider === 'gemini'
-            ? GEMINI_SPEECH_MODELS
-            : WHISPER_MODELS.map((model) => model.id);
     const loggingEnabled = settings?.diagnostics?.loggingEnabled === true;
     const attachmentsLastCleanupAt = settings?.attachments?.lastCleanupAt;
     const didWriteLogRef = useRef(false);
@@ -161,6 +107,11 @@ export function SettingsView() {
     const [isDownloadingUpdate, setIsDownloadingUpdate] = useState(false);
     const [downloadNotice, setDownloadNotice] = useState<string | null>(null);
     const [linuxDistro, setLinuxDistro] = useState<LinuxDistroInfo | null>(null);
+
+    const showSaved = useCallback(() => {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+    }, []);
 
     const {
         syncPath,
@@ -188,11 +139,46 @@ export function SettingsView() {
         handleSync,
     } = useSyncSettings({
         isTauri,
-        showSaved: () => {
-            setSaved(true);
-            setTimeout(() => setSaved(false), 2000);
-        },
+        showSaved,
         selectSyncFolderTitle: t.selectSyncFolderTitle,
+    });
+    const {
+        aiEnabled,
+        aiProvider,
+        aiModel,
+        aiModelOptions,
+        aiCopilotModel,
+        aiCopilotOptions,
+        aiReasoningEffort,
+        aiThinkingBudget,
+        anthropicThinkingEnabled,
+        aiApiKey,
+        speechEnabled,
+        speechProvider,
+        speechModel,
+        speechModelOptions,
+        speechLanguage,
+        speechMode,
+        speechFieldStrategy,
+        speechApiKey,
+        speechOfflineReady,
+        speechOfflineSize,
+        speechDownloadState,
+        speechDownloadError,
+        onUpdateAISettings,
+        onUpdateSpeechSettings,
+        onProviderChange,
+        onSpeechProviderChange,
+        onToggleAnthropicThinking,
+        onAiApiKeyChange,
+        onSpeechApiKeyChange,
+        onDownloadWhisperModel,
+        onDeleteWhisperModel,
+    } = useAiSettings({
+        isTauri,
+        settings,
+        updateSettings,
+        showSaved,
     });
     const [externalCalendars, setExternalCalendars] = useState<ExternalCalendarSubscription[]>([]);
     const [newCalendarName, setNewCalendarName] = useState('');
@@ -260,40 +246,6 @@ export function SettingsView() {
     }, []);
 
     useEffect(() => {
-        let active = true;
-        loadAIKey(aiProvider)
-            .then((key) => {
-                if (active) setAiApiKey(key);
-            })
-            .catch(() => {
-                if (active) setAiApiKey('');
-            });
-        return () => {
-            active = false;
-        };
-    }, [aiProvider]);
-
-    useEffect(() => {
-        let active = true;
-        if (speechProvider === 'whisper') {
-            setSpeechApiKey('');
-            return () => {
-                active = false;
-            };
-        }
-        loadAIKey(speechProvider as AIProviderId)
-            .then((key) => {
-                if (active) setSpeechApiKey(key);
-            })
-            .catch(() => {
-                if (active) setSpeechApiKey('');
-            });
-        return () => {
-            active = false;
-        };
-    }, [speechProvider]);
-
-    useEffect(() => {
         const root = document.documentElement;
         root.classList.remove('theme-eink', 'theme-nord', 'theme-sepia');
 
@@ -321,11 +273,6 @@ export function SettingsView() {
             .catch(console.error);
     }, [isTauri, themeMode]);
 
-    const showSaved = () => {
-        setSaved(true);
-        setTimeout(() => setSaved(false), 2000);
-    };
-
     const saveThemePreference = (mode: ThemeMode) => {
         localStorage.setItem(THEME_STORAGE_KEY, mode);
         setThemeMode(mode);
@@ -341,184 +288,6 @@ export function SettingsView() {
         setKeybindingStyle(style);
         showSaved();
     };
-
-    const updateAISettings = (next: Partial<NonNullable<typeof settings.ai>>) => {
-        updateSettings({ ai: { ...(settings.ai ?? {}), ...next } })
-            .then(showSaved)
-            .catch(console.error);
-    };
-
-    const updateSpeechSettings = (
-        next: Partial<NonNullable<NonNullable<typeof settings.ai>['speechToText']>>
-    ) => {
-        updateSettings({
-            ai: {
-                ...(settings.ai ?? {}),
-                speechToText: { ...(settings.ai?.speechToText ?? {}), ...next },
-            },
-        })
-            .then(showSaved)
-            .catch(console.error);
-    };
-
-    const handleAIProviderChange = (provider: AIProviderId) => {
-        updateAISettings({
-            provider,
-            model: getDefaultAIConfig(provider).model,
-            copilotModel: getDefaultCopilotModel(provider),
-            thinkingBudget: getDefaultAIConfig(provider).thinkingBudget,
-        });
-    };
-
-    const handleToggleAnthropicThinking = () => {
-        updateAISettings({
-            thinkingBudget: anthropicThinkingEnabled ? 0 : (DEFAULT_ANTHROPIC_THINKING_BUDGET || 1024),
-        });
-    };
-
-    const handleAiApiKeyChange = (value: string) => {
-        setAiApiKey(value);
-        saveAIKey(aiProvider, value).catch(console.error);
-    };
-
-    const handleSpeechProviderChange = (provider: 'openai' | 'gemini' | 'whisper') => {
-        const nextModel = provider === 'openai'
-            ? OPENAI_SPEECH_MODELS[0]
-            : provider === 'gemini'
-                ? GEMINI_SPEECH_MODELS[0]
-                : DEFAULT_WHISPER_MODEL;
-        updateSpeechSettings({
-            provider,
-            model: nextModel,
-            offlineModelPath: provider === 'whisper' ? speechSettings.offlineModelPath : undefined,
-        });
-    };
-
-    const handleSpeechApiKeyChange = (value: string) => {
-        setSpeechApiKey(value);
-        if (speechProvider !== 'whisper') {
-            saveAIKey(speechProvider as AIProviderId, value).catch(console.error);
-        }
-    };
-
-    const resolveWhisperPath = useCallback(async (modelId: string) => {
-        if (!isTauri) return null;
-        const entry = WHISPER_MODELS.find((model) => model.id === modelId);
-        if (!entry) return null;
-        const base = await dataDir();
-        return await join(base, 'mindwtr', 'whisper-models', entry.fileName);
-    }, [isTauri]);
-
-    useEffect(() => {
-        let active = true;
-        if (!isTauri || speechProvider !== 'whisper') {
-            setSpeechOfflinePath(null);
-            setSpeechOfflineSize(null);
-            return () => {
-                active = false;
-            };
-        }
-        const load = async () => {
-            const resolved = speechSettings.offlineModelPath || await resolveWhisperPath(speechModel);
-            if (!active) return;
-            setSpeechOfflinePath(resolved);
-            if (!resolved) {
-                setSpeechOfflineSize(null);
-                return;
-            }
-            try {
-                const present = await exists(resolved);
-                if (!present) {
-                    setSpeechOfflineSize(null);
-                    return;
-                }
-                if (!speechSettings.offlineModelPath) {
-                    updateSpeechSettings({ offlineModelPath: resolved, model: speechModel });
-                }
-                const fileSize = await size(resolved);
-                if (active) {
-                    setSpeechOfflineSize(fileSize);
-                }
-            } catch {
-                if (active) {
-                    setSpeechOfflineSize(null);
-                }
-            }
-        };
-        load().catch(() => {
-            if (active) {
-                setSpeechOfflineSize(null);
-            }
-        });
-        return () => {
-            active = false;
-        };
-    }, [
-        isTauri,
-        resolveWhisperPath,
-        speechModel,
-        speechProvider,
-        speechSettings.offlineModelPath,
-        updateSpeechSettings,
-    ]);
-
-    const handleDownloadWhisperModel = useCallback(async () => {
-        const entry = WHISPER_MODELS.find((model) => model.id === speechModel);
-        if (!entry || !isTauri) return;
-        setSpeechDownloadError(null);
-        setSpeechDownloadState('downloading');
-        try {
-            const targetDir = 'mindwtr/whisper-models';
-            await mkdir(targetDir, { baseDir: BaseDirectory.Data, recursive: true });
-            const targetPath = `${targetDir}/${entry.fileName}`;
-            const alreadyExists = await exists(targetPath, { baseDir: BaseDirectory.Data });
-            if (alreadyExists) {
-                const resolved = await resolveWhisperPath(entry.id);
-                const fileSize = resolved ? await size(resolved) : null;
-                setSpeechOfflineSize(fileSize);
-                setSpeechOfflinePath(resolved);
-                updateSpeechSettings({ offlineModelPath: resolved ?? undefined, model: entry.id });
-                setSpeechDownloadState('success');
-                setTimeout(() => setSpeechDownloadState('idle'), 2000);
-                return;
-            }
-            const url = `${WHISPER_MODEL_BASE_URL}/${entry.fileName}`;
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`Download failed (${response.status})`);
-            }
-            const buffer = await response.arrayBuffer();
-            const bytes = new Uint8Array(buffer);
-            await writeFile(targetPath, bytes, { baseDir: BaseDirectory.Data });
-            const resolved = await resolveWhisperPath(entry.id);
-            setSpeechOfflineSize(bytes.length);
-            setSpeechOfflinePath(resolved);
-            updateSpeechSettings({ offlineModelPath: resolved ?? undefined, model: entry.id });
-            setSpeechDownloadState('success');
-            setTimeout(() => setSpeechDownloadState('idle'), 2000);
-        } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            setSpeechDownloadError(message);
-            setSpeechDownloadState('error');
-        }
-    }, [isTauri, resolveWhisperPath, speechModel, updateSpeechSettings]);
-
-    const handleDeleteWhisperModel = useCallback(async () => {
-        if (!speechOfflinePath) {
-            updateSpeechSettings({ offlineModelPath: undefined });
-            return;
-        }
-        try {
-            await remove(speechOfflinePath);
-            setSpeechOfflineSize(null);
-            setSpeechOfflinePath(null);
-            updateSpeechSettings({ offlineModelPath: undefined });
-        } catch (error) {
-            console.warn('Whisper model delete failed', error);
-            setSpeechDownloadError(error instanceof Error ? error.message : String(error));
-            setSpeechDownloadState('error');
-        }
-    }, [speechOfflinePath, updateSpeechSettings]);
 
     const persistCalendars = async (next: ExternalCalendarSubscription[]) => {
         setCalendarError(null);
@@ -1285,19 +1054,19 @@ export function SettingsView() {
                     speechMode={speechMode}
                     speechFieldStrategy={speechFieldStrategy}
                     speechApiKey={speechApiKey}
-                    speechOfflineReady={Boolean(speechOfflineSize)}
+                    speechOfflineReady={speechOfflineReady}
                     speechOfflineSize={speechOfflineSize}
                     speechDownloadState={speechDownloadState}
                     speechDownloadError={speechDownloadError}
-                    onUpdateAISettings={updateAISettings}
-                    onUpdateSpeechSettings={updateSpeechSettings}
-                    onProviderChange={handleAIProviderChange}
-                    onSpeechProviderChange={handleSpeechProviderChange}
-                    onToggleAnthropicThinking={handleToggleAnthropicThinking}
-                    onAiApiKeyChange={handleAiApiKeyChange}
-                    onSpeechApiKeyChange={handleSpeechApiKeyChange}
-                    onDownloadWhisperModel={handleDownloadWhisperModel}
-                    onDeleteWhisperModel={handleDeleteWhisperModel}
+                    onUpdateAISettings={onUpdateAISettings}
+                    onUpdateSpeechSettings={onUpdateSpeechSettings}
+                    onProviderChange={onProviderChange}
+                    onSpeechProviderChange={onSpeechProviderChange}
+                    onToggleAnthropicThinking={onToggleAnthropicThinking}
+                    onAiApiKeyChange={onAiApiKeyChange}
+                    onSpeechApiKeyChange={onSpeechApiKeyChange}
+                    onDownloadWhisperModel={onDownloadWhisperModel}
+                    onDeleteWhisperModel={onDeleteWhisperModel}
                 />
             );
         }
