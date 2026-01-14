@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ErrorBoundary } from '../ErrorBoundary';
 import { ReviewHeader } from './review/ReviewHeader';
+import { ReviewFiltersBar } from './review/ReviewFiltersBar';
+import { ReviewBulkActions } from './review/ReviewBulkActions';
+import { ReviewTaskList } from './review/ReviewTaskList';
 import { DailyReviewGuideModal } from './review/DailyReviewModal';
 import { WeeklyReviewGuideModal } from './review/WeeklyReviewModal';
 
 import { sortTasksBy, useTaskStore, type Project, type Task, type TaskStatus, type TaskSortBy } from '@mindwtr/core';
 
-import { TaskItem } from '../TaskItem';
-import { cn } from '../../lib/utils';
 import { PromptModal } from '../PromptModal';
 import { useLanguage } from '../../contexts/language-context';
 
@@ -121,100 +122,35 @@ export function ReviewView() {
                     }}
                 />
 
-            <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                <button
-                    onClick={() => setFilterStatus('all')}
-                    className={cn(
-                        "px-3 py-1.5 text-sm rounded-full border transition-colors whitespace-nowrap shrink-0",
-                        filterStatus === 'all'
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-muted/50 text-muted-foreground border-border hover:bg-muted hover:text-foreground"
-                    )}
-                >
-                    {t('common.all')} ({statusCounts.all})
-                </button>
-                {statusOptions.map((status) => (
-                    <button
-                        key={status}
-                        onClick={() => setFilterStatus(status)}
-                        className={cn(
-                            "px-3 py-1.5 text-sm rounded-full border transition-colors whitespace-nowrap shrink-0",
-                            filterStatus === status
-                                ? "bg-primary text-primary-foreground border-primary"
-                                : "bg-muted/50 text-muted-foreground border-border hover:bg-muted hover:text-foreground"
-                        )}
-                    >
-                        {t(`status.${status}`)} ({statusCounts[status]})
-                    </button>
-                ))}
-            </div>
+            <ReviewFiltersBar
+                filterStatus={filterStatus}
+                statusOptions={statusOptions}
+                statusCounts={statusCounts}
+                onSelect={setFilterStatus}
+                t={t}
+            />
 
-            {selectionMode && selectedIdsArray.length > 0 && (
-                <div className="flex flex-wrap items-center gap-3 bg-card border border-border rounded-lg p-3">
-                    <div className="flex items-center gap-3">
-                        <span className="text-sm text-muted-foreground">
-                            {selectedIdsArray.length} {t('bulk.selected')}
-                        </span>
-                        <div className="flex items-center gap-2">
-                            <label htmlFor="review-bulk-move" className="text-xs text-muted-foreground">
-                                {t('bulk.moveTo')}
-                            </label>
-                            <select
-                                id="review-bulk-move"
-                                value={moveToStatus}
-                                onChange={async (e) => {
-                                    const nextStatus = e.target.value as TaskStatus;
-                                    setMoveToStatus(nextStatus);
-                                    await handleBatchMove(nextStatus);
-                                }}
-                                className="text-xs bg-muted/50 text-foreground border border-border rounded px-2 py-1 hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40"
-                            >
-                                <option value="" disabled>
-                                    {t('bulk.moveTo')}
-                                </option>
-                                {bulkStatuses.map((status) => (
-                                    <option key={status} value={status}>
-                                        {t(`status.${status}`)}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={handleBatchAddTag}
-                            className="text-xs px-2 py-1 rounded bg-muted/50 hover:bg-muted transition-colors"
-                        >
-                            {t('bulk.addTag')}
-                        </button>
-                        <button
-                            onClick={handleBatchDelete}
-                            className="text-xs px-2 py-1 rounded bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
-                        >
-                            {t('bulk.delete')}
-                        </button>
-                    </div>
-                </div>
+            {selectionMode && (
+                <ReviewBulkActions
+                    selectionCount={selectedIdsArray.length}
+                    moveToStatus={moveToStatus}
+                    onMoveToStatus={handleBatchMove}
+                    onChangeMoveToStatus={setMoveToStatus}
+                    onAddTag={handleBatchAddTag}
+                    onDelete={handleBatchDelete}
+                    statusOptions={bulkStatuses}
+                    t={t}
+                />
             )}
 
-            <div className="space-y-3">
-                {filteredTasks.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                        <p>{t('review.noTasks')}</p>
-                    </div>
-                ) : (
-                    filteredTasks.map((task) => (
-                        <TaskItem
-                            key={task.id}
-                            task={task}
-                            project={task.projectId ? projectMap[task.projectId] : undefined}
-                            selectionMode={selectionMode}
-                            isMultiSelected={multiSelectedIds.has(task.id)}
-                            onToggleSelect={() => toggleMultiSelect(task.id)}
-                        />
-                    ))
-                )}
-            </div>
+            <ReviewTaskList
+                tasks={filteredTasks}
+                projectMap={projectMap}
+                selectionMode={selectionMode}
+                multiSelectedIds={multiSelectedIds}
+                onToggleSelect={toggleMultiSelect}
+                t={t}
+            />
 
             {showGuide && (
                 <WeeklyReviewGuideModal onClose={() => setShowGuide(false)} />
