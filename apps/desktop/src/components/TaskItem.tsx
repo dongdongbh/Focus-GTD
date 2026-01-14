@@ -48,7 +48,13 @@ import {
     getRecurrenceStrategyValue,
     toDateTimeLocalValue,
 } from './Task/task-item-helpers';
-import { convertFileSrc, invoke } from '@tauri-apps/api/core';
+import {
+    isAudioAttachment,
+    isImageAttachment,
+    isTextAttachment,
+    resolveAttachmentSource,
+} from './Task/task-item-attachment-utils';
+import { invoke } from '@tauri-apps/api/core';
 import { readFile, readTextFile, BaseDirectory, size } from '@tauri-apps/plugin-fs';
 import { dataDir } from '@tauri-apps/api/path';
 
@@ -460,42 +466,6 @@ export const TaskItem = memo(function TaskItem({
         }
     }, [isEditing]);
 
-    const isAudioAttachment = useCallback((attachment: Attachment) => {
-        const mime = attachment.mimeType?.toLowerCase();
-        if (mime && mime.startsWith('audio/')) return true;
-        return /\.(m4a|aac|mp3|wav|caf|ogg|oga|flac|webm)$/i.test(attachment.uri);
-    }, [audioObjectUrl]);
-
-    const isImageAttachment = useCallback((attachment: Attachment) => {
-        const mime = attachment.mimeType?.toLowerCase();
-        if (mime && mime.startsWith('image/')) return true;
-        return /\.(png|jpg|jpeg|gif|webp|bmp|svg|heic|heif)$/i.test(attachment.uri);
-    }, []);
-
-    const isTextAttachment = useCallback((attachment: Attachment) => {
-        const mime = attachment.mimeType?.toLowerCase();
-        if (mime) {
-            if (mime.startsWith('text/')) return true;
-            if (mime === 'application/json' || mime === 'application/xml') return true;
-            if (mime === 'application/x-yaml' || mime === 'application/toml') return true;
-        }
-        return /\.(txt|md|markdown|json|csv|log|yaml|yml|toml|ini|cfg|conf|xml)$/i.test(attachment.uri);
-    }, []);
-
-    const resolveAudioSource = useCallback((uri: string) => {
-        if (!isTauriRuntime()) return uri;
-        if (/^https?:\/\//i.test(uri)) return uri;
-        const raw = uri.replace(/^file:\/\//i, '');
-        return convertFileSrc(raw);
-    }, []);
-
-    const resolveImageSource = useCallback((uri: string) => {
-        if (!isTauriRuntime()) return uri;
-        if (/^https?:\/\//i.test(uri)) return uri;
-        const raw = uri.replace(/^file:\/\//i, '');
-        return convertFileSrc(raw);
-    }, []);
-
     const resolveValidationMessage = useCallback((error?: string) => {
         if (error === 'file_too_large') return t('attachments.fileTooLarge');
         if (error === 'mime_type_blocked' || error === 'mime_type_not_allowed') return t('attachments.invalidFileType');
@@ -630,7 +600,7 @@ export const TaskItem = memo(function TaskItem({
                     setAudioObjectUrl(blobUrl);
                     setAudioSource(blobUrl);
                 } else {
-                    setAudioSource(resolveAudioSource(attachment.uri));
+                    setAudioSource(resolveAttachmentSource(attachment.uri));
                 }
             });
             setAudioError(null);
@@ -656,7 +626,7 @@ export const TaskItem = memo(function TaskItem({
         }
         if (isImageAttachment(attachment)) {
             setImageAttachment(attachment);
-            setImageSource(resolveImageSource(attachment.uri));
+            setImageSource(resolveAttachmentSource(attachment.uri));
             return;
         }
         void openExternal(attachment.uri);
