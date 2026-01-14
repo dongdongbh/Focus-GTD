@@ -457,7 +457,8 @@ export function ProjectsView() {
 
     return (
         <ErrorBoundary>
-            <div className="flex h-full gap-6">
+            <>
+                <div className="flex h-full gap-6">
             <ProjectsSidebar
                 t={t}
                 selectedArea={selectedArea}
@@ -774,6 +775,7 @@ export function ProjectsView() {
                 setPendingAreaAssignProjectId(null);
             }}
         />
+            </>
         </ErrorBoundary>
     );
 }

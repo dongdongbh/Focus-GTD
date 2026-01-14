@@ -5,6 +5,7 @@ import type { Task, TaskStatus } from '@mindwtr/core';
 import type { TaskSortBy } from '@mindwtr/core';
 import { TaskItem } from '../TaskItem';
 import { ErrorBoundary } from '../ErrorBoundary';
+import { ListEmptyState } from './list/ListEmptyState';
 import { TaskInput } from '../Task/TaskInput';
 import { PromptModal } from '../PromptModal';
 import { InboxProcessor } from './InboxProcessor';
@@ -683,10 +684,9 @@ export function ListView({ title, statusFilter }: ListViewProps) {
 
     return (
         <ErrorBoundary>
-        <>
-        <div className="flex h-full flex-col">
-            <div className="space-y-6">
-            <ListHeader
+            <div className="flex h-full flex-col">
+                <div className="space-y-6">
+                    <ListHeader
                 title={title}
                 showNextCount={isNextView}
                 nextCount={nextCount}
@@ -706,15 +706,15 @@ export function ListView({ title, statusFilter }: ListViewProps) {
                 t={t}
             />
 
-            {selectionMode && selectedIdsArray.length > 0 && (
-                <ListBulkActions
-                    selectionCount={selectedIdsArray.length}
-                    onMoveToStatus={handleBatchMove}
-                    onAddTag={handleBatchAddTag}
-                    onDelete={handleBatchDelete}
-                    t={t}
-                />
-            )}
+                    {selectionMode && selectedIdsArray.length > 0 && (
+                        <ListBulkActions
+                            selectionCount={selectedIdsArray.length}
+                            onMoveToStatus={handleBatchMove}
+                            onAddTag={handleBatchAddTag}
+                            onDelete={handleBatchDelete}
+                            t={t}
+                        />
+                    )}
 
             {/* Next Actions Warning */}
             {isNextView && nextCount > NEXT_WARNING_THRESHOLD && (
@@ -846,23 +846,12 @@ export function ListView({ title, statusFilter }: ListViewProps) {
                 aria-label={t('list.tasks') || 'Task list'}
             >
                 {filteredTasks.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground flex flex-col items-center gap-3">
-                        {hasFilters ? (
-                            <p>{t('filters.noMatch')}</p>
-                        ) : (
-                            <>
-                                <div className="text-base font-medium text-foreground">{emptyState.title}</div>
-                                <p className="text-sm text-muted-foreground">{emptyState.body}</p>
-                                <button
-                                    type="button"
-                                    onClick={() => openQuickAdd(statusFilter)}
-                                    className="text-xs px-3 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                                >
-                                    {emptyState.action}
-                                </button>
-                            </>
-                        )}
-                    </div>
+                    <ListEmptyState
+                        hasFilters={hasFilters}
+                        emptyState={emptyState}
+                        onAddTask={() => openQuickAdd(statusFilter)}
+                        t={t}
+                    />
                 ) : shouldVirtualize ? (
                     <div style={{ height: totalHeight, position: 'relative' }}>
                         {visibleTasks.map((task, index) => {
@@ -931,7 +920,6 @@ export function ListView({ title, statusFilter }: ListViewProps) {
                 exitSelectionMode();
             }}
         />
-        </>
         </ErrorBoundary>
     );
 }

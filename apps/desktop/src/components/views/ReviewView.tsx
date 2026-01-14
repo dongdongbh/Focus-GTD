@@ -122,67 +122,68 @@ export function ReviewView() {
                     }}
                 />
 
-            <ReviewFiltersBar
-                filterStatus={filterStatus}
-                statusOptions={statusOptions}
-                statusCounts={statusCounts}
-                onSelect={setFilterStatus}
-                t={t}
-            />
-
-            {selectionMode && (
-                <ReviewBulkActions
-                    selectionCount={selectedIdsArray.length}
-                    moveToStatus={moveToStatus}
-                    onMoveToStatus={handleBatchMove}
-                    onChangeMoveToStatus={setMoveToStatus}
-                    onAddTag={handleBatchAddTag}
-                    onDelete={handleBatchDelete}
-                    statusOptions={bulkStatuses}
+                <ReviewFiltersBar
+                    filterStatus={filterStatus}
+                    statusOptions={statusOptions}
+                    statusCounts={statusCounts}
+                    onSelect={setFilterStatus}
                     t={t}
                 />
-            )}
 
-            <ReviewTaskList
-                tasks={filteredTasks}
-                projectMap={projectMap}
-                selectionMode={selectionMode}
-                multiSelectedIds={multiSelectedIds}
-                onToggleSelect={toggleMultiSelect}
-                t={t}
-            />
+                {selectionMode && (
+                    <ReviewBulkActions
+                        selectionCount={selectedIdsArray.length}
+                        moveToStatus={moveToStatus}
+                        onMoveToStatus={handleBatchMove}
+                        onChangeMoveToStatus={setMoveToStatus}
+                        onAddTag={handleBatchAddTag}
+                        onDelete={handleBatchDelete}
+                        statusOptions={bulkStatuses}
+                        t={t}
+                    />
+                )}
 
-            {showGuide && (
-                <WeeklyReviewGuideModal onClose={() => setShowGuide(false)} />
-            )}
+                <ReviewTaskList
+                    tasks={filteredTasks}
+                    projectMap={projectMap}
+                    selectionMode={selectionMode}
+                    multiSelectedIds={multiSelectedIds}
+                    onToggleSelect={toggleMultiSelect}
+                    t={t}
+                />
 
-            {showDailyGuide && (
-                <DailyReviewGuideModal onClose={() => setShowDailyGuide(false)} />
-            )}
-        </div>
-        <PromptModal
-            isOpen={tagPromptOpen}
-            title={t('bulk.addTag')}
-            description={t('bulk.addTag')}
-            placeholder="#tag"
-            defaultValue=""
-            confirmLabel={t('common.save')}
-            cancelLabel={t('common.cancel')}
-            onCancel={() => setTagPromptOpen(false)}
-            onConfirm={async (value) => {
-                const input = value.trim();
-                if (!input) return;
-                const tag = input.startsWith('#') ? input : `#${input}`;
-                await batchUpdateTasks(tagPromptIds.map((id) => {
-                    const task = tasksById[id];
-                    const existingTags = task?.tags || [];
-                    const nextTags = Array.from(new Set([...existingTags, tag]));
-                    return { id, updates: { tags: nextTags } };
-                }));
-                setTagPromptOpen(false);
-                exitSelectionMode();
-            }}
-        />
+                {showGuide && (
+                    <WeeklyReviewGuideModal onClose={() => setShowGuide(false)} />
+                )}
+
+                {showDailyGuide && (
+                    <DailyReviewGuideModal onClose={() => setShowDailyGuide(false)} />
+                )}
+
+                <PromptModal
+                    isOpen={tagPromptOpen}
+                    title={t('bulk.addTag')}
+                    description={t('bulk.addTag')}
+                    placeholder="#tag"
+                    defaultValue=""
+                    confirmLabel={t('common.save')}
+                    cancelLabel={t('common.cancel')}
+                    onCancel={() => setTagPromptOpen(false)}
+                    onConfirm={async (value) => {
+                        const input = value.trim();
+                        if (!input) return;
+                        const tag = input.startsWith('#') ? input : `#${input}`;
+                        await batchUpdateTasks(tagPromptIds.map((id) => {
+                            const task = tasksById[id];
+                            const existingTags = task?.tags || [];
+                            const nextTags = Array.from(new Set([...existingTags, tag]));
+                            return { id, updates: { tags: nextTags } };
+                        }));
+                        setTagPromptOpen(false);
+                        exitSelectionMode();
+                    }}
+                />
+            </div>
         </ErrorBoundary>
     );
 }
