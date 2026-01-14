@@ -147,18 +147,20 @@ export function ProjectsView() {
     };
 
     // Group tasks by project to avoid O(N*M) filtering
-    const tasksByProject = projects.reduce((acc, project) => {
-        acc[project.id] = [];
-        return acc;
-    }, {} as Record<string, Task[]>);
-
-    tasks.forEach(task => {
-        if (task.projectId && !task.deletedAt && task.status !== 'done') {
-            if (tasksByProject[task.projectId]) {
-                tasksByProject[task.projectId].push(task);
+    const tasksByProject = useMemo(() => {
+        const map = projects.reduce((acc, project) => {
+            acc[project.id] = [];
+            return acc;
+        }, {} as Record<string, Task[]>);
+        tasks.forEach(task => {
+            if (task.projectId && !task.deletedAt && task.status !== 'done') {
+                if (map[task.projectId]) {
+                    map[task.projectId].push(task);
+                }
             }
-        }
-    });
+        });
+        return map;
+    }, [projects, tasks]);
 
     const areaOptions = useMemo(() => {
         const visibleProjects = projects.filter(p => !p.deletedAt);

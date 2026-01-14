@@ -201,8 +201,8 @@ export function SettingsView() {
 
 
 
-    const labelsFallback = language === 'zh' ? labelFallback.zh : labelFallback.en;
     const t = useMemo(() => {
+        const labelsFallback = language === 'zh' ? labelFallback.zh : labelFallback.en;
         const result = {} as SettingsLabels;
         (Object.keys(labelFallback.en) as Array<keyof SettingsLabels>).forEach((key) => {
             const i18nKey = labelKeyOverrides[key] ?? `settings.${key}`;
@@ -210,7 +210,7 @@ export function SettingsView() {
             result[key] = translated !== i18nKey ? translated : labelsFallback[key];
         });
         return result;
-    }, [labelsFallback, translate]);
+    }, [language, translate]);
 
     useEffect(() => {
         const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
