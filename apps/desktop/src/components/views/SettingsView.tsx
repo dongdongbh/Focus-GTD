@@ -11,9 +11,7 @@ import {
 } from 'lucide-react';
 import {
     DEFAULT_ANTHROPIC_THINKING_BUDGET,
-    generateUUID,
     safeFormatDate,
-    type ExternalCalendarSubscription,
     useTaskStore,
 } from '@mindwtr/core';
 
@@ -22,7 +20,6 @@ import { useLanguage, type Language } from '../../contexts/language-context';
 import { isTauriRuntime } from '../../lib/runtime';
 import { SyncService } from '../../lib/sync-service';
 import { clearLog, getLogPath, logDiagnosticsEnabled } from '../../lib/app-log';
-import { ExternalCalendarService } from '../../lib/external-calendar-service';
 import { checkForUpdates, type UpdateInfo, GITHUB_RELEASES_URL, verifyDownloadChecksum } from '../../lib/update-service';
 import { cn } from '../../lib/utils';
 import { SettingsMainPage } from './settings/SettingsMainPage';
@@ -33,6 +30,7 @@ import { SettingsCalendarPage } from './settings/SettingsCalendarPage';
 import { SettingsSyncPage } from './settings/SettingsSyncPage';
 import { SettingsAboutPage } from './settings/SettingsAboutPage';
 import { useAiSettings } from './settings/useAiSettings';
+import { useCalendarSettings } from './settings/useCalendarSettings';
 import { useSyncSettings } from './settings/useSyncSettings';
 
 type ThemeMode = 'system' | 'light' | 'dark' | 'eink' | 'nord' | 'sepia';
@@ -180,10 +178,17 @@ export function SettingsView() {
         updateSettings,
         showSaved,
     });
-    const [externalCalendars, setExternalCalendars] = useState<ExternalCalendarSubscription[]>([]);
-    const [newCalendarName, setNewCalendarName] = useState('');
-    const [newCalendarUrl, setNewCalendarUrl] = useState('');
-    const [calendarError, setCalendarError] = useState<string | null>(null);
+    const {
+        externalCalendars,
+        newCalendarName,
+        newCalendarUrl,
+        calendarError,
+        setNewCalendarName,
+        setNewCalendarUrl,
+        handleAddCalendar,
+        handleToggleCalendar,
+        handleRemoveCalendar,
+    } = useCalendarSettings({ showSaved });
     const [isCleaningAttachments, setIsCleaningAttachments] = useState(false);
 
     useEffect(() => {
@@ -242,10 +247,6 @@ export function SettingsView() {
     }, [loggingEnabled]);
 
     useEffect(() => {
-        ExternalCalendarService.getCalendars().then(setExternalCalendars).catch(console.error);
-    }, []);
-
-    useEffect(() => {
         const root = document.documentElement;
         root.classList.remove('theme-eink', 'theme-nord', 'theme-sepia');
 
@@ -287,41 +288,6 @@ export function SettingsView() {
     const handleKeybindingStyleChange = (style: 'vim' | 'emacs') => {
         setKeybindingStyle(style);
         showSaved();
-    };
-
-    const persistCalendars = async (next: ExternalCalendarSubscription[]) => {
-        setCalendarError(null);
-        setExternalCalendars(next);
-        try {
-            await ExternalCalendarService.setCalendars(next);
-            showSaved();
-        } catch (error) {
-            console.error(error);
-            setCalendarError(String(error));
-        }
-    };
-
-    const handleAddCalendar = () => {
-        const url = newCalendarUrl.trim();
-        if (!url) return;
-        const name = (newCalendarName.trim() || 'Calendar').trim();
-        const next = [
-            ...externalCalendars,
-            { id: generateUUID(), name, url, enabled: true },
-        ];
-        setNewCalendarName('');
-        setNewCalendarUrl('');
-        persistCalendars(next);
-    };
-
-    const handleToggleCalendar = (id: string, enabled: boolean) => {
-        const next = externalCalendars.map((calendar) => (calendar.id === id ? { ...calendar, enabled } : calendar));
-        persistCalendars(next);
-    };
-
-    const handleRemoveCalendar = (id: string) => {
-        const next = externalCalendars.filter((calendar) => calendar.id !== id);
-        persistCalendars(next);
     };
 
     const openLink = async (url: string) => {
