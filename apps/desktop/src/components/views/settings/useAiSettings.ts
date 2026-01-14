@@ -25,12 +25,13 @@ type UseAiSettingsOptions = {
     settings: AppData['settings'] | undefined;
     updateSettings: (next: Partial<AppData['settings']>) => Promise<void>;
     showSaved: () => void;
+    enabled?: boolean;
 };
 
 type AiSettingsUpdate = Partial<NonNullable<AppData['settings']>['ai']>;
 type SpeechSettingsUpdate = Partial<NonNullable<NonNullable<AppData['settings']>['ai']>['speechToText']>;
 
-export function useAiSettings({ isTauri, settings, updateSettings, showSaved }: UseAiSettingsOptions) {
+export function useAiSettings({ isTauri, settings, updateSettings, showSaved, enabled = true }: UseAiSettingsOptions) {
     const [aiApiKey, setAiApiKey] = useState('');
     const [speechApiKey, setSpeechApiKey] = useState('');
     const [speechDownloadState, setSpeechDownloadState] = useState<'idle' | 'downloading' | 'success' | 'error'>('idle');
@@ -103,7 +104,7 @@ export function useAiSettings({ isTauri, settings, updateSettings, showSaved }: 
     const handleAiApiKeyChange = useCallback((value: string) => {
         setAiApiKey(value);
         saveAIKey(aiProvider, value).catch(console.error);
-    }, [aiProvider]);
+    }, [aiProvider, enabled]);
 
     const handleSpeechProviderChange = useCallback((provider: 'openai' | 'gemini' | 'whisper') => {
         const nextModel = provider === 'openai'
@@ -123,7 +124,7 @@ export function useAiSettings({ isTauri, settings, updateSettings, showSaved }: 
         if (speechProvider !== 'whisper') {
             saveAIKey(speechProvider as AIProviderId, value).catch(console.error);
         }
-    }, [speechProvider]);
+    }, [speechProvider, enabled]);
 
     const resolveWhisperPath = useCallback(async (modelId: string) => {
         if (!isTauri) return null;
@@ -135,6 +136,11 @@ export function useAiSettings({ isTauri, settings, updateSettings, showSaved }: 
 
     useEffect(() => {
         let active = true;
+        if (!enabled) {
+            return () => {
+                active = false;
+            };
+        }
         loadAIKey(aiProvider)
             .then((key) => {
                 if (active) setAiApiKey(key);
@@ -149,6 +155,11 @@ export function useAiSettings({ isTauri, settings, updateSettings, showSaved }: 
 
     useEffect(() => {
         let active = true;
+        if (!enabled) {
+            return () => {
+                active = false;
+            };
+        }
         if (speechProvider === 'whisper') {
             setSpeechApiKey('');
             return () => {
@@ -169,6 +180,11 @@ export function useAiSettings({ isTauri, settings, updateSettings, showSaved }: 
 
     useEffect(() => {
         let active = true;
+        if (!enabled) {
+            return () => {
+                active = false;
+            };
+        }
         if (!isTauri || speechProvider !== 'whisper') {
             setSpeechOfflinePath(null);
             setSpeechOfflineSize(null);
@@ -212,6 +228,7 @@ export function useAiSettings({ isTauri, settings, updateSettings, showSaved }: 
             active = false;
         };
     }, [
+        enabled,
         isTauri,
         resolveWhisperPath,
         speechModel,

@@ -146,6 +146,7 @@ export function SettingsView() {
         showSaved,
         selectSyncFolderTitle,
     });
+    const aiSettingsEnabled = page === 'ai';
     const {
         aiEnabled,
         aiProvider,
@@ -183,6 +184,7 @@ export function SettingsView() {
         settings,
         updateSettings,
         showSaved,
+        enabled: aiSettingsEnabled,
     });
     const {
         externalCalendars,
