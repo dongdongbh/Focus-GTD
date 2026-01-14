@@ -2,6 +2,7 @@ import type { AppData, TaskEditorFieldId } from '@mindwtr/core';
 import { translateText } from '@mindwtr/core';
 
 import { cn } from '../../../lib/utils';
+import { reportError } from '../../../lib/report-error';
 import type { Language } from '../../../contexts/language-context';
 
 type Labels = {
@@ -41,7 +42,7 @@ type Labels = {
 type SettingsGtdPageProps = {
     t: Labels;
     language: Language;
-    settings: AppData['settings'];
+    settings?: AppData['settings'];
     updateSettings: (updates: Partial<AppData['settings']>) => Promise<void>;
     showSaved: () => void;
     autoArchiveDays: number;
@@ -55,6 +56,7 @@ export function SettingsGtdPage({
     showSaved,
     autoArchiveDays,
 }: SettingsGtdPageProps) {
+    const safeSettings = settings ?? ({} as AppData['settings']);
     const autoArchiveOptions = [0, 1, 3, 7, 14, 30, 60];
     const formatArchiveLabel = (days: number) => {
         if (days <= 0) return t.autoArchiveNever;
@@ -77,10 +79,10 @@ export function SettingsGtdPage({
         return `${days} ${label}`;
     };
     const featureHiddenFields = new Set<TaskEditorFieldId>();
-    if (settings.features?.priorities === false) {
+    if (safeSettings.features?.priorities === false) {
         featureHiddenFields.add('priority');
     }
-    if (settings.features?.timeEstimates === false) {
+    if (safeSettings.features?.timeEstimates === false) {
         featureHiddenFields.add('timeEstimate');
     }
 
@@ -114,16 +116,16 @@ export function SettingsGtdPage({
     const defaultTaskEditorHidden = defaultTaskEditorOrder.filter(
         (fieldId) => !defaultVisibleFields.has(fieldId) || featureHiddenFields.has(fieldId)
     );
-    const savedOrder = settings.gtd?.taskEditor?.order ?? [];
-    const savedHidden = settings.gtd?.taskEditor?.hidden ?? defaultTaskEditorHidden;
+    const savedOrder = safeSettings.gtd?.taskEditor?.order ?? [];
+    const savedHidden = safeSettings.gtd?.taskEditor?.hidden ?? defaultTaskEditorHidden;
     const taskEditorOrder: TaskEditorFieldId[] = [
         ...savedOrder.filter((id) => defaultTaskEditorOrder.includes(id)),
         ...defaultTaskEditorOrder.filter((id) => !savedOrder.includes(id)),
     ];
     const hiddenSet = new Set(savedHidden);
-    const defaultCaptureMethod = settings.gtd?.defaultCaptureMethod ?? 'text';
-    const saveAudioAttachments = settings.gtd?.saveAudioAttachments !== false;
-    const speechEnabled = settings.ai?.speechToText?.enabled === true;
+    const defaultCaptureMethod = safeSettings.gtd?.defaultCaptureMethod ?? 'text';
+    const saveAudioAttachments = safeSettings.gtd?.saveAudioAttachments !== false;
+    const speechEnabled = safeSettings.ai?.speechToText?.enabled === true;
     const fieldLabel = (fieldId: TaskEditorFieldId) => {
         switch (fieldId) {
             case 'status':
@@ -165,13 +167,13 @@ export function SettingsGtdPage({
         updateSettings({
             ...(nextFeatures ? { features: nextFeatures } : null),
             gtd: {
-                ...(settings.gtd ?? {}),
+                ...(safeSettings.gtd ?? {}),
                 taskEditor: {
-                    ...(settings.gtd?.taskEditor ?? {}),
+                    ...(safeSettings.gtd?.taskEditor ?? {}),
                     ...next,
                 },
             },
-        }).then(showSaved).catch(console.error);
+        }).then(showSaved).catch((error) => reportError('Failed to update task editor layout', error));
     };
     const toggleFieldVisibility = (fieldId: TaskEditorFieldId) => {
         const nextHidden = new Set(hiddenSet);
@@ -180,7 +182,7 @@ export function SettingsGtdPage({
         } else {
             nextHidden.add(fieldId);
         }
-        const nextFeatures = { ...(settings.features ?? {}) };
+        const nextFeatures = { ...(safeSettings.features ?? {}) };
         if (fieldId === 'priority') {
             nextFeatures.priorities = !nextHidden.has('priority');
         }
@@ -227,10 +229,10 @@ export function SettingsGtdPage({
                                 const value = Number.parseInt(e.target.value, 10);
                                 updateSettings({
                                     gtd: {
-                                        ...(settings.gtd ?? {}),
+                                        ...(safeSettings.gtd ?? {}),
                                         autoArchiveDays: Number.isFinite(value) ? value : 7,
                                     },
-                                }).then(showSaved).catch(console.error);
+                                }).then(showSaved).catch((error) => reportError('Failed to update auto-archive settings', error));
                             }}
                             className="text-sm bg-muted/50 text-foreground border border-border rounded px-2 py-1 hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/40"
                         >
@@ -255,10 +257,10 @@ export function SettingsGtdPage({
                             onClick={() => {
                                 updateSettings({
                                     gtd: {
-                                        ...(settings.gtd ?? {}),
+                                        ...(safeSettings.gtd ?? {}),
                                         defaultCaptureMethod: 'text',
                                     },
-                                }).then(showSaved).catch(console.error);
+                                }).then(showSaved).catch((error) => reportError('Failed to update capture defaults', error));
                             }}
                             className={cn(
                                 'px-3 py-1 text-xs rounded-md transition-colors',
@@ -274,10 +276,10 @@ export function SettingsGtdPage({
                             onClick={() => {
                                 updateSettings({
                                     gtd: {
-                                        ...(settings.gtd ?? {}),
+                                        ...(safeSettings.gtd ?? {}),
                                         defaultCaptureMethod: 'audio',
                                     },
-                                }).then(showSaved).catch(console.error);
+                                }).then(showSaved).catch((error) => reportError('Failed to update capture defaults', error));
                             }}
                             className={cn(
                                 'px-3 py-1 text-xs rounded-md transition-colors',
@@ -303,10 +305,10 @@ export function SettingsGtdPage({
                             onClick={() => {
                                 updateSettings({
                                     gtd: {
-                                        ...(settings.gtd ?? {}),
+                                        ...(safeSettings.gtd ?? {}),
                                         saveAudioAttachments: !saveAudioAttachments,
                                     },
-                                }).then(showSaved).catch(console.error);
+                                }).then(showSaved).catch((error) => reportError('Failed to update audio capture settings', error));
                             }}
                             className={cn(
                                 'relative inline-flex h-5 w-9 items-center rounded-full border transition-colors',
@@ -339,7 +341,7 @@ export function SettingsGtdPage({
                         <button
                             type="button"
                             onClick={() => {
-                                const nextFeatures = { ...(settings.features ?? {}) };
+                                const nextFeatures = { ...(safeSettings.features ?? {}) };
                                 nextFeatures.priorities = !defaultTaskEditorHidden.includes('priority');
                                 nextFeatures.timeEstimates = !defaultTaskEditorHidden.includes('timeEstimate');
                                 saveTaskEditor({ order: [...defaultTaskEditorOrder], hidden: [...defaultTaskEditorHidden] }, nextFeatures);

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { SyncService } from '../../../lib/sync-service';
+import { reportError } from '../../../lib/report-error';
 
 export type SyncBackend = 'file' | 'webdav' | 'cloud';
 
@@ -22,8 +23,8 @@ export const useSyncSettings = ({ isTauri, showSaved, selectSyncFolderTitle }: U
     const [cloudToken, setCloudToken] = useState('');
 
     useEffect(() => {
-        SyncService.getSyncPath().then(setSyncPath).catch(console.error);
-        SyncService.getSyncBackend().then(setSyncBackend).catch(console.error);
+        SyncService.getSyncPath().then(setSyncPath).catch((error) => reportError('Failed to load sync path', error));
+        SyncService.getSyncBackend().then(setSyncBackend).catch((error) => reportError('Failed to load sync backend', error));
         SyncService.getWebDavConfig()
             .then((cfg) => {
                 setWebdavUrl(cfg.url);
@@ -31,13 +32,13 @@ export const useSyncSettings = ({ isTauri, showSaved, selectSyncFolderTitle }: U
                 setWebdavPassword(cfg.password ?? '');
                 setWebdavHasPassword(cfg.hasPassword === true);
             })
-            .catch(console.error);
+            .catch((error) => reportError('Failed to update sync backend', error));
         SyncService.getCloudConfig()
             .then((cfg) => {
                 setCloudUrl(cfg.url);
                 setCloudToken(cfg.token);
             })
-            .catch(console.error);
+            .catch((error) => reportError('Failed to update sync path', error));
     }, []);
 
     const handleSaveSyncPath = useCallback(async () => {
@@ -67,7 +68,7 @@ export const useSyncSettings = ({ isTauri, showSaved, selectSyncFolderTitle }: U
                 }
             }
         } catch (error) {
-            console.error('Failed to change sync location:', error);
+            reportError('Failed to change sync location', error);
         }
     }, [isTauri, selectSyncFolderTitle, showSaved]);
 
@@ -124,7 +125,7 @@ export const useSyncSettings = ({ isTauri, showSaved, selectSyncFolderTitle }: U
 
             await SyncService.performSync();
         } catch (error) {
-            console.error('Sync failed:', error);
+            reportError('Sync failed', error);
             setSyncError(String(error));
         } finally {
             setIsSyncing(false);

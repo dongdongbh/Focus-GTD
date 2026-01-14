@@ -26,6 +26,7 @@ import {
     withRetry,
 } from '@mindwtr/core';
 import { isTauriRuntime } from './runtime';
+import { reportError } from './report-error';
 import { logSyncError, sanitizeLogMessage } from './app-log';
 import { webStorage } from './storage-adapter-web';
 
@@ -999,7 +1000,7 @@ export class SyncService {
                 clearTimeout(SyncService.externalSyncTimer);
             }
             SyncService.externalSyncTimer = setTimeout(() => {
-                SyncService.performSync().catch(console.error);
+                SyncService.performSync().catch((error) => reportError('Sync failed', error));
             }, 750);
         } catch (error) {
             console.warn('Failed to process external sync change', error);

@@ -3,6 +3,7 @@ import { useTaskStore } from '@mindwtr/core';
 import { useLanguage } from './language-context';
 import { KeybindingHelpModal } from '../components/KeybindingHelpModal';
 import { isTauriRuntime } from '../lib/runtime';
+import { reportError } from '../lib/report-error';
 import { useUiStore } from '../store/ui-store';
 
 export type KeybindingStyle = 'vim' | 'emacs';
@@ -108,7 +109,7 @@ export function KeybindingProvider({
 
     const isSidebarCollapsed = settings.sidebarCollapsed ?? false;
     const toggleSidebar = useCallback(() => {
-        updateSettings({ sidebarCollapsed: !isSidebarCollapsed }).catch(console.error);
+        updateSettings({ sidebarCollapsed: !isSidebarCollapsed }).catch((error) => reportError('Failed to update settings', error));
     }, [updateSettings, isSidebarCollapsed]);
 
     const scopeRef = useRef<TaskListScope | null>(null);
@@ -124,7 +125,7 @@ export function KeybindingProvider({
 
     const setStyle = useCallback((next: KeybindingStyle) => {
         setStyleState(next);
-        updateSettings({ keybindingStyle: next }).catch(console.error);
+        updateSettings({ keybindingStyle: next }).catch((error) => reportError('Failed to update settings', error));
     }, [updateSettings]);
 
     const registerTaskListScope = useCallback((scope: TaskListScope | null) => {

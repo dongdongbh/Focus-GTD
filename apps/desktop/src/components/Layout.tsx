@@ -4,6 +4,7 @@ import { cn } from '../lib/utils';
 import { useTaskStore, safeParseDate } from '@mindwtr/core';
 import { useLanguage } from '../contexts/language-context';
 import { useUiStore } from '../store/ui-store';
+import { reportError } from '../lib/report-error';
 
 interface LayoutProps {
     children: React.ReactNode;
@@ -56,7 +57,7 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
     const savedSearches = settings?.savedSearches || [];
 
     const toggleSidebar = () => {
-        updateSettings({ sidebarCollapsed: !isCollapsed }).catch(console.error);
+        updateSettings({ sidebarCollapsed: !isCollapsed }).catch((error) => reportError('Failed to update settings', error));
     };
 
 

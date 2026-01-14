@@ -1,6 +1,7 @@
 import type { AppData } from '@mindwtr/core';
 
 import { cn } from '../../../lib/utils';
+import { reportError } from '../../../lib/report-error';
 
 type Labels = {
     notificationsDesc: string;
@@ -47,7 +48,9 @@ export function SettingsNotificationsPage({
     showSaved,
 }: SettingsNotificationsPageProps) {
     const handleUpdate = (updates: Partial<AppData['settings']>) => {
-        updateSettings(updates).then(showSaved).catch(console.error);
+        updateSettings(updates)
+            .then(showSaved)
+            .catch((error) => reportError('Failed to update notification settings', error));
     };
 
     return (

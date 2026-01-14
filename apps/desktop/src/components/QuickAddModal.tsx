@@ -14,6 +14,7 @@ import { dataDir, join } from '@tauri-apps/api/path';
 import { useLanguage } from '../contexts/language-context';
 import { cn } from '../lib/utils';
 import { isTauriRuntime } from '../lib/runtime';
+import { reportError } from '../lib/report-error';
 import { loadAIKey } from '../lib/ai-config';
 import { encodeWav, resampleAudio } from '../lib/audio-utils';
 import { processAudioCapture, type SpeechToTextResult } from '../lib/speech-to-text';
@@ -56,7 +57,7 @@ export function QuickAddModal() {
                 const { invoke } = await import('@tauri-apps/api/core');
                 await invoke<boolean>('consume_quick_add_pending');
             } catch (e) {
-                console.error(e);
+                reportError('Failed to open quick add', e);
             }
         };
 
@@ -67,7 +68,7 @@ export function QuickAddModal() {
             ]);
 
             unlisten = await listen('quick-add', () => {
-                openFromTauri().catch(console.error);
+                openFromTauri().catch((error) => reportError('Failed to open quick add', error));
             });
 
             const pending = await invoke<boolean>('consume_quick_add_pending');
@@ -76,7 +77,7 @@ export function QuickAddModal() {
             }
         };
 
-        setup().catch(console.error);
+        setup().catch((error) => reportError('Failed to initialize quick add', error));
 
         return () => {
             if (unlisten) unlisten();
@@ -270,7 +271,7 @@ export function QuickAddModal() {
             setRecordingBackend('web');
             setIsRecording(true);
         } catch (error) {
-            console.error('Audio recording failed', error);
+            reportError('Audio recording failed', error);
             const message = error instanceof Error ? error.message : String(error);
             setRecordingError(`${t('quickAdd.audioErrorBody')} (${message})`);
         }
@@ -449,7 +450,7 @@ export function QuickAddModal() {
                 });
             }
         } catch (error) {
-            console.error('Failed to save recording', error);
+            reportError('Failed to save recording', error);
             const message = error instanceof Error ? error.message : String(error);
             setRecordingError(`${t('quickAdd.audioErrorBody')} (${message})`);
         } finally {

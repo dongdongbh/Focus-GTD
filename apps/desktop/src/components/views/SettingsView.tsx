@@ -19,6 +19,7 @@ import { useKeybindings } from '../../contexts/keybinding-context';
 import { useLanguage, type Language } from '../../contexts/language-context';
 import { isTauriRuntime } from '../../lib/runtime';
 import { SyncService } from '../../lib/sync-service';
+import { reportError } from '../../lib/report-error';
 import { clearLog, getLogPath, logDiagnosticsEnabled } from '../../lib/app-log';
 import { checkForUpdates, type UpdateInfo, GITHUB_RELEASES_URL, verifyDownloadChecksum } from '../../lib/update-service';
 import { SettingsMainPage } from './settings/SettingsMainPage';
@@ -155,7 +156,7 @@ export function SettingsView() {
         import('@tauri-apps/api/app')
             .then(({ getVersion }) => getVersion())
             .then(setAppVersion)
-            .catch(console.error);
+            .catch((error) => reportError('Failed to read app version', error));
 
         import('@tauri-apps/api/core')
             .then(async ({ invoke }) => {
@@ -170,13 +171,13 @@ export function SettingsView() {
                 setDbPath(db);
                 setLinuxDistro(distro);
             })
-            .catch(console.error);
+            .catch((error) => reportError('Failed to read system paths', error));
 
         getLogPath()
             .then((path) => {
                 if (path) setLogPath(path);
             })
-            .catch(console.error);
+            .catch((error) => reportError('Failed to read log path', error));
     }, [isTauri]);
 
     useEffect(() => {
@@ -214,7 +215,7 @@ export function SettingsView() {
                 : 'light';
         import('@tauri-apps/api/app')
             .then(({ setTheme }) => setTheme(tauriTheme))
-            .catch(console.error);
+            .catch((error) => reportError('Failed to set theme', error));
     }, [isTauri, themeMode]);
 
     const saveThemePreference = (mode: ThemeMode) => {
@@ -240,7 +241,7 @@ export function SettingsView() {
                 await open(url);
                 return;
             } catch (error) {
-                console.error('Failed to open external link:', error);
+                reportError('Failed to open external link', error);
             }
         }
 
@@ -253,7 +254,7 @@ export function SettingsView() {
             setIsCleaningAttachments(true);
             await SyncService.cleanupAttachmentsNow();
         } catch (error) {
-            console.error('Attachment cleanup failed:', error);
+            reportError('Attachment cleanup failed', error);
         } finally {
             setIsCleaningAttachments(false);
         }
@@ -266,7 +267,7 @@ export function SettingsView() {
                 ...(settings?.diagnostics ?? {}),
                 loggingEnabled: nextEnabled,
             },
-        }).then(showSaved).catch(console.error);
+        }).then(showSaved).catch((error) => reportError('Failed to update logging settings', error));
         if (nextEnabled) {
             await logDiagnosticsEnabled();
         }
@@ -297,7 +298,7 @@ export function SettingsView() {
             setIsDownloadingUpdate(false);
             setShowUpdateModal(true);
         } catch (error) {
-            console.error('Update check failed:', error);
+            reportError('Update check failed', error);
             setUpdateError(String(error));
         } finally {
             setIsCheckingUpdate(false);
@@ -334,7 +335,7 @@ export function SettingsView() {
             }
             setDownloadNotice(t.downloadStarted);
         } catch (error) {
-            console.error('Failed to open update URL:', error);
+            reportError('Failed to open update URL', error);
             window.open(targetUrl, '_blank');
             setDownloadNotice(t.downloadFailed);
         }
@@ -346,7 +347,7 @@ export function SettingsView() {
                     setDownloadNotice(t.linuxUpdateHint);
                 }
             } catch (error) {
-                console.error('Failed to detect platform:', error);
+                reportError('Failed to detect platform', error);
             }
         }
 

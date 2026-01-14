@@ -6,6 +6,7 @@ import { useLanguage } from '../../contexts/language-context';
 import { isTauriRuntime } from '../../lib/runtime';
 import { ExternalCalendarService } from '../../lib/external-calendar-service';
 import { cn } from '../../lib/utils';
+import { reportError } from '../../lib/report-error';
 
 const dayKey = (date: Date) => format(date, 'yyyy-MM-dd');
 
@@ -258,7 +259,7 @@ export function CalendarView() {
                 setExternalEvents(events);
             } catch (error) {
                 if (cancelled) return;
-                console.error(error);
+                reportError('Failed to load external calendars', error);
                 setExternalError(String(error));
                 setExternalEvents([]);
             } finally {
@@ -315,7 +316,8 @@ export function CalendarView() {
             return;
         }
 
-        updateTask(taskId, { startTime: slot.toISOString() }).catch(console.error);
+        updateTask(taskId, { startTime: slot.toISOString() })
+            .catch((error) => reportError('Failed to update scheduled time', error));
         setScheduleQuery('');
         setScheduleError(null);
     };
@@ -613,14 +615,16 @@ export function CalendarView() {
                                                         </button>
                                                         <button
                                                             className="text-xs px-2 py-1 rounded bg-muted hover:bg-muted/80"
-                                                            onClick={() => updateTask(task.id, { startTime: undefined }).catch(console.error)}
+                                                            onClick={() => updateTask(task.id, { startTime: undefined })
+                                                                .catch((error) => reportError('Failed to clear scheduled time', error))}
                                                             title={t('calendar.unschedule')}
                                                         >
                                                             {t('calendar.unschedule')}
                                                         </button>
                                                         <button
                                                             className="text-xs px-2 py-1 rounded bg-destructive text-destructive-foreground"
-                                                            onClick={() => deleteTask(task.id).catch(console.error)}
+                                                            onClick={() => deleteTask(task.id)
+                                                                .catch((error) => reportError('Failed to delete task', error))}
                                                         >
                                                             {t('common.delete')}
                                                         </button>

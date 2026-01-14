@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { generateUUID, type ExternalCalendarSubscription } from '@mindwtr/core';
 import { ExternalCalendarService } from '../../../lib/external-calendar-service';
+import { reportError } from '../../../lib/report-error';
 
 type UseCalendarSettingsOptions = {
     showSaved: () => void;
@@ -13,7 +14,9 @@ export function useCalendarSettings({ showSaved }: UseCalendarSettingsOptions) {
     const [calendarError, setCalendarError] = useState<string | null>(null);
 
     useEffect(() => {
-        ExternalCalendarService.getCalendars().then(setExternalCalendars).catch(console.error);
+        ExternalCalendarService.getCalendars()
+            .then(setExternalCalendars)
+            .catch((error) => reportError('Failed to load calendars', error));
     }, []);
 
     const persistCalendars = useCallback(async (next: ExternalCalendarSubscription[]) => {
@@ -23,7 +26,7 @@ export function useCalendarSettings({ showSaved }: UseCalendarSettingsOptions) {
             await ExternalCalendarService.setCalendars(next);
             showSaved();
         } catch (error) {
-            console.error(error);
+            reportError('Failed to save calendars', error);
             setCalendarError(String(error));
         }
     }, [showSaved]);

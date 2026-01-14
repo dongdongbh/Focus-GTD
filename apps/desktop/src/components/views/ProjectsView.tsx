@@ -462,88 +462,89 @@ export function ProjectsView() {
                     <div className="flex-1 flex flex-col h-full overflow-hidden">
                         {selectedProject ? (
                             <>
-                        <ProjectDetailsHeader
-                            project={selectedProject}
-                            projectColor={getProjectColorForTask(selectedProject)}
-                            editTitle={editProjectTitle}
-                            onEditTitleChange={setEditProjectTitle}
-                            onCommitTitle={handleCommitProjectTitle}
-                            onResetTitle={handleResetProjectTitle}
-                            onToggleSequential={() => updateProject(selectedProject.id, { isSequential: !selectedProject.isSequential })}
-                            onChangeStatus={(status) => updateProject(selectedProject.id, { status })}
-                            onArchive={handleArchiveProject}
-                            onReactivate={() => updateProject(selectedProject.id, { status: 'active' })}
-                            onDelete={handleDeleteProject}
-                            projectProgress={projectProgress}
-                            t={t}
-                        />
+                                <ProjectDetailsHeader
+                                    project={selectedProject}
+                                    projectColor={getProjectColorForTask(selectedProject)}
+                                    editTitle={editProjectTitle}
+                                    onEditTitleChange={setEditProjectTitle}
+                                    onCommitTitle={handleCommitProjectTitle}
+                                    onResetTitle={handleResetProjectTitle}
+                                    onToggleSequential={() => updateProject(selectedProject.id, { isSequential: !selectedProject.isSequential })}
+                                    onChangeStatus={(status) => updateProject(selectedProject.id, { status })}
+                                    onArchive={handleArchiveProject}
+                                    onReactivate={() => updateProject(selectedProject.id, { status: 'active' })}
+                                    onDelete={handleDeleteProject}
+                                    projectProgress={projectProgress}
+                                    t={t}
+                                />
 
-                        <ProjectNotesSection
-                            project={selectedProject}
-                            notesExpanded={notesExpanded}
-                            onToggleNotes={() => {
-                                setNotesExpanded(!notesExpanded);
-                                setShowNotesPreview(false);
-                            }}
-                            showNotesPreview={showNotesPreview}
-                            onTogglePreview={() => setShowNotesPreview((value) => !value)}
-                            onAddFile={addProjectFileAttachment}
-                            onAddLink={addProjectLinkAttachment}
-                            visibleAttachments={visibleAttachments}
-                            attachmentError={attachmentError}
-                            onOpenAttachment={openAttachment}
-                            onRemoveAttachment={removeProjectAttachment}
-                            onUpdateNotes={(value) => updateProject(selectedProject.id, { supportNotes: value })}
-                            t={t}
-                        />
-                        <ProjectDetailsFields
-                            project={selectedProject}
-                            selectedAreaId={
-                                selectedProject.areaId && areaById.has(selectedProject.areaId)
-                                    ? selectedProject.areaId
-                                    : NO_AREA
-                            }
-                            sortedAreas={sortedAreas}
-                            noAreaId={NO_AREA}
-                            t={t}
-                            tagDraft={tagDraft}
-                            onTagDraftChange={setTagDraft}
-                            onCommitTags={() => {
-                                const tags = parseTagInput(tagDraft);
-                                updateProject(selectedProject.id, { tagIds: tags });
-                            }}
-                            onNewArea={() => {
-                                setPendingAreaAssignProjectId(selectedProject.id);
-                                setShowQuickAreaPrompt(true);
-                            }}
-                            onManageAreas={() => setShowAreaManager(true)}
-                            onAreaChange={(value) => {
-                                updateProject(selectedProject.id, { areaId: value === NO_AREA ? undefined : value });
-                            }}
-                            reviewAtValue={toDateTimeLocalValue(selectedProject.reviewAt)}
-                            onReviewAtChange={(value) => updateProject(selectedProject.id, { reviewAt: value || undefined })}
-                            projectTaskTitle={projectTaskTitle}
-                            onProjectTaskTitleChange={setProjectTaskTitle}
-                            onSubmitProjectTask={async (value) => {
-                                const { title: parsedTitle, props, projectTitle } = parseQuickAdd(value, projects);
-                                const finalTitle = parsedTitle || value;
-                                const initialProps: Partial<Task> = { projectId: selectedProject.id, status: 'next', ...props };
-                                if (!props.status) initialProps.status = 'next';
-                                if (!props.projectId) initialProps.projectId = selectedProject.id;
-                                if (!initialProps.projectId && projectTitle) {
-                                    const created = await addProject(projectTitle, '#94a3b8');
-                                    initialProps.projectId = created.id;
-                                }
-                                await addTask(finalTitle, initialProps);
-                                setProjectTaskTitle('');
-                            }}
-                            projects={projects}
-                            contexts={allContexts}
-                            onCreateProject={async (title) => {
-                                const created = await addProject(title, '#94a3b8');
-                                return created.id;
-                            }}
-                        />
+                                <ProjectNotesSection
+                                    project={selectedProject}
+                                    notesExpanded={notesExpanded}
+                                    onToggleNotes={() => {
+                                        setNotesExpanded(!notesExpanded);
+                                        setShowNotesPreview(false);
+                                    }}
+                                    showNotesPreview={showNotesPreview}
+                                    onTogglePreview={() => setShowNotesPreview((value) => !value)}
+                                    onAddFile={addProjectFileAttachment}
+                                    onAddLink={addProjectLinkAttachment}
+                                    visibleAttachments={visibleAttachments}
+                                    attachmentError={attachmentError}
+                                    onOpenAttachment={openAttachment}
+                                    onRemoveAttachment={removeProjectAttachment}
+                                    onUpdateNotes={(value) => updateProject(selectedProject.id, { supportNotes: value })}
+                                    t={t}
+                                />
+
+                                <ProjectDetailsFields
+                                    project={selectedProject}
+                                    selectedAreaId={
+                                        selectedProject.areaId && areaById.has(selectedProject.areaId)
+                                            ? selectedProject.areaId
+                                            : NO_AREA
+                                    }
+                                    sortedAreas={sortedAreas}
+                                    noAreaId={NO_AREA}
+                                    t={t}
+                                    tagDraft={tagDraft}
+                                    onTagDraftChange={setTagDraft}
+                                    onCommitTags={() => {
+                                        const tags = parseTagInput(tagDraft);
+                                        updateProject(selectedProject.id, { tagIds: tags });
+                                    }}
+                                    onNewArea={() => {
+                                        setPendingAreaAssignProjectId(selectedProject.id);
+                                        setShowQuickAreaPrompt(true);
+                                    }}
+                                    onManageAreas={() => setShowAreaManager(true)}
+                                    onAreaChange={(value) => {
+                                        updateProject(selectedProject.id, { areaId: value === NO_AREA ? undefined : value });
+                                    }}
+                                    reviewAtValue={toDateTimeLocalValue(selectedProject.reviewAt)}
+                                    onReviewAtChange={(value) => updateProject(selectedProject.id, { reviewAt: value || undefined })}
+                                    projectTaskTitle={projectTaskTitle}
+                                    onProjectTaskTitleChange={setProjectTaskTitle}
+                                    onSubmitProjectTask={async (value) => {
+                                        const { title: parsedTitle, props, projectTitle } = parseQuickAdd(value, projects);
+                                        const finalTitle = parsedTitle || value;
+                                        const initialProps: Partial<Task> = { projectId: selectedProject.id, status: 'next', ...props };
+                                        if (!props.status) initialProps.status = 'next';
+                                        if (!props.projectId) initialProps.projectId = selectedProject.id;
+                                        if (!initialProps.projectId && projectTitle) {
+                                            const created = await addProject(projectTitle, '#94a3b8');
+                                            initialProps.projectId = created.id;
+                                        }
+                                        await addTask(finalTitle, initialProps);
+                                        setProjectTaskTitle('');
+                                    }}
+                                    projects={projects}
+                                    contexts={allContexts}
+                                    onCreateProject={async (title) => {
+                                        const created = await addProject(title, '#94a3b8');
+                                        return created.id;
+                                    }}
+                                />
 
                                 <div className="flex-1 overflow-y-auto pr-2">
                                     {orderedProjectTasks.length > 0 ? (

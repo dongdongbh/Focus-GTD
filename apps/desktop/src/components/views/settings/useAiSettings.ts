@@ -12,6 +12,7 @@ import {
 import { BaseDirectory, exists, mkdir, remove, size, writeFile } from '@tauri-apps/plugin-fs';
 import { dataDir, join } from '@tauri-apps/api/path';
 import { loadAIKey, saveAIKey } from '../../../lib/ai-config';
+import { reportError } from '../../../lib/report-error';
 import {
     DEFAULT_WHISPER_MODEL,
     GEMINI_SPEECH_MODELS,
@@ -72,7 +73,7 @@ export function useAiSettings({ isTauri, settings, updateSettings, showSaved, en
     const updateAISettings = useCallback((next: AiSettingsUpdate) => {
         updateSettings({ ai: { ...(settings?.ai ?? {}), ...next } })
             .then(showSaved)
-            .catch(console.error);
+            .catch((error) => reportError('Failed to update AI settings', error));
     }, [settings?.ai, showSaved, updateSettings]);
 
     const updateSpeechSettings = useCallback((next: SpeechSettingsUpdate) => {
@@ -83,7 +84,7 @@ export function useAiSettings({ isTauri, settings, updateSettings, showSaved, en
             },
         })
             .then(showSaved)
-            .catch(console.error);
+            .catch((error) => reportError('Failed to update speech settings', error));
     }, [settings?.ai, showSaved, updateSettings]);
 
     const handleAIProviderChange = useCallback((provider: AIProviderId) => {
@@ -103,7 +104,7 @@ export function useAiSettings({ isTauri, settings, updateSettings, showSaved, en
 
     const handleAiApiKeyChange = useCallback((value: string) => {
         setAiApiKey(value);
-        saveAIKey(aiProvider, value).catch(console.error);
+        saveAIKey(aiProvider, value).catch((error) => reportError('Failed to save AI key', error));
     }, [aiProvider, enabled]);
 
     const handleSpeechProviderChange = useCallback((provider: 'openai' | 'gemini' | 'whisper') => {
@@ -122,7 +123,7 @@ export function useAiSettings({ isTauri, settings, updateSettings, showSaved, en
     const handleSpeechApiKeyChange = useCallback((value: string) => {
         setSpeechApiKey(value);
         if (speechProvider !== 'whisper') {
-            saveAIKey(speechProvider as AIProviderId, value).catch(console.error);
+            saveAIKey(speechProvider as AIProviderId, value).catch((error) => reportError('Failed to save speech API key', error));
         }
     }, [speechProvider, enabled]);
 
