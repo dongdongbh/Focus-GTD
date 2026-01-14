@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Plus, AlertTriangle, Mic } from 'lucide-react';
-import { useTaskStore, TaskPriority, TimeEstimate, PRESET_CONTEXTS, PRESET_TAGS, sortTasksBy, Project, parseQuickAdd, matchesHierarchicalToken, safeParseDate, createAIProvider, type AIProviderId } from '@mindwtr/core';
+import { useTaskStore, TaskPriority, TimeEstimate, PRESET_CONTEXTS, PRESET_TAGS, sortTasksBy, Project, parseQuickAdd, matchesHierarchicalToken, safeParseDate } from '@mindwtr/core';
 import type { Task, TaskStatus } from '@mindwtr/core';
 import type { TaskSortBy } from '@mindwtr/core';
 import { TaskItem } from '../TaskItem';
@@ -16,7 +16,7 @@ import { VirtualTaskRow } from './list/VirtualTaskRow';
 import { useVirtualList } from './list/useVirtualList';
 import { useLanguage } from '../../contexts/language-context';
 import { useKeybindings } from '../../contexts/keybinding-context';
-import { buildCopilotConfig, loadAIKey } from '../../lib/ai-config';
+import { useListCopilot } from './list/useListCopilot';
 import { useUiStore } from '../../store/ui-store';
 
 
@@ -58,13 +58,6 @@ export function ListView({ title, statusFilter }: ListViewProps) {
     const [listScrollTop, setListScrollTop] = useState(0);
     const [listHeight, setListHeight] = useState(0);
     const [measureVersion, setMeasureVersion] = useState(0);
-    const [aiKey, setAiKey] = useState('');
-    const [copilotSuggestion, setCopilotSuggestion] = useState<{ context?: string; tags?: string[] } | null>(null);
-    const [copilotApplied, setCopilotApplied] = useState(false);
-    const [copilotContext, setCopilotContext] = useState<string | null>(null);
-    const [copilotTags, setCopilotTags] = useState<string[]>([]);
-    const aiEnabled = settings?.ai?.enabled === true;
-    const aiProvider = (settings?.ai?.provider ?? 'openai') as AIProviderId;
     const prioritiesEnabled = settings?.features?.priorities === true;
     const timeEstimatesEnabled = settings?.features?.timeEstimates === true;
     const showQuickDone = statusFilter === 'next';
@@ -101,62 +94,20 @@ export function ListView({ title, statusFilter }: ListViewProps) {
         return Array.from(new Set([...allContexts, ...allTags])).sort();
     }, [allContexts, allTags]);
 
-    useEffect(() => {
-        let active = true;
-        loadAIKey(aiProvider)
-            .then((key) => {
-                if (active) setAiKey(key);
-            })
-            .catch(() => {
-                if (active) setAiKey('');
-            });
-        return () => {
-            active = false;
-        };
-    }, [aiProvider]);
-
-    const copilotAbortRef = useRef<AbortController | null>(null);
-
-    useEffect(() => {
-        if (!aiEnabled || !aiKey) {
-            setCopilotSuggestion(null);
-            return;
-        }
-        const title = newTaskTitle.trim();
-        if (title.length < 4) {
-            setCopilotSuggestion(null);
-            return;
-        }
-        let cancelled = false;
-        const handle = setTimeout(async () => {
-            try {
-                const provider = createAIProvider(buildCopilotConfig(settings, aiKey));
-                if (copilotAbortRef.current) copilotAbortRef.current.abort();
-                const abortController = typeof AbortController === 'function' ? new AbortController() : null;
-                copilotAbortRef.current = abortController;
-                const suggestion = await provider.predictMetadata(
-                    { title, contexts: allContexts, tags: allTags },
-                    abortController ? { signal: abortController.signal } : undefined
-                );
-                if (cancelled) return;
-                if (!suggestion.context && !suggestion.tags?.length) {
-                    setCopilotSuggestion(null);
-                } else {
-                    setCopilotSuggestion({ context: suggestion.context, tags: suggestion.tags });
-                }
-            } catch {
-                if (!cancelled) setCopilotSuggestion(null);
-            }
-        }, 800);
-        return () => {
-            cancelled = true;
-            clearTimeout(handle);
-            if (copilotAbortRef.current) {
-                copilotAbortRef.current.abort();
-                copilotAbortRef.current = null;
-            }
-        };
-    }, [aiEnabled, aiKey, newTaskTitle, allContexts, allTags, settings]);
+    const {
+        aiEnabled,
+        copilotSuggestion,
+        copilotApplied,
+        copilotContext,
+        copilotTags,
+        applyCopilotSuggestion,
+        resetCopilot,
+    } = useListCopilot({
+        settings,
+        newTaskTitle,
+        allContexts,
+        allTags,
+    });
 
     const projectMap = useMemo(() => {
         return projects.reduce((acc, project) => {
@@ -513,10 +464,7 @@ export function ListView({ title, statusFilter }: ListViewProps) {
             }
             await addTask(finalTitle, initialProps);
             setNewTaskTitle('');
-            setCopilotSuggestion(null);
-            setCopilotApplied(false);
-            setCopilotContext(null);
-            setCopilotTags([]);
+            resetCopilot();
         }
     };
 
@@ -738,9 +686,7 @@ export function ListView({ title, statusFilter }: ListViewProps) {
                         }}
                         onChange={(next) => {
                             setNewTaskTitle(next);
-                            setCopilotApplied(false);
-                            setCopilotContext(null);
-                            setCopilotTags([]);
+                            resetCopilot();
                         }}
                         placeholder={`${t('nav.addTask')}... ${t('quickAdd.example')}`}
                         className="w-full bg-card border border-border rounded-lg py-3 pl-4 pr-20 shadow-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
@@ -767,11 +713,7 @@ export function ListView({ title, statusFilter }: ListViewProps) {
             {['inbox', 'next'].includes(statusFilter) && aiEnabled && copilotSuggestion && !copilotApplied && (
                 <button
                     type="button"
-                    onClick={() => {
-                        setCopilotContext(copilotSuggestion.context ?? null);
-                        setCopilotTags(copilotSuggestion.tags ?? []);
-                        setCopilotApplied(true);
-                    }}
+                    onClick={() => applyCopilotSuggestion(copilotSuggestion)}
                     className="mt-2 text-xs px-2 py-1 rounded bg-muted/30 border border-border text-muted-foreground hover:bg-muted/60 transition-colors text-left"
                 >
                     ✨ {t('copilot.suggested')}{' '}

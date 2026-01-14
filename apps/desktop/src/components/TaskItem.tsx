@@ -7,24 +7,18 @@ import {
     TaskPriority,
     TimeEstimate,
     TaskEditorFieldId,
-    type AppData,
     type Recurrence,
     type RecurrenceRule,
     type RecurrenceStrategy,
     parseRRuleString,
     getStatusColor,
     Project,
-    createAIProvider,
     PRESET_CONTEXTS,
     PRESET_TAGS,
-    type ClarifyResponse,
-    type AIProviderId,
 } from '@mindwtr/core';
 import { cn } from '../lib/utils';
 import { PromptModal } from './PromptModal';
 import { useLanguage } from '../contexts/language-context';
-import { isTauriRuntime } from '../lib/runtime';
-import { buildAIConfig, buildCopilotConfig, loadAIKey } from '../lib/ai-config';
 import { TaskItemEditor } from './Task/TaskItemEditor';
 import { TaskItemDisplay } from './Task/TaskItemDisplay';
 import { TaskItemFieldRenderer } from './Task/TaskItemFieldRenderer';
@@ -43,6 +37,7 @@ import {
 } from './Task/task-item-helpers';
 import { useTaskItemAttachments } from './Task/useTaskItemAttachments';
 import { useTaskItemRecurrence } from './Task/useTaskItemRecurrence';
+import { useTaskItemAi } from './Task/useTaskItemAi';
 
 interface TaskItemProps {
     task: Task;
@@ -119,24 +114,6 @@ export const TaskItem = memo(function TaskItem({
         closeText,
     } = useTaskItemAttachments({ task, t });
     const [isViewOpen, setIsViewOpen] = useState(false);
-    const [aiClarifyResponse, setAiClarifyResponse] = useState<ClarifyResponse | null>(null);
-    const [aiError, setAiError] = useState<string | null>(null);
-    const [aiBreakdownSteps, setAiBreakdownSteps] = useState<string[] | null>(null);
-    const [copilotSuggestion, setCopilotSuggestion] = useState<{ context?: string; timeEstimate?: TimeEstimate; tags?: string[] } | null>(null);
-    const [copilotApplied, setCopilotApplied] = useState(false);
-    const [copilotContext, setCopilotContext] = useState<string | undefined>(undefined);
-    const [copilotEstimate, setCopilotEstimate] = useState<TimeEstimate | undefined>(undefined);
-    const copilotInputRef = useRef<string>('');
-    const [isAIWorking, setIsAIWorking] = useState(false);
-    const copilotAbortRef = useRef<AbortController | null>(null);
-    const copilotMountedRef = useRef(true);
-    const aiEnabled = settings?.ai?.enabled === true;
-    const aiProvider = (settings?.ai?.provider ?? 'openai') as AIProviderId;
-    const copilotModel = settings?.ai?.copilotModel;
-    const copilotSettings = useMemo(() => ({
-        ai: { provider: aiProvider, copilotModel },
-    }), [aiProvider, copilotModel]);
-    const [aiKey, setAiKey] = useState('');
     const prioritiesEnabled = settings?.features?.priorities === true;
     const timeEstimatesEnabled = settings?.features?.timeEstimates === true;
     const isHighlighted = highlightTaskId === task.id;
@@ -203,6 +180,41 @@ export const TaskItem = memo(function TaskItem({
         const taskTags = tasks.flatMap((t) => t.tags || []);
         return Array.from(new Set([...PRESET_TAGS, ...taskTags])).filter(Boolean);
     }, [tasks]);
+
+    const {
+        aiEnabled,
+        isAIWorking,
+        aiClarifyResponse,
+        aiError,
+        aiBreakdownSteps,
+        copilotSuggestion,
+        copilotApplied,
+        copilotContext,
+        copilotEstimate,
+        resetCopilotDraft,
+        resetAiState,
+        clearAiBreakdown,
+        clearAiClarify,
+        applyCopilotSuggestion,
+        applyAISuggestion,
+        handleAIClarify,
+        handleAIBreakdown,
+    } = useTaskItemAi({
+        taskId: task.id,
+        settings,
+        t,
+        editTitle,
+        editDescription,
+        editContexts,
+        editTags,
+        tagOptions,
+        projectContext,
+        timeEstimatesEnabled,
+        setEditTitle,
+        setEditContexts,
+        setEditTags,
+        setEditTimeEstimate,
+    });
 
     const popularTagOptions = useMemo(() => {
         const counts = new Map<string, number>();
@@ -443,232 +455,9 @@ export const TaskItem = memo(function TaskItem({
         setEditReviewAt(toDateTimeLocalValue(task.reviewAt));
         resetAttachmentState(task.attachments);
         setShowDescriptionPreview(false);
-        setAiClarifyResponse(null);
-        setAiError(null);
-        setAiBreakdownSteps(null);
-        setCopilotSuggestion(null);
-        setCopilotApplied(false);
-        setCopilotContext(undefined);
-        setCopilotEstimate(undefined);
+        resetAiState();
     };
 
-    const resetCopilotDraft = () => {
-        setCopilotApplied(false);
-        setCopilotContext(undefined);
-        setCopilotEstimate(undefined);
-    };
-
-    const applyCopilotSuggestion = () => {
-        if (!copilotSuggestion) return;
-        if (copilotSuggestion.context) {
-            const currentContexts = editContexts.split(',').map((c) => c.trim()).filter(Boolean);
-            const nextContexts = Array.from(new Set([...currentContexts, copilotSuggestion.context]));
-            setEditContexts(nextContexts.join(', '));
-            setCopilotContext(copilotSuggestion.context);
-        }
-        if (copilotSuggestion.tags?.length) {
-            const currentTags = editTags.split(',').map((t) => t.trim()).filter(Boolean);
-            const nextTags = Array.from(new Set([...currentTags, ...copilotSuggestion.tags]));
-            setEditTags(nextTags.join(', '));
-        }
-        if (copilotSuggestion.timeEstimate && timeEstimatesEnabled) {
-            setEditTimeEstimate(copilotSuggestion.timeEstimate);
-            setCopilotEstimate(copilotSuggestion.timeEstimate);
-        }
-        setCopilotApplied(true);
-    };
-
-    useEffect(() => {
-        let active = true;
-        loadAIKey(aiProvider)
-            .then((key) => {
-                if (active) setAiKey(key);
-            })
-            .catch(() => {
-                if (active) setAiKey('');
-            });
-        return () => {
-            active = false;
-        };
-    }, [aiProvider]);
-
-    useEffect(() => {
-        if (!aiEnabled) {
-            setCopilotSuggestion(null);
-            return;
-        }
-        if (!aiKey) {
-            setCopilotSuggestion(null);
-            return;
-        }
-        const title = editTitle.trim();
-        const description = editDescription.trim();
-        const input = [title, description].filter(Boolean).join('\n');
-        if (input.length < 4) {
-            setCopilotSuggestion(null);
-            return;
-        }
-        const signature = JSON.stringify({
-            input,
-            contexts: editContexts,
-            provider: aiProvider,
-            model: copilotModel ?? '',
-            tags: tagOptions,
-            timeEstimatesEnabled,
-        });
-        if (signature === copilotInputRef.current) {
-            return;
-        }
-        copilotInputRef.current = signature;
-        let cancelled = false;
-        let localAbort: AbortController | null = null;
-        const handle = setTimeout(async () => {
-            try {
-                const currentContexts = editContexts.split(',').map((c) => c.trim()).filter(Boolean);
-                const provider = createAIProvider(buildCopilotConfig(copilotSettings as AppData['settings'], aiKey));
-                const abortController = typeof AbortController === 'function' ? new AbortController() : null;
-                localAbort = abortController;
-                const previousController = copilotAbortRef.current;
-                if (abortController) {
-                    copilotAbortRef.current = abortController;
-                }
-                if (previousController) {
-                    previousController.abort();
-                }
-                const suggestion = await provider.predictMetadata(
-                    {
-                        title: input,
-                        contexts: Array.from(new Set([...PRESET_CONTEXTS, ...currentContexts])),
-                        tags: tagOptions,
-                    },
-                    abortController ? { signal: abortController.signal } : undefined
-                );
-                if (cancelled || !copilotMountedRef.current) return;
-                if (!suggestion.context && (!timeEstimatesEnabled || !suggestion.timeEstimate) && !suggestion.tags?.length) {
-                    setCopilotSuggestion(null);
-                } else {
-                    setCopilotSuggestion(suggestion);
-                }
-            } catch {
-                if (!cancelled && copilotMountedRef.current) {
-                    setCopilotSuggestion(null);
-                }
-            }
-        }, 800);
-        return () => {
-            cancelled = true;
-            clearTimeout(handle);
-            if (copilotAbortRef.current && copilotAbortRef.current === localAbort) {
-                copilotAbortRef.current.abort();
-                copilotAbortRef.current = null;
-            }
-        };
-    }, [aiEnabled, aiKey, editTitle, editDescription, editContexts, aiProvider, copilotModel, copilotSettings, timeEstimatesEnabled, tagOptions]);
-
-    useEffect(() => {
-        copilotMountedRef.current = true;
-        return () => {
-            copilotMountedRef.current = false;
-            if (copilotAbortRef.current) {
-                copilotAbortRef.current.abort();
-                copilotAbortRef.current = null;
-            }
-        };
-    }, []);
-
-    const logAIDebug = async (context: string, message: string) => {
-        if (!isTauriRuntime()) return;
-        try {
-            const { invoke } = await import('@tauri-apps/api/core');
-            await invoke('log_ai_debug', {
-                context,
-                message,
-                provider: aiProvider,
-                model: settings?.ai?.model ?? '',
-                taskId: task.id,
-            });
-        } catch (error) {
-            console.warn('AI debug log failed', error);
-        }
-    };
-
-    const getAIProvider = () => {
-        if (!aiEnabled) {
-            setAiError(t('ai.disabledBody'));
-            return null;
-        }
-        if (!aiKey) {
-            setAiError(t('ai.missingKeyBody'));
-            return null;
-        }
-        return createAIProvider(buildAIConfig(settings, aiKey));
-    };
-
-    const applyAISuggestion = (suggested: { title?: string; context?: string; timeEstimate?: TimeEstimate }) => {
-        if (suggested.title) setEditTitle(suggested.title);
-        if (suggested.timeEstimate && timeEstimatesEnabled) setEditTimeEstimate(suggested.timeEstimate);
-        if (suggested.context) {
-            const currentContexts = editContexts.split(',').map((c) => c.trim()).filter(Boolean);
-            const nextContexts = Array.from(new Set([...currentContexts, suggested.context]));
-            setEditContexts(nextContexts.join(', '));
-        }
-        setAiClarifyResponse(null);
-    };
-
-    const handleAIClarify = async () => {
-        if (isAIWorking) return;
-        const title = editTitle.trim();
-        if (!title) return;
-        const provider = getAIProvider();
-        if (!provider) return;
-        setIsAIWorking(true);
-        setAiError(null);
-        setAiBreakdownSteps(null);
-        try {
-            const currentContexts = editContexts.split(',').map((c) => c.trim()).filter(Boolean);
-            const response = await provider.clarifyTask({
-                title,
-                contexts: Array.from(new Set([...PRESET_CONTEXTS, ...currentContexts])),
-                ...(projectContext ?? {}),
-            });
-            setAiClarifyResponse(response);
-        } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            setAiError(message);
-            await logAIDebug('clarify', message);
-            console.warn(error);
-        } finally {
-            setIsAIWorking(false);
-        }
-    };
-
-    const handleAIBreakdown = async () => {
-        if (isAIWorking) return;
-        const title = editTitle.trim();
-        if (!title) return;
-        const provider = getAIProvider();
-        if (!provider) return;
-        setIsAIWorking(true);
-        setAiError(null);
-        setAiBreakdownSteps(null);
-        try {
-            const response = await provider.breakDownTask({
-                title,
-                description: editDescription,
-                ...(projectContext ?? {}),
-            });
-            const steps = response.steps.map((step) => step.trim()).filter(Boolean).slice(0, 8);
-            if (steps.length === 0) return;
-            setAiBreakdownSteps(steps);
-        } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            setAiError(message);
-            await logAIDebug('breakdown', message);
-            console.warn(error);
-        } finally {
-            setIsAIWorking(false);
-        }
-    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -763,20 +552,20 @@ export const TaskItem = memo(function TaskItem({
                                         isCompleted: false,
                                     }));
                                     updateTask(task.id, { checklist: [...(task.checklist || []), ...newItems] });
-                                    setAiBreakdownSteps(null);
+                                    clearAiBreakdown();
                                 }}
-                                onDismissBreakdown={() => setAiBreakdownSteps(null)}
+                                onDismissBreakdown={clearAiBreakdown}
                                 aiClarifyResponse={aiClarifyResponse}
                                 onSelectClarifyOption={(action) => {
                                     setEditTitle(action);
-                                    setAiClarifyResponse(null);
+                                    clearAiClarify();
                                 }}
                                 onApplyAISuggestion={() => {
                                     if (aiClarifyResponse?.suggestedAction) {
                                         applyAISuggestion(aiClarifyResponse.suggestedAction);
                                     }
                                 }}
-                                onDismissClarify={() => setAiClarifyResponse(null)}
+                                onDismissClarify={clearAiClarify}
                                 projects={projects}
                                 editProjectId={editProjectId}
                                 setEditProjectId={setEditProjectId}
