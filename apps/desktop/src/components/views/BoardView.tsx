@@ -2,7 +2,7 @@ import React from 'react';
 import { DndContext, DragOverlay, useDraggable, useDroppable, DragEndEvent, DragStartEvent, closestCorners } from '@dnd-kit/core';
 import { TaskItem } from '../TaskItem';
 import { ErrorBoundary } from '../ErrorBoundary';
-import { useTaskStore, sortTasksBy, safeParseDate } from '@mindwtr/core';
+import { shallow, useTaskStore, sortTasksBy, safeParseDate } from '@mindwtr/core';
 import type { Task, TaskStatus } from '@mindwtr/core';
 import type { TaskSortBy } from '@mindwtr/core';
 import { useLanguage } from '../../contexts/language-context';
@@ -104,11 +104,21 @@ function DraggableTask({ task }: { task: Task }) {
 }
 
 export function BoardView() {
-    const { tasks, moveTask, settings, projects, areas } = useTaskStore();
+    const { tasks, moveTask, settings, projects, areas } = useTaskStore(
+        (state) => ({
+            tasks: state.tasks,
+            moveTask: state.moveTask,
+            settings: state.settings,
+            projects: state.projects,
+            areas: state.areas,
+        }),
+        shallow
+    );
     const { t } = useLanguage();
     const sortBy = (settings?.taskSortBy ?? 'default') as TaskSortBy;
 
     const [activeTask, setActiveTask] = React.useState<Task | null>(null);
+    const [computeSequential, setComputeSequential] = React.useState(false);
     const boardFilters = useUiStore((state) => state.boardFilters);
     const setBoardFilters = useUiStore((state) => state.setBoardFilters);
     const selectedProjectIds = boardFilters.selectedProjectIds;
@@ -135,6 +145,11 @@ export function BoardView() {
         sorted.forEach((project, index) => map.set(project.id, index));
         return map;
     }, [projects]);
+
+    React.useEffect(() => {
+        const timer = window.setTimeout(() => setComputeSequential(true), 0);
+        return () => window.clearTimeout(timer);
+    }, []);
     const toggleProjectFilter = (projectId: string) => {
         setBoardFilters({
             selectedProjectIds: boardFilters.selectedProjectIds.includes(projectId)
@@ -182,6 +197,7 @@ export function BoardView() {
     }, [projects]);
 
     const sequentialProjectFirstTasks = React.useMemo(() => {
+        if (!computeSequential) return new Set<string>();
         if (sequentialProjectIds.size === 0) return new Set<string>();
         const tasksByProject = new Map<string, Task[]>();
         for (const task of filteredTasks) {
@@ -209,7 +225,7 @@ export function BoardView() {
             if (firstTaskId) firstTaskIds.push(firstTaskId);
         });
         return new Set(firstTaskIds);
-    }, [filteredTasks, sequentialProjectIds]);
+    }, [computeSequential, filteredTasks, sequentialProjectIds]);
 
     const sortByProjectOrder = React.useCallback((items: Task[]) => {
         return [...items].sort((a, b) => {
@@ -232,14 +248,14 @@ export function BoardView() {
                 if (!task.projectId) return true;
                 const project = projectMap.get(task.projectId);
                 if (!project?.isSequential) return true;
-                return sequentialProjectFirstTasks.has(task.id);
+                return !computeSequential || sequentialProjectFirstTasks.has(task.id);
             });
             if (sortBy === 'default') {
                 return sortByProjectOrder(list);
             }
         }
         return list;
-    }, [filteredTasks, projectMap, sequentialProjectFirstTasks, sortBy, sortByProjectOrder]);
+    }, [computeSequential, filteredTasks, projectMap, sequentialProjectFirstTasks, sortBy, sortByProjectOrder]);
 
     const resolveText = React.useCallback((key: string, fallback: string) => {
         const value = t(key);

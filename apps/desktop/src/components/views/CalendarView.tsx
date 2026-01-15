@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { ErrorBoundary } from '../ErrorBoundary';
 import { endOfMonth, endOfWeek, format, isSameDay, isSameMonth, isToday, startOfMonth, startOfWeek, eachDayOfInterval } from 'date-fns';
-import { parseIcs, safeParseDate, safeParseDueDate, type ExternalCalendarEvent, type ExternalCalendarSubscription, useTaskStore, type Task } from '@mindwtr/core';
+import { shallow, parseIcs, safeParseDate, safeParseDueDate, type ExternalCalendarEvent, type ExternalCalendarSubscription, useTaskStore, type Task } from '@mindwtr/core';
 import { useLanguage } from '../../contexts/language-context';
 import { isTauriRuntime } from '../../lib/runtime';
 import { ExternalCalendarService } from '../../lib/external-calendar-service';
@@ -11,7 +11,15 @@ import { reportError } from '../../lib/report-error';
 const dayKey = (date: Date) => format(date, 'yyyy-MM-dd');
 
 export function CalendarView() {
-    const { tasks, updateTask, deleteTask, settings } = useTaskStore();
+    const { tasks, updateTask, deleteTask, settings } = useTaskStore(
+        (state) => ({
+            tasks: state.tasks,
+            updateTask: state.updateTask,
+            deleteTask: state.deleteTask,
+            settings: state.settings,
+        }),
+        shallow
+    );
     const { t } = useLanguage();
     const timeEstimatesEnabled = settings?.features?.timeEstimates === true;
     const today = new Date();

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+export { shallow } from 'zustand/shallow';
 import { generateUUID as uuidv4 } from './uuid';
 import { Task, TaskStatus, AppData, Project, Area, TaskEditorFieldId } from './types';
 import { StorageAdapter, TaskQueryOptions, noopStorage } from './storage';

@@ -1,13 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ErrorBoundary } from '../ErrorBoundary';
-import { useTaskStore, TaskPriority, TimeEstimate, PRESET_CONTEXTS, PRESET_TAGS, matchesHierarchicalToken, getTaskAgeLabel, getTaskStaleness, safeFormatDate, safeParseDate, safeParseDueDate, isDueForReview } from '@mindwtr/core';
+import { shallow, useTaskStore, TaskPriority, TimeEstimate, PRESET_CONTEXTS, PRESET_TAGS, matchesHierarchicalToken, getTaskAgeLabel, getTaskStaleness, safeFormatDate, safeParseDate, safeParseDueDate, isDueForReview } from '@mindwtr/core';
 import type { Task, TaskStatus } from '@mindwtr/core';
 import { useLanguage } from '../../contexts/language-context';
 import { cn } from '../../lib/utils';
 import { Clock, Star, Calendar, AlertCircle, ArrowRight, Filter, Check, type LucideIcon } from 'lucide-react';
 
 export function AgendaView() {
-    const { tasks, projects, updateTask, settings } = useTaskStore();
+    const { tasks, projects, updateTask, settings } = useTaskStore(
+        (state) => ({
+            tasks: state.tasks,
+            projects: state.projects,
+            updateTask: state.updateTask,
+            settings: state.settings,
+        }),
+        shallow
+    );
     const { t, language } = useLanguage();
     const [selectedTokens, setSelectedTokens] = useState<string[]>([]);
     const [selectedPriorities, setSelectedPriorities] = useState<TaskPriority[]>([]);

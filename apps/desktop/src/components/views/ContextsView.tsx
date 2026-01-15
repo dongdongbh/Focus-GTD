@@ -6,7 +6,7 @@ import { cn } from '../../lib/utils';
 import { useLanguage } from '../../contexts/language-context';
 
 export function ContextsView() {
-    const { tasks } = useTaskStore();
+    const tasks = useTaskStore((state) => state.tasks);
     const { t } = useLanguage();
     const [selectedContext, setSelectedContext] = useState<string | null>(null);
 

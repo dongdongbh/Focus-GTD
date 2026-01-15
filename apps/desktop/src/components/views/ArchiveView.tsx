@@ -1,13 +1,21 @@
 import { useMemo, useState } from 'react';
 import { ErrorBoundary } from '../ErrorBoundary';
-import { useTaskStore, sortTasksBy, safeFormatDate } from '@mindwtr/core';
+import { shallow, useTaskStore, sortTasksBy, safeFormatDate } from '@mindwtr/core';
 import type { TaskSortBy } from '@mindwtr/core';
 
 import { Undo2, Trash2 } from 'lucide-react';
 import { useLanguage } from '../../contexts/language-context';
 
 export function ArchiveView() {
-    const { _allTasks, updateTask, purgeTask, settings } = useTaskStore();
+    const { _allTasks, updateTask, purgeTask, settings } = useTaskStore(
+        (state) => ({
+            _allTasks: state._allTasks,
+            updateTask: state.updateTask,
+            purgeTask: state.purgeTask,
+            settings: state.settings,
+        }),
+        shallow
+    );
     const { t } = useLanguage();
     const [searchQuery, setSearchQuery] = useState('');
     const sortBy = (settings?.taskSortBy ?? 'default') as TaskSortBy;

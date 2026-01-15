@@ -155,31 +155,43 @@ export function SettingsView() {
             return;
         }
 
-        import('@tauri-apps/api/app')
-            .then(({ getVersion }) => getVersion())
-            .then(setAppVersion)
-            .catch((error) => reportError('Failed to read app version', error));
+        let cancelled = false;
+        const timer = window.setTimeout(() => {
+            if (cancelled) return;
+            import('@tauri-apps/api/app')
+                .then(({ getVersion }) => getVersion())
+                .then((version) => {
+                    if (!cancelled) setAppVersion(version);
+                })
+                .catch((error) => reportError('Failed to read app version', error));
 
-        import('@tauri-apps/api/core')
-            .then(async ({ invoke }) => {
-                const [data, config, db, distro] = await Promise.all([
-                    invoke<string>('get_data_path_cmd'),
-                    invoke<string>('get_config_path_cmd'),
-                    invoke<string>('get_db_path_cmd'),
-                    invoke<LinuxDistroInfo | null>('get_linux_distro'),
-                ]);
-                setDataPath(data);
-                setConfigPath(config);
-                setDbPath(db);
-                setLinuxDistro(distro);
-            })
-            .catch((error) => reportError('Failed to read system paths', error));
+            import('@tauri-apps/api/core')
+                .then(async ({ invoke }) => {
+                    const [data, config, db, distro] = await Promise.all([
+                        invoke<string>('get_data_path_cmd'),
+                        invoke<string>('get_config_path_cmd'),
+                        invoke<string>('get_db_path_cmd'),
+                        invoke<LinuxDistroInfo | null>('get_linux_distro'),
+                    ]);
+                    if (cancelled) return;
+                    setDataPath(data);
+                    setConfigPath(config);
+                    setDbPath(db);
+                    setLinuxDistro(distro);
+                })
+                .catch((error) => reportError('Failed to read system paths', error));
 
-        getLogPath()
-            .then((path) => {
-                if (path) setLogPath(path);
-            })
-            .catch((error) => reportError('Failed to read log path', error));
+            getLogPath()
+                .then((path) => {
+                    if (path && !cancelled) setLogPath(path);
+                })
+                .catch((error) => reportError('Failed to read log path', error));
+        }, 0);
+
+        return () => {
+            cancelled = true;
+            window.clearTimeout(timer);
+        };
     }, [isTauri]);
 
     useEffect(() => {

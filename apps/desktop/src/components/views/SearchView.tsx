@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from 'react';
 import { ErrorBoundary } from '../ErrorBoundary';
-import { useTaskStore, filterTasksBySearch, sortTasksBy, Project } from '@mindwtr/core';
+import { shallow, useTaskStore, filterTasksBySearch, sortTasksBy, Project } from '@mindwtr/core';
 import type { TaskSortBy } from '@mindwtr/core';
 import { TaskItem } from '../TaskItem';
 import { useLanguage } from '../../contexts/language-context';
@@ -12,7 +12,15 @@ interface SearchViewProps {
 }
 
 export function SearchView({ savedSearchId, onDelete }: SearchViewProps) {
-    const { tasks, projects, settings, updateSettings } = useTaskStore();
+    const { tasks, projects, settings, updateSettings } = useTaskStore(
+        (state) => ({
+            tasks: state.tasks,
+            projects: state.projects,
+            settings: state.settings,
+            updateSettings: state.updateSettings,
+        }),
+        shallow
+    );
     const { t } = useLanguage();
     const sortBy = (settings?.taskSortBy ?? 'default') as TaskSortBy;
 

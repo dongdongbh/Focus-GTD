@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useTaskStore, TaskPriority, TimeEstimate, PRESET_CONTEXTS, PRESET_TAGS, sortTasksBy, Project, parseQuickAdd, matchesHierarchicalToken, safeParseDate } from '@mindwtr/core';
+import { shallow, useTaskStore, TaskPriority, TimeEstimate, PRESET_CONTEXTS, PRESET_TAGS, sortTasksBy, Project, parseQuickAdd, matchesHierarchicalToken, safeParseDate } from '@mindwtr/core';
 import type { Task, TaskStatus } from '@mindwtr/core';
 import type { TaskSortBy } from '@mindwtr/core';
 import { TaskItem } from '../TaskItem';
@@ -31,7 +31,42 @@ const VIRTUAL_ROW_ESTIMATE = 120;
 const VIRTUAL_OVERSCAN = 600;
 
 export function ListView({ title, statusFilter }: ListViewProps) {
-    const { tasks, projects, areas, settings, updateSettings, addTask, addProject, updateTask, deleteTask, moveTask, batchMoveTasks, batchDeleteTasks, batchUpdateTasks, queryTasks, lastDataChangeAt } = useTaskStore();
+    const {
+        tasks,
+        projects,
+        areas,
+        settings,
+        updateSettings,
+        addTask,
+        addProject,
+        updateTask,
+        deleteTask,
+        moveTask,
+        batchMoveTasks,
+        batchDeleteTasks,
+        batchUpdateTasks,
+        queryTasks,
+        lastDataChangeAt,
+    } = useTaskStore(
+        (state) => ({
+            tasks: state.tasks,
+            projects: state.projects,
+            areas: state.areas,
+            settings: state.settings,
+            updateSettings: state.updateSettings,
+            addTask: state.addTask,
+            addProject: state.addProject,
+            updateTask: state.updateTask,
+            deleteTask: state.deleteTask,
+            moveTask: state.moveTask,
+            batchMoveTasks: state.batchMoveTasks,
+            batchDeleteTasks: state.batchDeleteTasks,
+            batchUpdateTasks: state.batchUpdateTasks,
+            queryTasks: state.queryTasks,
+            lastDataChangeAt: state.lastDataChangeAt,
+        }),
+        shallow
+    );
     const { t } = useLanguage();
     const { registerTaskListScope } = useKeybindings();
     const sortBy = (settings?.taskSortBy ?? 'default') as TaskSortBy;
@@ -41,7 +76,8 @@ export function ListView({ title, statusFilter }: ListViewProps) {
     const resetListFilters = useUiStore((state) => state.resetListFilters);
     const showListDetails = useUiStore((state) => state.listOptions.showDetails);
     const setListOptions = useUiStore((state) => state.setListOptions);
-    const [baseTasks, setBaseTasks] = useState<Task[]>([]);
+    const [baseTasks, setBaseTasks] = useState<Task[]>(() => (statusFilter === 'archived' ? [] : tasks));
+    const queryCacheRef = useRef<Map<string, Task[]>>(new Map());
     const selectedTokens = listFilters.tokens;
     const selectedPriorities = listFilters.priorities;
     const selectedTimeEstimates = listFilters.estimates;
@@ -186,21 +222,31 @@ export function ListView({ title, statusFilter }: ListViewProps) {
     useEffect(() => {
         let cancelled = false;
         const status = statusFilter === 'all' ? undefined : statusFilter;
-        // Seed with in-memory tasks so switching views doesn't flash empty state.
-        setBaseTasks(statusFilter === 'archived' ? [] : tasks);
+        const cacheKey = `${statusFilter}-${lastDataChangeAt}`;
+        const cached = queryCacheRef.current.get(cacheKey);
+        if (cached) {
+            setBaseTasks(cached);
+            return;
+        }
         queryTasks({
             status,
             includeArchived: status === 'archived',
             includeDeleted: false,
         }).then((result) => {
-            if (!cancelled) setBaseTasks(result);
+            if (cancelled) return;
+            setBaseTasks(result);
+            queryCacheRef.current.set(cacheKey, result);
+            if (queryCacheRef.current.size > 10) {
+                const firstKey = queryCacheRef.current.keys().next().value;
+                if (firstKey) queryCacheRef.current.delete(firstKey);
+            }
         }).catch(() => {
             if (!cancelled) setBaseTasks([]);
         });
         return () => {
             cancelled = true;
         };
-    }, [statusFilter, queryTasks, lastDataChangeAt, tasks]);
+    }, [statusFilter, queryTasks, lastDataChangeAt]);
 
     const filteredTasks = useMemo(() => {
         const now = new Date();

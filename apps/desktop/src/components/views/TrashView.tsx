@@ -1,13 +1,22 @@
 import { useMemo, useState } from 'react';
 import { ErrorBoundary } from '../ErrorBoundary';
-import { useTaskStore, sortTasksBy, safeFormatDate } from '@mindwtr/core';
+import { shallow, useTaskStore, sortTasksBy, safeFormatDate } from '@mindwtr/core';
 import type { TaskSortBy } from '@mindwtr/core';
 import { Undo2, Trash2 } from 'lucide-react';
 import { useLanguage } from '../../contexts/language-context';
 import { isTauriRuntime } from '../../lib/runtime';
 
 export function TrashView() {
-    const { _allTasks, restoreTask, purgeTask, purgeDeletedTasks, settings } = useTaskStore();
+    const { _allTasks, restoreTask, purgeTask, purgeDeletedTasks, settings } = useTaskStore(
+        (state) => ({
+            _allTasks: state._allTasks,
+            restoreTask: state.restoreTask,
+            purgeTask: state.purgeTask,
+            purgeDeletedTasks: state.purgeDeletedTasks,
+            settings: state.settings,
+        }),
+        shallow
+    );
     const { t } = useLanguage();
     const [searchQuery, setSearchQuery] = useState('');
     const sortBy = (settings?.taskSortBy ?? 'default') as TaskSortBy;

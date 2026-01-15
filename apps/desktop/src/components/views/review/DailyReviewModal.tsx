@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowRight, Calendar, Check, CheckSquare, RefreshCw, Star, X, type LucideIcon } from 'lucide-react';
-import { PRESET_CONTEXTS, isDueForReview, safeParseDate, safeParseDueDate, sortTasksBy, type Task, type TaskSortBy } from '@mindwtr/core';
-import { useTaskStore } from '@mindwtr/core';
+import { PRESET_CONTEXTS, isDueForReview, safeParseDate, safeParseDueDate, sortTasksBy, type Task, type TaskSortBy, shallow, useTaskStore } from '@mindwtr/core';
 import { cn } from '../../../lib/utils';
 import { useLanguage } from '../../../contexts/language-context';
 import { InboxProcessor } from '../InboxProcessor';
@@ -19,7 +18,18 @@ interface DailyReviewGuideModalProps {
 
 export function DailyReviewGuideModal({ onClose }: DailyReviewGuideModalProps) {
     const [currentStep, setCurrentStep] = useState<DailyReviewStep>('intro');
-    const { tasks, projects, areas, settings, addProject, updateTask, deleteTask } = useTaskStore();
+    const { tasks, projects, areas, settings, addProject, updateTask, deleteTask } = useTaskStore(
+        (state) => ({
+            tasks: state.tasks,
+            projects: state.projects,
+            areas: state.areas,
+            settings: state.settings,
+            addProject: state.addProject,
+            updateTask: state.updateTask,
+            deleteTask: state.deleteTask,
+        }),
+        shallow
+    );
     const { t } = useLanguage();
     const [isProcessing, setIsProcessing] = useState(false);
 

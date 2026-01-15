@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, FileText, CheckCircle, Save } from 'lucide-react';
-import { useTaskStore, Task, Project, searchAll, generateUUID, SavedSearch, getStorageAdapter } from '@mindwtr/core';
+import { shallow, useTaskStore, Task, Project, searchAll, generateUUID, SavedSearch, getStorageAdapter } from '@mindwtr/core';
 import { useLanguage } from '../contexts/language-context';
 import { cn } from '../lib/utils';
 import { PromptModal } from './PromptModal';
@@ -20,7 +20,16 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
     const [debouncedQuery, setDebouncedQuery] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
     const isOpenRef = useRef(false);
-    const { _allTasks, projects, settings, updateSettings, setHighlightTask } = useTaskStore();
+    const { _allTasks, projects, settings, updateSettings, setHighlightTask } = useTaskStore(
+        (state) => ({
+            _allTasks: state._allTasks,
+            projects: state.projects,
+            settings: state.settings,
+            updateSettings: state.updateSettings,
+            setHighlightTask: state.setHighlightTask,
+        }),
+        shallow
+    );
     const { t } = useLanguage();
 
     // Toggle search with Cmd+K / Ctrl+K

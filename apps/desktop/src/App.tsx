@@ -26,7 +26,7 @@ function App() {
     const [currentView, setCurrentView] = useState('inbox');
     const [activeView, setActiveView] = useState('inbox');
     const [isNavigating, startTransition] = useTransition();
-    const { fetchData } = useTaskStore();
+    const fetchData = useTaskStore((state) => state.fetchData);
     const setError = useTaskStore((state) => state.setError);
     const { t } = useLanguage();
     const isActiveRef = useRef(true);
@@ -255,10 +255,6 @@ function App() {
 
     const handleViewChange = useCallback((view: string) => {
         setCurrentView(view);
-        if (view === 'settings') {
-            setActiveView(view);
-            return;
-        }
         startTransition(() => {
             setActiveView(view);
         });

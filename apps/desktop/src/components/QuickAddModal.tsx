@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+    shallow,
     useTaskStore,
     parseQuickAdd,
     PRESET_CONTEXTS,
@@ -25,7 +26,15 @@ const AUDIO_CAPTURE_DIR = 'mindwtr/audio-captures';
 const TARGET_SAMPLE_RATE = 16_000;
 
 export function QuickAddModal() {
-    const { addTask, addProject, projects, settings } = useTaskStore();
+    const { addTask, addProject, projects, settings } = useTaskStore(
+        (state) => ({
+            addTask: state.addTask,
+            addProject: state.addProject,
+            projects: state.projects,
+            settings: state.settings,
+        }),
+        shallow
+    );
     const { t } = useLanguage();
     const [isOpen, setIsOpen] = useState(false);
     const [value, setValue] = useState('');

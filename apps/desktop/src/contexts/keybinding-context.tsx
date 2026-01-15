@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { useTaskStore } from '@mindwtr/core';
+import { shallow, useTaskStore } from '@mindwtr/core';
 import { useLanguage } from './language-context';
 import { KeybindingHelpModal } from '../components/KeybindingHelpModal';
 import { isTauriRuntime } from '../lib/runtime';
@@ -94,9 +94,13 @@ export function KeybindingProvider({
     onNavigate: (view: string) => void;
 }) {
     const isTest = import.meta.env.MODE === 'test' || import.meta.env.VITEST || process.env.NODE_ENV === 'test';
-    const store = useTaskStore();
-    const settings = store.settings || {};
-    const updateSettings = store.updateSettings || (async () => {});
+    const { settings, updateSettings } = useTaskStore(
+        (state) => ({
+            settings: state.settings,
+            updateSettings: state.updateSettings,
+        }),
+        shallow
+    );
     const { t } = useLanguage();
     const toggleFocusMode = useUiStore((state) => state.toggleFocusMode);
 

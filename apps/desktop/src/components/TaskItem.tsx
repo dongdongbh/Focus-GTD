@@ -1,5 +1,6 @@
 import { useMemo, useState, memo, useEffect, useRef, useCallback } from 'react';
 import {
+    shallow,
     useTaskStore,
     generateUUID,
     Task,
@@ -58,7 +59,34 @@ export const TaskItem = memo(function TaskItem({
     readOnly = false,
     compactMetaEnabled = true,
 }: TaskItemProps) {
-    const { updateTask, deleteTask, moveTask, projects, tasks, areas, settings, duplicateTask, resetTaskChecklist, highlightTaskId, setHighlightTask, addProject } = useTaskStore();
+    const {
+        updateTask,
+        deleteTask,
+        moveTask,
+        projects,
+        areas,
+        settings,
+        duplicateTask,
+        resetTaskChecklist,
+        highlightTaskId,
+        setHighlightTask,
+        addProject,
+    } = useTaskStore(
+        (state) => ({
+            updateTask: state.updateTask,
+            deleteTask: state.deleteTask,
+            moveTask: state.moveTask,
+            projects: state.projects,
+            areas: state.areas,
+            settings: state.settings,
+            duplicateTask: state.duplicateTask,
+            resetTaskChecklist: state.resetTaskChecklist,
+            highlightTaskId: state.highlightTaskId,
+            setHighlightTask: state.setHighlightTask,
+            addProject: state.addProject,
+        }),
+        shallow
+    );
     const { t } = useLanguage();
     const [isEditing, setIsEditing] = useState(false);
     const {
@@ -175,25 +203,48 @@ export const TaskItem = memo(function TaskItem({
     const projectById = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
     const areaById = useMemo(() => new Map(areas.map((area) => [area.id, area])), [areas]);
 
-    const projectContext = useMemo(() => {
-        const projectId = editProjectId || task.projectId;
-        if (!projectId) return null;
-        const project = projectById.get(projectId);
-        const projectTasks = tasks
-            .filter((t) => t.projectId === projectId && t.id !== task.id && !t.deletedAt)
-            .map((t) => `${t.title}${t.status ? ` (${t.status})` : ''}`)
-            .filter(Boolean)
-            .slice(0, 20);
-        return {
-            projectTitle: project?.title || '',
-            projectTasks,
-        };
-    }, [editProjectId, projectById, task.id, task.projectId, tasks]);
+    const [projectContext, setProjectContext] = useState<{ projectTitle: string; projectTasks: string[] } | null>(null);
+    const [tagOptions, setTagOptions] = useState<string[]>(PRESET_TAGS);
+    const [popularTagOptions, setPopularTagOptions] = useState<string[]>(PRESET_TAGS.slice(0, 8));
+    const [allContexts, setAllContexts] = useState<string[]>([...PRESET_CONTEXTS].sort());
 
-    const tagOptions = useMemo(() => {
-        const taskTags = tasks.flatMap((t) => t.tags || []);
-        return Array.from(new Set([...PRESET_TAGS, ...taskTags])).filter(Boolean);
-    }, [tasks]);
+    useEffect(() => {
+        if (!isEditing) return;
+        const { tasks: storeTasks, projects: storeProjects } = useTaskStore.getState();
+        const projectId = editProjectId || task.projectId;
+        const project = propProject || (projectId ? storeProjects.find((item) => item.id === projectId) : undefined);
+        if (projectId) {
+            const projectTasks = storeTasks
+                .filter((t) => t.projectId === projectId && t.id !== task.id && !t.deletedAt)
+                .map((t) => `${t.title}${t.status ? ` (${t.status})` : ''}`)
+                .filter(Boolean)
+                .slice(0, 20);
+            setProjectContext({
+                projectTitle: project?.title || '',
+                projectTasks,
+            });
+        } else {
+            setProjectContext(null);
+        }
+
+        const tagCounts = new Map<string, number>();
+        const tags = new Set<string>(PRESET_TAGS);
+        const contexts = new Set<string>(PRESET_CONTEXTS);
+        storeTasks.forEach((t) => {
+            t.tags?.forEach((tag) => {
+                tags.add(tag);
+                tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+            });
+            t.contexts?.forEach((ctx) => contexts.add(ctx));
+        });
+        setTagOptions(Array.from(tags).filter(Boolean));
+
+        const sortedTags = Array.from(tagCounts.entries())
+            .sort((a, b) => b[1] - a[1])
+            .map(([tag]) => tag);
+        setPopularTagOptions(Array.from(new Set([...sortedTags, ...PRESET_TAGS])).slice(0, 8));
+        setAllContexts(Array.from(contexts).sort());
+    }, [editProjectId, isEditing, propProject, task.id, task.projectId]);
 
     const {
         aiEnabled,
@@ -236,22 +287,6 @@ export const TaskItem = memo(function TaskItem({
         resetAiState();
     }, [resetLocalEditState, resetAiState, setShowCustomRecurrence]);
 
-    const popularTagOptions = useMemo(() => {
-        const counts = new Map<string, number>();
-        tasks.forEach((t) => {
-            t.tags?.forEach((tag) => {
-                counts.set(tag, (counts.get(tag) || 0) + 1);
-            });
-        });
-        const sorted = Array.from(counts.entries())
-            .sort((a, b) => b[1] - a[1])
-            .map(([tag]) => tag);
-        return Array.from(new Set([...sorted, ...PRESET_TAGS])).slice(0, 8);
-    }, [tasks]);
-    const allContexts = useMemo(() => {
-        const taskContexts = tasks.flatMap((t) => t.contexts || []);
-        return Array.from(new Set([...PRESET_CONTEXTS, ...taskContexts])).sort();
-    }, [tasks]);
     const DEFAULT_PROJECT_COLOR = '#94a3b8';
     const handleCreateProject = useCallback(async (title: string) => {
         const trimmed = title.trim();

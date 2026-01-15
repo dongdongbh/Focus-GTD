@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { ErrorBoundary } from '../ErrorBoundary';
-import { useTaskStore, Attachment, Task, type Project, generateUUID, parseQuickAdd, PRESET_CONTEXTS, validateAttachmentForUpload } from '@mindwtr/core';
+import { shallow, useTaskStore, Attachment, Task, type Project, generateUUID, parseQuickAdd, PRESET_CONTEXTS, validateAttachmentForUpload } from '@mindwtr/core';
 import { Folder } from 'lucide-react';
 import { DndContext, PointerSensor, useSensor, useSensors, closestCenter, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
@@ -26,7 +26,44 @@ import {
 } from './projects/projects-utils';
 
 export function ProjectsView() {
-    const { projects, tasks, areas, addArea, updateArea, deleteArea, reorderAreas, reorderProjects, reorderProjectTasks, addProject, updateProject, deleteProject, addTask, toggleProjectFocus, queryTasks, lastDataChangeAt } = useTaskStore();
+    const {
+        projects,
+        tasks,
+        areas,
+        addArea,
+        updateArea,
+        deleteArea,
+        reorderAreas,
+        reorderProjects,
+        reorderProjectTasks,
+        addProject,
+        updateProject,
+        deleteProject,
+        addTask,
+        toggleProjectFocus,
+        queryTasks,
+        lastDataChangeAt,
+    } = useTaskStore(
+        (state) => ({
+            projects: state.projects,
+            tasks: state.tasks,
+            areas: state.areas,
+            addArea: state.addArea,
+            updateArea: state.updateArea,
+            deleteArea: state.deleteArea,
+            reorderAreas: state.reorderAreas,
+            reorderProjects: state.reorderProjects,
+            reorderProjectTasks: state.reorderProjectTasks,
+            addProject: state.addProject,
+            updateProject: state.updateProject,
+            deleteProject: state.deleteProject,
+            addTask: state.addTask,
+            toggleProjectFocus: state.toggleProjectFocus,
+            queryTasks: state.queryTasks,
+            lastDataChangeAt: state.lastDataChangeAt,
+        }),
+        shallow
+    );
     const { t } = useLanguage();
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
     const [isCreating, setIsCreating] = useState(false);

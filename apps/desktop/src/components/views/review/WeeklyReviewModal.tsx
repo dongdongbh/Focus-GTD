@@ -6,6 +6,7 @@ import {
     safeFormatDate,
     safeParseDate,
     safeParseDueDate,
+    shallow,
     type ReviewSuggestion,
     useTaskStore,
     type Task,
@@ -32,7 +33,16 @@ type WeeklyReviewGuideModalProps = {
 
 export function WeeklyReviewGuideModal({ onClose }: WeeklyReviewGuideModalProps) {
     const [currentStep, setCurrentStep] = useState<ReviewStep>('intro');
-    const { tasks, projects, areas, settings, batchUpdateTasks } = useTaskStore();
+    const { tasks, projects, areas, settings, batchUpdateTasks } = useTaskStore(
+        (state) => ({
+            tasks: state.tasks,
+            projects: state.projects,
+            areas: state.areas,
+            settings: state.settings,
+            batchUpdateTasks: state.batchUpdateTasks,
+        }),
+        shallow
+    );
     const areaById = useMemo(() => new Map(areas.map((area) => [area.id, area])), [areas]);
     const { t } = useLanguage();
     const [aiSuggestions, setAiSuggestions] = useState<ReviewSuggestion[]>([]);

@@ -7,13 +7,23 @@ import { ReviewTaskList } from './review/ReviewTaskList';
 import { DailyReviewGuideModal } from './review/DailyReviewModal';
 import { WeeklyReviewGuideModal } from './review/WeeklyReviewModal';
 
-import { sortTasksBy, useTaskStore, type Project, type Task, type TaskStatus, type TaskSortBy } from '@mindwtr/core';
+import { shallow, sortTasksBy, useTaskStore, type Project, type Task, type TaskStatus, type TaskSortBy } from '@mindwtr/core';
 
 import { PromptModal } from '../PromptModal';
 import { useLanguage } from '../../contexts/language-context';
 
 export function ReviewView() {
-    const { tasks, projects, settings, batchMoveTasks, batchDeleteTasks, batchUpdateTasks } = useTaskStore();
+    const { tasks, projects, settings, batchMoveTasks, batchDeleteTasks, batchUpdateTasks } = useTaskStore(
+        (state) => ({
+            tasks: state.tasks,
+            projects: state.projects,
+            settings: state.settings,
+            batchMoveTasks: state.batchMoveTasks,
+            batchDeleteTasks: state.batchDeleteTasks,
+            batchUpdateTasks: state.batchUpdateTasks,
+        }),
+        shallow
+    );
     const { t } = useLanguage();
     const [filterStatus, setFilterStatus] = useState<TaskStatus | 'all'>('all');
     const [selectionMode, setSelectionMode] = useState(false);
