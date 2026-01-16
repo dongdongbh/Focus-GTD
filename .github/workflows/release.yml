@@ -469,13 +469,116 @@ jobs:
             echo "Winget package not found yet; skipping submission."
           fi
 
-      - name: Submit to Winget
+      - name: Checkout winget-pkgs fork
         if: steps.winget_check.outputs.exists == 'true'
-        uses: vedantmgoyal2009/winget-releaser@v2
+        uses: actions/checkout@v4
         with:
-          identifier: dongdongbh.Mindwtr
-          installers-regex: '_x64-setup\.exe$'
+          repository: dongdongbh/winget-pkgs
           token: ${{ secrets.PACKAGES_REPO_TOKEN }}
+          path: winget-pkgs
+
+      - name: Prepare Winget manifests
+        if: steps.winget_check.outputs.exists == 'true'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="${{ steps.version.outputs.tag }}"
+          SHA_EXE="${{ steps.hashes.outputs.sha_exe }}"
+          RELEASE_DATE="$(date -u +%Y-%m-%d)"
+          INSTALLER_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/Mindwtr_${VERSION}_x64-setup.exe"
+          MANIFEST_DIR="winget-pkgs/manifests/d/dongdongbh/Mindwtr/${VERSION}"
+
+          mkdir -p "$MANIFEST_DIR"
+
+          cat > "$MANIFEST_DIR/dongdongbh.Mindwtr.installer.yaml" <<EOF
+# yaml-language-server: \$schema=https://aka.ms/winget-manifest.installer.1.10.0.schema.json
+PackageIdentifier: dongdongbh.Mindwtr
+PackageVersion: ${VERSION}
+InstallerLocale: en-US
+InstallerType: nullsoft
+InstallModes:
+  - interactive
+  - silent
+UpgradeBehavior: install
+Commands:
+  - mindwtr
+Dependencies:
+  PackageDependencies:
+    - PackageIdentifier: Microsoft.VCRedist.2015+.x64
+ProductCode: Mindwtr
+ReleaseDate: ${RELEASE_DATE}
+AppsAndFeaturesEntries:
+  - ProductCode: Mindwtr
+InstallationMetadata:
+  DefaultInstallLocation: '%LOCALAPPDATA%\\Programs\\Mindwtr'
+Installers:
+  - Architecture: x64
+    InstallerUrl: ${INSTALLER_URL}
+    InstallerSha256: ${SHA_EXE}
+ManifestType: installer
+ManifestVersion: 1.10.0
+EOF
+
+          cat > "$MANIFEST_DIR/dongdongbh.Mindwtr.locale.en-US.yaml" <<EOF
+# yaml-language-server: \$schema=https://aka.ms/winget-manifest.defaultLocale.1.10.0.schema.json
+PackageIdentifier: dongdongbh.Mindwtr
+PackageVersion: ${VERSION}
+PackageLocale: en-US
+Publisher: dongdongbh
+PublisherUrl: https://github.com/dongdongbh
+PublisherSupportUrl: https://github.com/dongdongbh/Mindwtr/issues
+Author: dongdongbh
+PackageName: Mindwtr
+PackageUrl: https://github.com/dongdongbh/Mindwtr
+License: MIT
+LicenseUrl: https://github.com/dongdongbh/Mindwtr/blob/HEAD/LICENSE
+ShortDescription: A complete Getting Things Done (GTD) productivity system.
+Description: A complete Getting Things Done (GTD) productivity system.
+Moniker: mindwtr
+Tags:
+  - cross-platform
+  - getting-things-done
+  - gtd
+  - gtd-applications
+  - gtd-workflow
+  - personal-management
+  - productivity
+  - second-brain
+  - task-management
+  - todo-app
+ReleaseNotesUrl: https://github.com/${{ github.repository }}/releases/tag/${TAG}
+ManifestType: defaultLocale
+ManifestVersion: 1.10.0
+EOF
+
+          cat > "$MANIFEST_DIR/dongdongbh.Mindwtr.version.yaml" <<EOF
+# yaml-language-server: \$schema=https://aka.ms/winget-manifest.version.1.10.0.schema.json
+PackageIdentifier: dongdongbh.Mindwtr
+PackageVersion: ${VERSION}
+DefaultLocale: en-US
+ManifestType: version
+ManifestVersion: 1.10.0
+EOF
+
+      - name: Submit Winget PR
+        if: steps.winget_check.outputs.exists == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.PACKAGES_REPO_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          BRANCH="mindwtr-${VERSION}"
+          cd winget-pkgs
+          git checkout -b "$BRANCH"
+          git add manifests/d/dongdongbh/Mindwtr/"$VERSION"
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git commit -m "New version: Mindwtr ${VERSION}"
+          git push -u origin "$BRANCH"
+          gh pr create \
+            --repo microsoft/winget-pkgs \
+            --head "dongdongbh:${BRANCH}" \
+            --base master \
+            --title "New version: Mindwtr ${VERSION}" \
+            --body "Automated manifest update for Mindwtr ${VERSION}."
 
       - name: Commit and push
         run: |
