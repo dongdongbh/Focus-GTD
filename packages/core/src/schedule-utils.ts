@@ -1,10 +1,19 @@
 import { isAfter } from 'date-fns';
-import { safeParseDate, safeParseDueDate } from './date';
+import { hasTimeComponent, safeParseDate, safeParseDueDate } from './date';
 import type { Task } from './types';
 
 type ScheduleOptions = {
     includeReviewAt?: boolean;
 };
+
+function normalizeReviewAtForNotifications(reviewAt: string | undefined | null): Date | null {
+    const parsed = safeParseDate(reviewAt ?? undefined);
+    if (!parsed) return null;
+    if (!hasTimeComponent(reviewAt ?? undefined)) {
+        parsed.setHours(9, 0, 0, 0);
+    }
+    return parsed;
+}
 
 /**
  * Returns the next future scheduled time for a task, based on startTime/dueDate.
@@ -17,7 +26,7 @@ export function getNextScheduledAt(task: Task, now: Date = new Date(), options: 
     const candidates: Date[] = [];
     const start = safeParseDate(task.startTime);
     const due = safeParseDueDate(task.dueDate);
-    const review = options.includeReviewAt ? safeParseDate(task.reviewAt) : null;
+    const review = options.includeReviewAt ? normalizeReviewAtForNotifications(task.reviewAt) : null;
 
     if (start && isAfter(start, now)) candidates.push(start);
     if (due && isAfter(due, now)) candidates.push(due);

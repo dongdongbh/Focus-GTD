@@ -106,6 +106,14 @@ export function TaskItemFieldRenderer({
         editTextDirection,
         popularTagOptions,
     } = data;
+
+    const [reviewTimeDraft, setReviewTimeDraft] = useState('');
+    useEffect(() => {
+        const parsed = editReviewAt ? safeParseDate(editReviewAt) : null;
+        const hasTime = hasTimeComponent(editReviewAt);
+        const next = hasTime && parsed ? safeFormatDate(parsed, 'HH:mm') : '';
+        setReviewTimeDraft(next);
+    }, [editReviewAt]);
     const {
         toggleDescriptionPreview,
         setEditDescription,
@@ -329,6 +337,31 @@ export function TaskItemFieldRenderer({
                 const parsed = editReviewAt ? safeParseDate(editReviewAt) : null;
                 const dateValue = parsed ? safeFormatDate(parsed, 'yyyy-MM-dd') : '';
                 const timeValue = hasTime && parsed ? safeFormatDate(parsed, 'HH:mm') : '';
+                const normalizeTimeInput = (value: string): string | null => {
+                    const trimmed = value.trim();
+                    if (!trimmed) return '';
+                    const compact = trimmed.replace(/\s+/g, '');
+                    let hours: number;
+                    let minutes: number;
+                    if (/^\d{1,2}:\d{2}$/.test(compact)) {
+                        const [h, m] = compact.split(':');
+                        hours = Number(h);
+                        minutes = Number(m);
+                    } else if (/^\d{3,4}$/.test(compact)) {
+                        if (compact.length === 3) {
+                            hours = Number(compact.slice(0, 1));
+                            minutes = Number(compact.slice(1));
+                        } else {
+                            hours = Number(compact.slice(0, 2));
+                            minutes = Number(compact.slice(2));
+                        }
+                    } else {
+                        return null;
+                    }
+                    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+                    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+                    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+                };
                 const handleDateChange = (value: string) => {
                     if (!value) {
                         setEditReviewAt('');
@@ -361,10 +394,21 @@ export function TaskItemFieldRenderer({
                                 className="text-xs bg-muted/50 border border-border rounded px-2 py-1 text-foreground"
                             />
                             <input
-                                type="time"
+                                type="text"
                                 aria-label={t('task.aria.reviewTime')}
-                                value={timeValue}
-                                onChange={(e) => handleTimeChange(e.target.value)}
+                                value={reviewTimeDraft}
+                                inputMode="numeric"
+                                placeholder="HH:MM"
+                                onChange={(e) => setReviewTimeDraft(e.target.value)}
+                                onBlur={() => {
+                                    const normalized = normalizeTimeInput(reviewTimeDraft);
+                                    if (normalized === null) {
+                                        setReviewTimeDraft(timeValue);
+                                        return;
+                                    }
+                                    setReviewTimeDraft(normalized);
+                                    handleTimeChange(normalized);
+                                }}
                                 className="text-xs bg-muted/50 border border-border rounded px-2 py-1 text-foreground"
                             />
                         </div>

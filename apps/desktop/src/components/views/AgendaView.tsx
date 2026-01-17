@@ -79,7 +79,6 @@ export function AgendaView() {
             .filter((task) => {
                 if (task.deletedAt) return false;
                 if (task.status === 'done' || task.status === 'archived') return false;
-                if (task.status !== 'waiting' && task.status !== 'someday') return false;
                 if (!isDueForReview(task.reviewAt, now)) return false;
                 if (task.projectId) {
                     const project = projectMap.get(task.projectId);
@@ -96,7 +95,7 @@ export function AgendaView() {
         return projects
             .filter((project) => {
                 if (project.deletedAt) return false;
-                if (project.status !== 'waiting' && project.status !== 'someday') return false;
+                if (project.status === 'archived') return false;
                 return isDueForReview(project.reviewAt, now);
             })
             .sort((a, b) => {

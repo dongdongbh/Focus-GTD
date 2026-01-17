@@ -1,4 +1,4 @@
-import { getDailyDigestSummary, getNextScheduledAt, stripMarkdown, type Language, Task, parseTimeOfDay, getTranslationsSync, loadTranslations, loadStoredLanguageSync, safeParseDate } from '@mindwtr/core';
+import { getDailyDigestSummary, getNextScheduledAt, stripMarkdown, type Language, Task, parseTimeOfDay, getTranslationsSync, loadTranslations, loadStoredLanguageSync, safeParseDate, hasTimeComponent } from '@mindwtr/core';
 import { useTaskStore } from '@mindwtr/core';
 
 const notifiedAtByTask = new Map<string, string>();
@@ -121,6 +121,9 @@ function checkDueAndNotify() {
             if (project.status === 'archived') return;
             const review = safeParseDate(project.reviewAt);
             if (!review) return;
+            if (!hasTimeComponent(project.reviewAt)) {
+                review.setHours(9, 0, 0, 0);
+            }
             const diffMs = review.getTime() - now.getTime();
             if (diffMs < 0 || diffMs > CHECK_INTERVAL_MS) return;
             const key = review.toISOString();

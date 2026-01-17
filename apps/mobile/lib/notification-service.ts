@@ -1,4 +1,4 @@
-import { getNextScheduledAt, type Language, Task, type Project, useTaskStore, parseTimeOfDay, getTranslations, loadStoredLanguage, safeParseDate } from '@mindwtr/core';
+import { getNextScheduledAt, type Language, Task, type Project, useTaskStore, parseTimeOfDay, getTranslations, loadStoredLanguage, safeParseDate, hasTimeComponent } from '@mindwtr/core';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
@@ -292,7 +292,17 @@ async function rescheduleAll(api: NotificationsApi) {
     if (project.deletedAt) continue;
     if (project.status === 'archived') continue;
     const reviewAt = safeParseDate(project.reviewAt);
-    if (!reviewAt || reviewAt.getTime() <= now.getTime()) {
+    if (!reviewAt) {
+      const existing = scheduledByProject.get(project.id);
+      if (existing) {
+        await cancelProjectNotification(api, project.id, existing);
+      }
+      continue;
+    }
+    if (!hasTimeComponent(project.reviewAt)) {
+      reviewAt.setHours(9, 0, 0, 0);
+    }
+    if (reviewAt.getTime() <= now.getTime()) {
       const existing = scheduledByProject.get(project.id);
       if (existing) {
         await cancelProjectNotification(api, project.id, existing);
