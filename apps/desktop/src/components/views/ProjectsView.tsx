@@ -27,6 +27,7 @@ import {
 } from './projects/projects-utils';
 import { usePerformanceMonitor } from '../../hooks/usePerformanceMonitor';
 import { checkBudget } from '../../config/performanceBudgets';
+import { useUiStore } from '../../store/ui-store';
 
 export function ProjectsView() {
     const perf = usePerformanceMonitor('ProjectsView');
@@ -47,6 +48,8 @@ export function ProjectsView() {
         toggleProjectFocus,
         queryTasks,
         lastDataChangeAt,
+        highlightTaskId,
+        setHighlightTask,
     } = useTaskStore(
         (state) => ({
             projects: state.projects,
@@ -65,13 +68,18 @@ export function ProjectsView() {
             toggleProjectFocus: state.toggleProjectFocus,
             queryTasks: state.queryTasks,
             lastDataChangeAt: state.lastDataChangeAt,
+            highlightTaskId: state.highlightTaskId,
+            setHighlightTask: state.setHighlightTask,
         }),
         shallow
     );
     const getDerivedState = useTaskStore((state) => state.getDerivedState);
     const { allContexts } = getDerivedState();
     const { t } = useLanguage();
-    const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+    const { selectedProjectId, setSelectedProjectId } = useUiStore((state) => ({
+        selectedProjectId: state.projectView.selectedProjectId,
+        setSelectedProjectId: (value: string | null) => state.setProjectView({ selectedProjectId: value }),
+    }));
     const [isCreating, setIsCreating] = useState(false);
     const [newProjectTitle, setNewProjectTitle] = useState('');
     const [notesExpanded, setNotesExpanded] = useState(false);
@@ -328,6 +336,19 @@ export function ProjectsView() {
         });
         return sorted;
     }, [projectTasks, selectedProject]);
+
+    useEffect(() => {
+        if (!highlightTaskId) return;
+        const exists = orderedProjectTasks.some((task) => task.id === highlightTaskId)
+            || areaTasks.some((task) => task.id === highlightTaskId);
+        if (!exists) return;
+        const el = document.querySelector(`[data-task-id="${highlightTaskId}"]`) as HTMLElement | null;
+        if (el) {
+            el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
+        const timer = window.setTimeout(() => setHighlightTask(null), 4000);
+        return () => window.clearTimeout(timer);
+    }, [highlightTaskId, orderedProjectTasks, areaTasks, setHighlightTask]);
 
     const handleTaskDragEnd = (event: DragEndEvent) => {
         if (!selectedProject) return;

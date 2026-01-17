@@ -290,6 +290,14 @@
     @apply truncate;
   }
 
+  .metadata-badge--interactive {
+    @apply cursor-pointer;
+  }
+
+  .metadata-badge--interactive .metadata-badge {
+    @apply transition-opacity hover:opacity-80;
+  }
+
   .metadata-badge--project {
     background-color: hsl(var(--badge-project-bg));
     color: hsl(var(--badge-project-fg));

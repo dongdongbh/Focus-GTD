@@ -22,6 +22,10 @@ interface UiState {
         open: boolean;
     };
     setBoardFilters: (partial: Partial<UiState['boardFilters']>) => void;
+    projectView: {
+        selectedProjectId: string | null;
+    };
+    setProjectView: (partial: Partial<UiState['projectView']>) => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -56,4 +60,9 @@ export const useUiStore = create<UiState>((set) => ({
     },
     setBoardFilters: (partial) =>
         set((state) => ({ boardFilters: { ...state.boardFilters, ...partial } })),
+    projectView: {
+        selectedProjectId: null,
+    },
+    setProjectView: (partial) =>
+        set((state) => ({ projectView: { ...state.projectView, ...partial } })),
 }));

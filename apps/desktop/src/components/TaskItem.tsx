@@ -33,6 +33,7 @@ import { useTaskItemAttachments } from './Task/useTaskItemAttachments';
 import { useTaskItemRecurrence } from './Task/useTaskItemRecurrence';
 import { useTaskItemAi } from './Task/useTaskItemAi';
 import { useTaskItemEditState } from './Task/useTaskItemEditState';
+import { useUiStore } from '../store/ui-store';
 
 interface TaskItemProps {
     task: Task;
@@ -89,6 +90,9 @@ export const TaskItem = memo(function TaskItem({
         }),
         shallow
     );
+    const { setSelectedProjectId } = useUiStore((state) => ({
+        setSelectedProjectId: (value: string | null) => state.setProjectView({ selectedProjectId: value }),
+    }));
     const { t } = useLanguage();
     const [isEditing, setIsEditing] = useState(false);
     const {
@@ -565,6 +569,11 @@ export const TaskItem = memo(function TaskItem({
         ? (project?.areaId ? areaById.get(project.areaId) : undefined)
         : (task.areaId ? areaById.get(task.areaId) : undefined);
     const projectColor = project?.areaId ? areaById.get(project.areaId)?.color : undefined;
+    const handleOpenProject = useCallback((projectId: string) => {
+        setHighlightTask(task.id);
+        setSelectedProjectId(projectId);
+        window.dispatchEvent(new CustomEvent('mindwtr:navigate', { detail: { view: 'projects' } }));
+    }, [setHighlightTask, setSelectedProjectId, task.id]);
     const selectAriaLabel = (() => {
         const label = t('task.select');
         return label === 'task.select' ? 'Select task' : label;
@@ -684,11 +693,12 @@ export const TaskItem = memo(function TaskItem({
                             }}
                             onDelete={() => deleteTask(task.id)}
                             onDuplicate={() => duplicateTask(task.id, false)}
-                            onStatusChange={(status) => moveTask(task.id, status)}
-                            openAttachment={openAttachment}
-                            visibleAttachments={visibleAttachments}
-                            recurrenceRule={recurrenceRule}
-                            recurrenceStrategy={recurrenceStrategy}
+                onStatusChange={(status) => moveTask(task.id, status)}
+                onOpenProject={project ? handleOpenProject : undefined}
+                openAttachment={openAttachment}
+                visibleAttachments={visibleAttachments}
+                recurrenceRule={recurrenceRule}
+                recurrenceStrategy={recurrenceStrategy}
                 prioritiesEnabled={prioritiesEnabled}
                 timeEstimatesEnabled={timeEstimatesEnabled}
                 isStagnant={isStagnant}

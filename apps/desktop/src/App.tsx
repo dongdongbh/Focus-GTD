@@ -267,6 +267,17 @@ function App() {
         });
     }, [startTransition]);
 
+    useEffect(() => {
+        const handler: EventListener = (event) => {
+            const detail = (event as CustomEvent<{ view?: string }>).detail;
+            if (detail?.view) {
+                handleViewChange(detail.view);
+            }
+        };
+        window.addEventListener('mindwtr:navigate', handler);
+        return () => window.removeEventListener('mindwtr:navigate', handler);
+    }, [handleViewChange]);
+
     return (
         <ErrorBoundary>
             <KeybindingProvider currentView={currentView} onNavigate={handleViewChange}>

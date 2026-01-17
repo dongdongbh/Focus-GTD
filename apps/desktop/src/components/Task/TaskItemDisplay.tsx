@@ -4,6 +4,7 @@ import { getChecklistProgress, getTaskAgeLabel, getTaskStaleness, getTaskUrgency
 import { cn } from '../../lib/utils';
 import { MetadataBadge } from '../ui/MetadataBadge';
 import { AttachmentProgressIndicator } from '../AttachmentProgressIndicator';
+import type { KeyboardEvent, MouseEvent } from 'react';
 
 interface TaskItemDisplayProps {
     task: Task;
@@ -18,6 +19,7 @@ interface TaskItemDisplayProps {
     onDelete: () => void;
     onDuplicate: () => void;
     onStatusChange: (status: TaskStatus) => void;
+    onOpenProject?: (projectId: string) => void;
     openAttachment: (attachment: Attachment) => void;
     visibleAttachments: Attachment[];
     recurrenceRule: RecurrenceRule | '';
@@ -73,6 +75,7 @@ export function TaskItemDisplay({
     readOnly,
     compactMetaEnabled = true,
     t,
+    onOpenProject,
 }: TaskItemDisplayProps) {
     const checklistProgress = getChecklistProgress(task);
     const ageLabel = getTaskAgeLabel(task.createdAt);
@@ -81,6 +84,45 @@ export function TaskItemDisplay({
         && (project || area || (task.contexts?.length ?? 0) > 0);
     const resolvedDirection = resolveTaskTextDirection(task);
     const isRtl = resolvedDirection === 'rtl';
+    const handleProjectClick = (event: MouseEvent<HTMLSpanElement>, projectId: string) => {
+        event.stopPropagation();
+        onOpenProject?.(projectId);
+    };
+    const handleProjectKeyDown = (event: KeyboardEvent<HTMLSpanElement>, projectId: string) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            event.stopPropagation();
+            onOpenProject?.(projectId);
+        }
+    };
+    const renderProjectBadge = () => {
+        if (!project) return null;
+        if (!onOpenProject) {
+            return (
+                <MetadataBadge
+                    variant="project"
+                    label={project.title}
+                    dotColor={projectColor || '#94a3b8'}
+                />
+            );
+        }
+        return (
+            <span
+                role="button"
+                tabIndex={0}
+                onClick={(event) => handleProjectClick(event, project.id)}
+                onKeyDown={(event) => handleProjectKeyDown(event, project.id)}
+                className="inline-flex metadata-badge--interactive"
+                aria-label={`${t('projects.title') || 'Project'}: ${project.title}`}
+            >
+                <MetadataBadge
+                    variant="project"
+                    label={project.title}
+                    dotColor={projectColor || '#94a3b8'}
+                />
+            </span>
+        );
+    };
 
     return (
         <div className="flex-1 min-w-0 flex items-start justify-between gap-3">
@@ -136,13 +178,7 @@ export function TaskItemDisplay({
                     )}
                     {showCompactMeta && (
                         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                            {project && (
-                                <MetadataBadge
-                                    variant="project"
-                                    label={project.title}
-                                    dotColor={projectColor || '#94a3b8'}
-                                />
-                            )}
+                            {renderProjectBadge()}
                             {!project && area && (
                                 <MetadataBadge
                                     variant="project"
@@ -186,13 +222,7 @@ export function TaskItemDisplay({
                         )}
 
                         <div className="flex flex-wrap items-center gap-3 mt-2 text-xs">
-                            {project && (
-                                <MetadataBadge
-                                    variant="project"
-                                    label={project.title}
-                                    dotColor={projectColor || '#94a3b8'}
-                                />
-                            )}
+                            {renderProjectBadge()}
                             {!project && area && (
                                 <MetadataBadge
                                     variant="project"
