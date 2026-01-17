@@ -51,6 +51,8 @@ export function ListView({ title, statusFilter }: ListViewProps) {
         batchUpdateTasks,
         queryTasks,
         lastDataChangeAt,
+        highlightTaskId,
+        setHighlightTask,
     } = useTaskStore(
         (state) => ({
             tasks: state.tasks,
@@ -68,6 +70,8 @@ export function ListView({ title, statusFilter }: ListViewProps) {
             batchUpdateTasks: state.batchUpdateTasks,
             queryTasks: state.queryTasks,
             lastDataChangeAt: state.lastDataChangeAt,
+            highlightTaskId: state.highlightTaskId,
+            setHighlightTask: state.setHighlightTask,
         }),
         shallow
     );
@@ -331,6 +335,22 @@ export function ListView({ title, statusFilter }: ListViewProps) {
         shouldVirtualize,
         rowVirtualizer,
     ]);
+
+    useEffect(() => {
+        if (!highlightTaskId) return;
+        const index = filteredTasks.findIndex((task) => task.id === highlightTaskId);
+        if (index < 0) return;
+        setSelectedIndex(index);
+        if (shouldVirtualize && listScrollRef.current) {
+            rowVirtualizer.scrollToIndex(index, { align: 'center' });
+        }
+        const el = document.querySelector(`[data-task-id="${highlightTaskId}"]`) as HTMLElement | null;
+        if (el && typeof (el as any).scrollIntoView === 'function') {
+            el.scrollIntoView({ block: 'center' });
+        }
+        const timer = window.setTimeout(() => setHighlightTask(null), 4000);
+        return () => window.clearTimeout(timer);
+    }, [highlightTaskId, filteredTasks, shouldVirtualize, rowVirtualizer, setHighlightTask]);
 
     const selectNext = useCallback(() => {
         if (filteredTasks.length === 0) return;

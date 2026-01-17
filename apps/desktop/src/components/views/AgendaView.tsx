@@ -10,12 +10,14 @@ import { checkBudget } from '../../config/performanceBudgets';
 
 export function AgendaView() {
     const perf = usePerformanceMonitor('AgendaView');
-    const { tasks, projects, updateTask, settings } = useTaskStore(
+    const { tasks, projects, updateTask, settings, highlightTaskId, setHighlightTask } = useTaskStore(
         (state) => ({
             tasks: state.tasks,
             projects: state.projects,
             updateTask: state.updateTask,
             settings: state.settings,
+            highlightTaskId: state.highlightTaskId,
+            setHighlightTask: state.setHighlightTask,
         }),
         shallow
     );
@@ -134,6 +136,16 @@ export function AgendaView() {
             setSelectedTimeEstimates([]);
         }
     }, [prioritiesEnabled, timeEstimatesEnabled, selectedPriorities.length, selectedTimeEstimates.length]);
+
+    useEffect(() => {
+        if (!highlightTaskId) return;
+        const el = document.querySelector(`[data-task-id="${highlightTaskId}"]`) as HTMLElement | null;
+        if (el && typeof (el as any).scrollIntoView === 'function') {
+            el.scrollIntoView({ block: 'center' });
+        }
+        const timer = window.setTimeout(() => setHighlightTask(null), 4000);
+        return () => window.clearTimeout(timer);
+    }, [highlightTaskId, setHighlightTask]);
     const getPriorityBadge = (priority: TaskPriority) => {
         switch (priority) {
             case 'low':
@@ -321,10 +333,14 @@ export function AgendaView() {
             : null;
 
         return (
-            <div className={cn(
-                "bg-card border rounded-lg p-4 hover:shadow-md transition-all",
-                task.isFocusedToday && "border-yellow-500 bg-slate-900/90 text-slate-100"
-            )}>
+            <div
+                data-task-id={task.id}
+                className={cn(
+                    "bg-card border rounded-lg p-4 hover:shadow-md transition-all",
+                    task.isFocusedToday && "border-yellow-500 bg-slate-900/90 text-slate-100",
+                    highlightTaskId === task.id && "ring-2 ring-primary/60 border-primary/60"
+                )}
+            >
                 <div className="flex items-start gap-3">
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
