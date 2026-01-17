@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { ErrorBoundary } from '../ErrorBoundary';
 import { TaskItem } from '../TaskItem';
-import { shallow, useTaskStore, Attachment, Task, type Project, generateUUID, parseQuickAdd, PRESET_CONTEXTS, validateAttachmentForUpload } from '@mindwtr/core';
+import { shallow, useTaskStore, Attachment, Task, type Project, generateUUID, parseQuickAdd, validateAttachmentForUpload } from '@mindwtr/core';
 import { Folder } from 'lucide-react';
 import { DndContext, PointerSensor, useSensor, useSensors, closestCenter, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
@@ -68,6 +68,8 @@ export function ProjectsView() {
         }),
         shallow
     );
+    const getDerivedState = useTaskStore((state) => state.getDerivedState);
+    const { allContexts } = getDerivedState();
     const { t } = useLanguage();
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
     const [isCreating, setIsCreating] = useState(false);
@@ -105,8 +107,12 @@ export function ProjectsView() {
         setAttachmentError(null);
     }, [selectedProjectId]);
 
-    const sortedAreas = useMemo(() => {
-        return [...areas].sort((a, b) => a.order - b.order);
+    const { sortedAreas, areaById } = useMemo(() => {
+        const sorted = [...areas].sort((a, b) => a.order - b.order);
+        return {
+            sortedAreas: sorted,
+            areaById: new Map(sorted.map((area) => [area.id, area])),
+        };
     }, [areas]);
 
     const areaSensors = useSensors(
@@ -120,10 +126,6 @@ export function ProjectsView() {
             activationConstraint: { distance: 6 },
         }),
     );
-
-    const areaById = useMemo(() => {
-        return new Map(sortedAreas.map((area) => [area.id, area]));
-    }, [sortedAreas]);
 
     useEffect(() => {
         if (selectedArea === ALL_AREAS || selectedArea === NO_AREA) return;
@@ -166,7 +168,7 @@ export function ProjectsView() {
     const sortAreasByColor = () => reorderAreas(sortAreasByColorIds(sortedAreas));
 
     // Group tasks by project to avoid O(N*M) filtering
-    const tasksByProject = useMemo(() => {
+    const { tasksByProject, areaTasks, areaOptions } = useMemo(() => {
         const map = projects.reduce((acc, project) => {
             acc[project.id] = [];
             return acc;
@@ -178,12 +180,7 @@ export function ProjectsView() {
                 }
             }
         });
-        return map;
-    }, [projects, tasks]);
-
-    const areaTasks = useMemo(() => {
-        if (selectedArea === ALL_AREAS) return [];
-        return tasks.filter((task) => {
+        const filteredAreaTasks = selectedArea === ALL_AREAS ? [] : tasks.filter((task) => {
             if (task.deletedAt) return false;
             if (task.status === 'archived' || task.status === 'done') return false;
             if (task.projectId) return false;
@@ -192,17 +189,15 @@ export function ProjectsView() {
             }
             return task.areaId === selectedArea;
         });
-    }, [tasks, selectedArea, areaById, ALL_AREAS, NO_AREA]);
-
-    const areaOptions = useMemo(() => {
         const visibleProjects = projects.filter(p => !p.deletedAt);
         const hasNoArea = visibleProjects.some((project) => !project.areaId || !areaById.has(project.areaId))
             || tasks.some((task) => !task.projectId && (!task.areaId || !areaById.has(task.areaId)) && !task.deletedAt);
         return {
-            list: sortedAreas,
-            hasNoArea,
+            tasksByProject: map,
+            areaTasks: filteredAreaTasks,
+            areaOptions: { list: sortedAreas, hasNoArea },
         };
-    }, [projects, sortedAreas, areaById, tasks]);
+    }, [projects, tasks, selectedArea, areaById, sortedAreas, ALL_AREAS, NO_AREA]);
 
     const tagOptions = useMemo(() => {
         const visibleProjects = projects.filter(p => !p.deletedAt);
@@ -392,10 +387,6 @@ export function ProjectsView() {
             setSelectedProjectId(null);
         }
     };
-    const allContexts = useMemo(() => {
-        const taskContexts = tasks.flatMap((task) => task.contexts || []);
-        return Array.from(new Set([...PRESET_CONTEXTS, ...taskContexts])).sort();
-    }, [tasks]);
     const resolveValidationMessage = (error?: string) => {
         if (error === 'file_too_large') return t('attachments.fileTooLarge');
         if (error === 'mime_type_blocked' || error === 'mime_type_not_allowed') return t('attachments.invalidFileType');

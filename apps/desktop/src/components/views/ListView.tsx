@@ -91,6 +91,7 @@ export function ListView({ title, statusFilter }: ListViewProps) {
     const [multiSelectedIds, setMultiSelectedIds] = useState<Set<string>>(new Set());
     const [tagPromptOpen, setTagPromptOpen] = useState(false);
     const [tagPromptIds, setTagPromptIds] = useState<string[]>([]);
+    const lastFilterKeyRef = useRef<string>('');
     const addInputRef = useRef<HTMLInputElement>(null);
     const listScrollRef = useRef<HTMLDivElement>(null);
     const prioritiesEnabled = settings?.features?.priorities === true;
@@ -283,21 +284,30 @@ export function ListView({ title, statusFilter }: ListViewProps) {
     const totalHeight = shouldVirtualize ? rowVirtualizer.getTotalSize() : 0;
 
     useEffect(() => {
-        setSelectedIndex(0);
-        exitSelectionMode();
-    }, [statusFilter, selectedTokens, selectedPriorities, selectedTimeEstimates, prioritiesEnabled, timeEstimatesEnabled, exitSelectionMode]);
-
-    useEffect(() => {
-        if (filteredTasks.length === 0) {
+        const filterKey = [
+            statusFilter,
+            prioritiesEnabled ? '1' : '0',
+            timeEstimatesEnabled ? '1' : '0',
+            selectedTokens.join('|'),
+            selectedPriorities.join('|'),
+            selectedTimeEstimates.join('|'),
+        ].join('::');
+        if (lastFilterKeyRef.current !== filterKey) {
+            lastFilterKeyRef.current = filterKey;
             setSelectedIndex(0);
+            exitSelectionMode();
+            return;
+        }
+        if (filteredTasks.length === 0) {
+            if (selectedIndex !== 0) {
+                setSelectedIndex(0);
+            }
             return;
         }
         if (selectedIndex >= filteredTasks.length) {
             setSelectedIndex(filteredTasks.length - 1);
+            return;
         }
-    }, [filteredTasks.length, selectedIndex]);
-
-    useEffect(() => {
         const task = filteredTasks[selectedIndex];
         if (!task) return;
         const el = document.querySelector(`[data-task-id="${task.id}"]`) as HTMLElement | null;
@@ -308,7 +318,19 @@ export function ListView({ title, statusFilter }: ListViewProps) {
         if (shouldVirtualize && listScrollRef.current) {
             rowVirtualizer.scrollToIndex(selectedIndex, { align: 'auto' });
         }
-    }, [filteredTasks, selectedIndex, shouldVirtualize, rowVirtualizer]);
+    }, [
+        statusFilter,
+        selectedTokens,
+        selectedPriorities,
+        selectedTimeEstimates,
+        prioritiesEnabled,
+        timeEstimatesEnabled,
+        exitSelectionMode,
+        filteredTasks,
+        selectedIndex,
+        shouldVirtualize,
+        rowVirtualizer,
+    ]);
 
     const selectNext = useCallback(() => {
         if (filteredTasks.length === 0) return;
@@ -494,13 +516,10 @@ export function ListView({ title, statusFilter }: ListViewProps) {
         if (!prioritiesEnabled && selectedPriorities.length > 0) {
             setListFilters({ priorities: [] });
         }
-    }, [prioritiesEnabled, selectedPriorities.length, setListFilters]);
-
-    useEffect(() => {
         if (!timeEstimatesEnabled && selectedTimeEstimates.length > 0) {
             setListFilters({ estimates: [] });
         }
-    }, [timeEstimatesEnabled, selectedTimeEstimates.length, setListFilters]);
+    }, [prioritiesEnabled, timeEstimatesEnabled, selectedPriorities.length, selectedTimeEstimates.length, setListFilters]);
 
     const openQuickAdd = useCallback((status: TaskStatus | 'all', captureMode?: 'text' | 'audio') => {
         const initialStatus = status === 'all' ? 'inbox' : status;

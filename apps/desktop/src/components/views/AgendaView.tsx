@@ -19,6 +19,8 @@ export function AgendaView() {
         }),
         shallow
     );
+    const getDerivedState = useTaskStore((state) => state.getDerivedState);
+    const { projectMap, sequentialProjectIds } = getDerivedState();
     const { t, language } = useLanguage();
     const [selectedTokens, setSelectedTokens] = useState<string[]>([]);
     const [selectedPriorities, setSelectedPriorities] = useState<TaskPriority[]>([]);
@@ -39,15 +41,14 @@ export function AgendaView() {
     }, [perf.enabled]);
 
     // Filter active tasks
-    const projectMap = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
-    const activeTasks = useMemo(
-        () => tasks.filter(t => !t.deletedAt && t.status !== 'done' && isTaskInActiveProject(t, projectMap)),
-        [tasks, projectMap]
-    );
-    const allTokens = useMemo(() => {
-        const taskTokens = activeTasks.flatMap(t => [...(t.contexts || []), ...(t.tags || [])]);
-        return Array.from(new Set([...PRESET_CONTEXTS, ...PRESET_TAGS, ...taskTokens])).sort();
-    }, [activeTasks]);
+    const { activeTasks, allTokens } = useMemo(() => {
+        const active = tasks.filter(t => !t.deletedAt && t.status !== 'done' && isTaskInActiveProject(t, projectMap));
+        const taskTokens = active.flatMap(t => [...(t.contexts || []), ...(t.tags || [])]);
+        return {
+            activeTasks: active,
+            allTokens: Array.from(new Set([...PRESET_CONTEXTS, ...PRESET_TAGS, ...taskTokens])).sort(),
+        };
+    }, [tasks, projectMap]);
     const priorityOptions: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
     const timeEstimateOptions: TimeEstimate[] = ['5min', '10min', '15min', '30min', '1hr', '2hr', '3hr', '4hr', '4hr+'];
     const formatEstimate = (estimate: TimeEstimate) => {
@@ -69,13 +70,10 @@ export function AgendaView() {
         return true;
     }, [selectedTokens, activePriorities, activeTimeEstimates]);
 
-    const filteredActiveTasks = useMemo(() => {
-        return activeTasks.filter(matchesFilters);
-    }, [activeTasks, matchesFilters]);
-
-    const reviewDueCandidates = useMemo(() => {
+    const { filteredActiveTasks, reviewDueCandidates } = useMemo(() => {
         const now = new Date();
-        return tasks
+        const filtered = activeTasks.filter(matchesFilters);
+        const reviewDue = tasks
             .filter((task) => {
                 if (task.deletedAt) return false;
                 if (task.status === 'done' || task.status === 'archived') return false;
@@ -88,7 +86,8 @@ export function AgendaView() {
                 return true;
             })
             .filter(matchesFilters);
-    }, [tasks, projectMap, matchesFilters]);
+        return { filteredActiveTasks: filtered, reviewDueCandidates: reviewDue };
+    }, [activeTasks, tasks, projectMap, matchesFilters]);
 
     const reviewDueProjects = useMemo(() => {
         const now = new Date();
@@ -207,9 +206,6 @@ export function AgendaView() {
                 return aCreated - bCreated;
             });
         };
-        const sequentialProjectIds = new Set(
-            projects.filter((project) => project.isSequential && !project.deletedAt).map((project) => project.id)
-        );
         const tasksByProject = new Map<string, Task[]>();
         for (const task of filteredActiveTasks) {
             if (task.deletedAt || task.status !== 'next' || !task.projectId) continue;
@@ -264,14 +260,12 @@ export function AgendaView() {
         };
     }, [filteredActiveTasks, reviewDueCandidates, projects, prioritiesEnabled, sortByProjectOrder]);
     const focusedCount = focusedTasks.length;
-    const top3Candidates = useMemo(() => {
+    const { top3Tasks, remainingCount } = useMemo(() => {
         const byId = new Map<string, Task>();
         [...sections.overdue, ...sections.dueToday, ...sections.nextActions, ...sections.reviewDue].forEach((task) => {
             byId.set(task.id, task);
         });
-        return Array.from(byId.values());
-    }, [sections]);
-    const top3Tasks = useMemo(() => {
+        const candidates = Array.from(byId.values());
         const priorityRank: Record<TaskPriority, number> = {
             low: 1,
             medium: 2,
@@ -283,7 +277,7 @@ export function AgendaView() {
             const parsed = safeParseDueDate(value);
             return parsed ? parsed.getTime() : Number.POSITIVE_INFINITY;
         };
-        const sorted = [...top3Candidates].sort((a, b) => {
+        const sorted = [...candidates].sort((a, b) => {
             if (prioritiesEnabled) {
                 const priorityDiff = (priorityRank[b.priority as TaskPriority] || 0) - (priorityRank[a.priority as TaskPriority] || 0);
                 if (priorityDiff !== 0) return priorityDiff;
@@ -294,9 +288,12 @@ export function AgendaView() {
             const bCreated = safeParseDate(b.createdAt)?.getTime() ?? 0;
             return aCreated - bCreated;
         });
-        return sorted.slice(0, 3);
-    }, [top3Candidates, prioritiesEnabled]);
-    const remainingCount = Math.max(top3Candidates.length - top3Tasks.length, 0);
+        const top3 = sorted.slice(0, 3);
+        return {
+            top3Tasks: top3,
+            remainingCount: Math.max(candidates.length - top3.length, 0),
+        };
+    }, [sections, prioritiesEnabled]);
 
     const handleToggleFocus = (taskId: string) => {
         const task = tasks.find(t => t.id === taskId);
