@@ -20,6 +20,7 @@ import { useUiStore } from '../../store/ui-store';
 import { usePerformanceMonitor } from '../../hooks/usePerformanceMonitor';
 import { checkBudget } from '../../config/performanceBudgets';
 import { useListViewOptimizations } from '../../hooks/useListViewOptimizations';
+import { reportError } from '../../lib/report-error';
 
 
 interface ListViewProps {
@@ -284,7 +285,8 @@ export function ListView({ title, statusFilter }: ListViewProps) {
         window.dispatchEvent(new CustomEvent('mindwtr:navigate', { detail: { view: 'projects' } }));
     }, [setProjectView]);
     const handleReactivateProject = useCallback((projectId: string) => {
-        updateProject(projectId, { status: 'active' });
+        updateProject(projectId, { status: 'active' })
+            .catch((error) => reportError('Failed to reactivate project', error));
     }, [updateProject]);
 
     const shouldVirtualize = filteredTasks.length > VIRTUALIZATION_THRESHOLD;

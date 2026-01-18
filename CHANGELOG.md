@@ -2,6 +2,16 @@
 
 All notable changes to Mindwtr will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Desktop Focus**: Reused shared task rows with inline edit and a details/compact toggle.
+- **Deferred Projects**: Show area labels and a Reactivate action in Someday/Waiting lists.
+- **Mobile Someday/Waiting**: Show deferred projects alongside tasks.
+
+### Changed
+- **Tasks**: Reference status clears action-related fields (dates, priority, recurrence).
+
 ## [0.5.0] - 2026-01-09
 
 ### Features

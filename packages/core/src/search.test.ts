@@ -41,6 +41,33 @@ describe('search', () => {
         expect(results.map(t => t.id)).toEqual(['t1', 't2']);
     });
 
+    it('supports reference status filter', () => {
+        const now = new Date('2025-01-01T10:00:00Z');
+        const tasks: Task[] = [
+            {
+                id: 't1',
+                title: 'Reference task',
+                status: 'reference',
+                tags: [],
+                contexts: [],
+                createdAt: '2025-01-01T00:00:00Z',
+                updatedAt: '2025-01-01T00:00:00Z',
+            },
+            {
+                id: 't2',
+                title: 'Next task',
+                status: 'next',
+                tags: [],
+                contexts: [],
+                createdAt: '2025-01-01T00:00:00Z',
+                updatedAt: '2025-01-01T00:00:00Z',
+            },
+        ];
+
+        const results = filterTasksBySearch(tasks, [], 'status:reference', now);
+        expect(results.map(t => t.id)).toEqual(['t1']);
+    });
+
     it('supports relative date comparisons', () => {
         const now = new Date('2025-01-01T00:00:00Z');
         const tasks: Task[] = [

@@ -51,6 +51,7 @@ export function applyTaskUpdates(oldTask: Task, updates: Partial<Task>, now: str
         };
     }
 
+    // Reference tasks should be non-actionable; clear scheduling/priority fields.
     if (incomingStatus === 'reference') {
         finalUpdates = {
             ...finalUpdates,

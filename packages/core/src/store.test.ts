@@ -45,6 +45,37 @@ describe('TaskStore', () => {
         expect(updatedTask.status).toBe('next');
     });
 
+    it('should clear action fields when a task becomes reference', () => {
+        const { addTask, updateTask } = useTaskStore.getState();
+        addTask('Reference Task', {
+            status: 'next',
+            startTime: '2025-01-01T08:00:00.000Z',
+            dueDate: '2025-01-01T09:00:00.000Z',
+            reviewAt: '2025-01-02T09:00:00.000Z',
+            recurrence: 'daily',
+            priority: 'high',
+            timeEstimate: '30min',
+            checklist: [{ id: 'c1', title: 'Subtask', isCompleted: false }],
+            isFocusedToday: true,
+            pushCount: 2,
+        });
+
+        const task = useTaskStore.getState().tasks[0];
+        updateTask(task.id, { status: 'reference' });
+
+        const updatedTask = useTaskStore.getState()._allTasks.find(t => t.id === task.id)!;
+        expect(updatedTask.status).toBe('reference');
+        expect(updatedTask.startTime).toBeUndefined();
+        expect(updatedTask.dueDate).toBeUndefined();
+        expect(updatedTask.reviewAt).toBeUndefined();
+        expect(updatedTask.recurrence).toBeUndefined();
+        expect(updatedTask.priority).toBeUndefined();
+        expect(updatedTask.timeEstimate).toBeUndefined();
+        expect(updatedTask.checklist).toBeUndefined();
+        expect(updatedTask.isFocusedToday).toBe(false);
+        expect(updatedTask.pushCount).toBe(0);
+    });
+
     it('should delete a task', () => {
         const { addTask, deleteTask } = useTaskStore.getState();
         addTask('Task to Delete');
