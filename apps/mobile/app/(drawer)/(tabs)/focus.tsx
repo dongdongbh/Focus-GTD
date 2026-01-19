@@ -21,6 +21,13 @@ export default function FocusScreen() {
     const now = new Date();
     const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
+    const isPlannedForFuture = (task: Task) => {
+      const due = safeParseDueDate(task.dueDate);
+      if (due && due > endOfToday) return true;
+      const start = safeParseDate(task.startTime);
+      return Boolean(start && start > endOfToday);
+    };
+
     const scheduleItems = tasks.filter((task) => {
       if (task.deletedAt) return false;
       if (task.status === 'done' || task.status === 'reference') return false;
@@ -36,6 +43,7 @@ export default function FocusScreen() {
     const nextItems = tasks.filter((task) => {
       if (task.deletedAt) return false;
       if (task.status !== 'next') return false;
+      if (isPlannedForFuture(task)) return false;
       return !scheduleIds.has(task.id);
     });
 
