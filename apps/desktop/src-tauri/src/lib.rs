@@ -1609,7 +1609,25 @@ async fn get_data(app: tauri::AppHandle) -> Result<Value, String> {
         }
 
         match read_sqlite_data(&conn) {
-            Ok(value) => Ok(value),
+            Ok(mut value) => {
+                let settings_empty = value
+                    .get("settings")
+                    .and_then(|v| v.as_object())
+                    .map(|obj| obj.is_empty())
+                    .unwrap_or(true);
+                if settings_empty && data_path.exists() {
+                    if let Ok(json_value) = read_json_with_retries(&data_path, 2) {
+                        if let Some(json_settings) = json_value.get("settings").and_then(|v| v.as_object()) {
+                            if !json_settings.is_empty() {
+                                if let Some(map) = value.as_object_mut() {
+                                    map.insert("settings".to_string(), Value::Object(json_settings.clone()));
+                                }
+                            }
+                        }
+                    }
+                }
+                Ok(value)
+            }
             Err(primary_err) => {
                 if data_path.exists() {
                     if let Ok(value) = read_json_with_retries(&data_path, 2) {
