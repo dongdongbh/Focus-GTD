@@ -6,16 +6,7 @@ Detailed installation instructions for Android and iOS.
 
 ## Android
 
-### Google Play (Closed Test)
-
-We are running a closed test on Google Play. Joining helps us reach the 20‑tester requirement to publish publicly.
-
-1. Join the Google Group: https://groups.google.com/g/mindwtr-alpha-testers
-2. Install from Google Play:
-   - Web link: https://play.google.com/apps/testing/tech.dongdongbh.mindwtr
-   - Android link: https://play.google.com/store/apps/details?id=tech.dongdongbh.mindwtr
-
-> **Important:** Keep the app installed for **14 days**. Updates are OK, but uninstalling resets the test window.
+Google Play release is not available yet. Use the APK method below.
 
 ### Download APK
 

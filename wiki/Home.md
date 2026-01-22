@@ -121,18 +121,6 @@ Mindwtr is **simple by default and powerful when needed**. We focus on reducing 
 
 ---
 
-## Help us ship on Google Play (Closed Test)
-We need 20 testers to keep the Play Store listing alive and publish publicly.
-
-**Step 1: Join the Google Group**  
-https://groups.google.com/g/mindwtr-alpha-testers
-
-**Step 2: Install from Google Play**  
-Web link: https://play.google.com/apps/testing/tech.dongdongbh.mindwtr  
-Android link: https://play.google.com/store/apps/details?id=tech.dongdongbh.mindwtr
-
-**Important:** Please keep the app installed for 14 days. Updates are OK, but uninstalling resets the test window.
-
 <div align="center">
 
 *Built with ❤️ by [dongdongbh](https://dongdongbh.tech)*

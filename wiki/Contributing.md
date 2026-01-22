@@ -244,6 +244,7 @@ Releases are automated via GitHub Actions:
 2. `CHANGELOG.md` is updated
 3. Git tag is created
 4. CI builds and uploads release assets
+5. If updating Winget manifests, validate schema and ensure `InstallationMetadata` is an object (not a list) with `DefaultInstallLocation` set
 
 ---
 

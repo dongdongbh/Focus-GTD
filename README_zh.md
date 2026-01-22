@@ -191,15 +191,7 @@ brew install --cask mindwtr
 
 **Android：**
 从 [GitHub Releases](https://github.com/dongdongbh/Mindwtr/releases) 下载 APK。
-
-关于 Android 版本，我已在 Google Play 上开启封闭测试轨道。
-
-要获取访问权限，需要被 Google 白名单。我创建了一个 Google Group 用于自动批准，无需逐个添加邮箱。
-
-加入方式：
-- 加入 Alpha 组：https://groups.google.com/g/mindwtr-alpha-testers
-- 加入后你的 Google 账号会自动获批
-- 从 Google Play 下载：[Android Link](https://play.google.com/store/apps/details?id=tech.dongdongbh.mindwtr)。
+Google Play 版本尚未发布。
 
 **iOS：**
 iOS 构建需要 Apple Developer 账号（$99/年），目前仅提供模拟器构建。如果你希望获得 iOS 构建，请考虑 [赞助开发者](https://github.com/sponsors/dongdongbh) 以资助 Apple Developer 账号。
