@@ -1,0 +1,15 @@
+<en-US>
+- Default capture is now text on first install.
+- Android update checks open the Play Store listing.
+- Reference view is cleaner with no quick-add bar.
+</en-US>
+<zh-CN>
+- 初次安装默认使用文本输入收集。
+- Android 检查更新将打开 Google Play 页面。
+- 参考资料页更简洁，不再显示快速添加栏。
+</zh-CN>
+<es-ES>
+- La captura predeterminada ahora es texto en la primera instalación.
+- En Android, buscar actualizaciones abre Google Play.
+- La vista de Referencia es más limpia, sin barra de agregado rápido.
+</es-ES>
