@@ -1,0 +1,15 @@
+<en-US>
+- Inbox processing keeps going through all items without stopping.
+- Search now opens the exact project/task you tapped.
+- Contexts can be multi-selected, and #tags are handled correctly during processing.
+</en-US>
+<zh-CN>
+- 收件箱处理会持续进行，不再中途停止。
+- 搜索结果会打开你点击的具体项目/任务。
+- 情境支持多选，并在处理时正确识别 #标签。
+</zh-CN>
+<es-ES>
+- El procesamiento de la bandeja de entrada continúa sin detenerse.
+- La búsqueda ahora abre el proyecto/tarea exacto que tocaste.
+- Los contextos permiten selección múltiple y los #tags se manejan correctamente.
+</es-ES>

@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Mindwtr",
-  "version": "0.5.8",
+  "version": "0.5.9",
   "identifier": "tech.dongdongbh.mindwtr",
   "build": {
     "frontendDist": "../dist",
