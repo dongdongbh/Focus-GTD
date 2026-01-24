@@ -27,6 +27,7 @@ import {
     safeParseDueDate,
     resolveTextDirection,
     validateAttachmentForUpload,
+    parseQuickAdd,
 } from '@mindwtr/core';
 import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -396,7 +397,7 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
         }
     }, [activeProjectId]);
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!task) return;
         if (titleDebounceRef.current) {
             clearTimeout(titleDebounceRef.current);
@@ -406,11 +407,47 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
             clearTimeout(descriptionDebounceRef.current);
             descriptionDebounceRef.current = null;
         }
+        const rawTitle = String(titleDraftRef.current ?? '');
+        const { title: parsedTitle, props: parsedProps, projectTitle } = parseQuickAdd(rawTitle, projects);
+        const existingProjectId = editedTask.projectId ?? task?.projectId;
+        const hasProjectCommand = Boolean(parsedProps.projectId || projectTitle);
+        let resolvedProjectId = parsedProps.projectId;
+        if (!resolvedProjectId && projectTitle) {
+            try {
+                const created = await addProject(projectTitle, '#94a3b8');
+                resolvedProjectId = created?.id;
+            } catch (error) {
+                console.error('Failed to create project from quick add', error);
+            }
+        }
+        if (!resolvedProjectId) {
+            resolvedProjectId = existingProjectId;
+        }
+        const cleanedTitle = parsedTitle.trim() ? parsedTitle : rawTitle;
+        const baseDescription = descriptionDraftRef.current;
+        const resolvedDescription = parsedProps.description
+            ? (baseDescription ? `${baseDescription}\n${parsedProps.description}` : parsedProps.description)
+            : baseDescription;
+        const mergedContexts = parsedProps.contexts
+            ? Array.from(new Set([...(editedTask.contexts || []), ...parsedProps.contexts]))
+            : editedTask.contexts;
+        const mergedTags = parsedProps.tags
+            ? Array.from(new Set([...(editedTask.tags || []), ...parsedProps.tags]))
+            : editedTask.tags;
         const updates: Partial<Task> = {
             ...editedTask,
-            title: String(titleDraftRef.current ?? ''),
-            description: descriptionDraftRef.current,
+            title: cleanedTitle,
+            description: resolvedDescription,
+            contexts: mergedContexts,
+            tags: mergedTags,
         };
+        if (parsedProps.status) updates.status = parsedProps.status;
+        if (parsedProps.dueDate) updates.dueDate = parsedProps.dueDate;
+        if (hasProjectCommand && resolvedProjectId && resolvedProjectId !== existingProjectId) {
+            updates.projectId = resolvedProjectId;
+            updates.sectionId = undefined;
+            updates.areaId = undefined;
+        }
         const recurrenceRule = getRecurrenceRuleValue(editedTask.recurrence);
         const recurrenceStrategy = getRecurrenceStrategyValue(editedTask.recurrence);
         if (recurrenceRule) {
@@ -1145,7 +1182,7 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
     };
 
     const handleDone = () => {
-        handleSave();
+        void handleSave();
     };
 
     const setModeTab = useCallback((mode: TaskEditTab) => {

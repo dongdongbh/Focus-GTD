@@ -12,6 +12,7 @@ import {
     Section,
     PRESET_CONTEXTS,
     PRESET_TAGS,
+    parseQuickAdd,
 } from '@mindwtr/core';
 import { cn } from '../lib/utils';
 import { PromptModal } from './PromptModal';
@@ -598,9 +599,23 @@ export const TaskItem = memo(function TaskItem({
     }, [isEditing]);
 
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (editTitle.trim()) {
+        const { title: parsedTitle, props: parsedProps, projectTitle } = parseQuickAdd(editTitle, projects);
+        if (parsedTitle.trim()) {
+            const hasProjectCommand = Boolean(parsedProps.projectId || projectTitle);
+            let resolvedProjectId = parsedProps.projectId || undefined;
+            if (!resolvedProjectId && projectTitle) {
+                try {
+                    const created = await addProject(projectTitle, DEFAULT_PROJECT_COLOR);
+                    resolvedProjectId = created?.id;
+                } catch (error) {
+                    console.error('Failed to create project from quick add', error);
+                }
+            }
+            if (!resolvedProjectId) {
+                resolvedProjectId = editProjectId || undefined;
+            }
             const recurrenceValue: Recurrence | undefined = editRecurrence
                 ? { rule: editRecurrence, strategy: editRecurrenceStrategy }
                 : undefined;
@@ -612,18 +627,31 @@ export const TaskItem = memo(function TaskItem({
                 recurrenceValue.rrule = editRecurrenceRRule;
             }
             const nextTextDirection = editTextDirection === 'auto' ? undefined : editTextDirection;
-            const resolvedProjectId = editProjectId || undefined;
+            const currentContexts = editContexts.split(',').map(c => c.trim()).filter(Boolean);
+            const mergedContexts = Array.from(new Set([...currentContexts, ...(parsedProps.contexts || [])]));
+            const currentTags = editTags.split(',').map(c => c.trim()).filter(Boolean);
+            const mergedTags = Array.from(new Set([...currentTags, ...(parsedProps.tags || [])]));
+            const resolvedDescription = parsedProps.description
+                ? (editDescription ? `${editDescription}\n${parsedProps.description}` : parsedProps.description)
+                : (editDescription || undefined);
+            const projectChangedByCommand = hasProjectCommand && resolvedProjectId !== (editProjectId || undefined);
+            const resolvedSectionId = projectChangedByCommand
+                ? undefined
+                : (resolvedProjectId ? (editSectionId || undefined) : undefined);
+            const resolvedAreaId = projectChangedByCommand
+                ? undefined
+                : (resolvedProjectId ? undefined : (editAreaId || undefined));
             updateTask(task.id, {
-                title: editTitle,
-                status: editStatus,
-                dueDate: editDueDate || undefined,
+                title: parsedTitle,
+                status: parsedProps.status || editStatus,
+                dueDate: parsedProps.dueDate || editDueDate || undefined,
                 startTime: editStartTime || undefined,
                 projectId: resolvedProjectId,
-                sectionId: resolvedProjectId ? (editSectionId || undefined) : undefined,
-                areaId: resolvedProjectId ? undefined : (editAreaId || undefined),
-                contexts: editContexts.split(',').map(c => c.trim()).filter(Boolean),
-                tags: editTags.split(',').map(c => c.trim()).filter(Boolean),
-                description: editDescription || undefined,
+                sectionId: resolvedSectionId,
+                areaId: resolvedAreaId,
+                contexts: mergedContexts,
+                tags: mergedTags,
+                description: resolvedDescription,
                 textDirection: nextTextDirection,
                 location: editLocation || undefined,
                 recurrence: recurrenceValue,
