@@ -75,14 +75,18 @@ interface TaskEditModalProps {
 
 const STATUS_OPTIONS: TaskStatus[] = ['inbox', 'next', 'waiting', 'someday', 'reference', 'done'];
 const formatError = (error: unknown) => (error instanceof Error ? error.message : String(error));
+const buildTaskExtra = (message?: string, error?: unknown): Record<string, string> | undefined => {
+    const extra: Record<string, string> = {};
+    if (message) extra.message = message;
+    if (error) extra.error = formatError(error);
+    return Object.keys(extra).length ? extra : undefined;
+};
 const logTaskWarn = (message: string, error?: unknown) => {
-    const extra = error ? { error: formatError(error) } : undefined;
-    void logWarn(message, { scope: 'task', extra });
+    void logWarn(message, { scope: 'task', extra: buildTaskExtra(undefined, error) });
 };
 const logTaskError = (message: string, error?: unknown) => {
     const err = error instanceof Error ? error : new Error(message);
-    const extra = error ? { error: formatError(error), message } : { message };
-    void logError(err, { scope: 'task', extra });
+    void logError(err, { scope: 'task', extra: buildTaskExtra(message, error) });
 };
 const COMPACT_STATUS_LABELS: Record<TaskStatus, string> = {
     inbox: 'Inbox',
@@ -1371,7 +1375,7 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
                 actions,
             });
         } catch (error) {
-            logTaskWarn(error);
+            logTaskWarn('AI clarify failed', error);
             Alert.alert(t('ai.errorTitle'), t('ai.errorBody'));
         } finally {
             setIsAIWorking(false);
@@ -1418,7 +1422,7 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
                 ],
             });
         } catch (error) {
-            logTaskWarn(error);
+            logTaskWarn('AI breakdown failed', error);
             Alert.alert(t('ai.errorTitle'), t('ai.errorBody'));
         } finally {
             setIsAIWorking(false);

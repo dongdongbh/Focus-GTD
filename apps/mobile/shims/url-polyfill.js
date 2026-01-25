@@ -3,7 +3,7 @@
 // IMPORTANT: This file is loaded via Metro's getModulesRunBeforeMainModule
 // to ensure it runs before any other module that might need URL.
 
-import { logWarn } from '../lib/app-log';
+const { logWarn } = require('../lib/app-log');
 
 class FallbackURLSearchParams {
     constructor(init = '') {

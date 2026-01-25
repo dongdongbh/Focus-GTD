@@ -105,25 +105,28 @@ const DEFAULT_WHISPER_MODEL = WHISPER_MODELS[0]?.id ?? 'whisper-tiny';
 
 const formatError = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
+const buildSettingsExtra = (message?: string, error?: unknown): Record<string, string> | undefined => {
+    const extra: Record<string, string> = {};
+    if (message) extra.message = message;
+    if (error) extra.error = formatError(error);
+    return Object.keys(extra).length ? extra : undefined;
+};
+
 const logSettingsWarn = (messageOrError: unknown, error?: unknown) => {
     if (typeof messageOrError === 'string') {
-        const extra = error ? { error: formatError(error) } : undefined;
-        void logWarn(messageOrError, { scope: 'settings', extra });
+        void logWarn(messageOrError, { scope: 'settings', extra: buildSettingsExtra(undefined, error) });
         return;
     }
-    const err = messageOrError;
-    const extra = err ? { error: formatError(err) } : undefined;
-    void logWarn('Settings warning', { scope: 'settings', extra });
+    void logWarn('Settings warning', { scope: 'settings', extra: buildSettingsExtra(undefined, messageOrError) });
 };
 
 const logSettingsError = (messageOrError: unknown, error?: unknown) => {
     if (typeof messageOrError === 'string') {
         const err = error instanceof Error ? error : new Error(messageOrError);
-        const extra = error ? { error: formatError(error), message: messageOrError } : { message: messageOrError };
-        void logError(err, { scope: 'settings', extra });
+        void logError(err, { scope: 'settings', extra: buildSettingsExtra(messageOrError, error) });
         return;
     }
-    void logError(messageOrError, { scope: 'settings' });
+    void logError(messageOrError, { scope: 'settings', extra: buildSettingsExtra(undefined, messageOrError) });
 };
 
 const maskCalendarUrl = (url: string): string => {

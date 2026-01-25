@@ -20,16 +20,20 @@ let preferJsonBackup = false;
 let didWarnPreferJsonBackup = false;
 
 const formatError = (error: unknown) => (error instanceof Error ? error.message : String(error));
+const buildStorageExtra = (message?: string, error?: unknown): Record<string, string> | undefined => {
+    const extra: Record<string, string> = {};
+    if (message) extra.message = message;
+    if (error) extra.error = formatError(error);
+    return Object.keys(extra).length ? extra : undefined;
+};
 
 const logStorageWarn = (message: string, error?: unknown) => {
-    const extra = error ? { error: formatError(error) } : undefined;
-    void logWarn(message, { scope: 'storage', extra });
+    void logWarn(message, { scope: 'storage', extra: buildStorageExtra(undefined, error) });
 };
 
 const logStorageError = (message: string, error?: unknown) => {
     const err = error instanceof Error ? error : new Error(message);
-    const extra = error ? { error: formatError(error), message } : { message };
-    void logError(err, { scope: 'storage', extra });
+    void logError(err, { scope: 'storage', extra: buildStorageExtra(message, error) });
 };
 
 const warnPreferJsonBackup = () => {

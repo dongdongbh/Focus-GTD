@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
-import shim from './url-polyfill';
+import * as shim from './url-polyfill';
 
 describe('URL Polyfill Shim', () => {
     // Save original console.warn
@@ -40,8 +40,8 @@ describe('URL Polyfill Shim', () => {
         globalThis.URL = MockURL as unknown as typeof URL;
 
         // 3. Re-import and call setupURLPolyfill
-        const shim = await import('./url-polyfill');
-        shim.setupURLPolyfill();
+        const shimModule = await import('./url-polyfill');
+        shimModule.setupURLPolyfill();
 
         // 4. Verify it was patched on globalThis
         expect(typeof globalThis.URL.createObjectURL).toBe('function');
