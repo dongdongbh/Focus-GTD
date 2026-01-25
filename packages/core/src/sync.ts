@@ -1,6 +1,7 @@
 
 import type { AppData, Attachment, Project, Task, Area } from './types';
 import { normalizeTaskForLoad } from './task-status';
+import { logWarn } from './logger';
 
 export interface EntityMergeStats {
     localTotal: number;
@@ -124,10 +125,11 @@ function mergeEntitiesWithStats<T extends { id: string; updatedAt: string; delet
             stats.timestampAdjustmentIds.push(item.id);
         }
         if (stats.timestampAdjustments <= 5) {
-            console.warn(
-                '[mindwtr-sync] normalized updatedAt before createdAt',
-                { id: item.id, createdAt: item.createdAt, updatedAt: item.updatedAt }
-            );
+            logWarn('Normalized updatedAt before createdAt', {
+                scope: 'sync',
+                category: 'sync',
+                context: { id: item.id, createdAt: item.createdAt, updatedAt: item.updatedAt },
+            });
         }
         return { ...item, updatedAt: item.createdAt } as Item;
     };

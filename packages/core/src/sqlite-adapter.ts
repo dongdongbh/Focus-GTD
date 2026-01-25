@@ -2,6 +2,7 @@ import type { AppData, Area, Attachment, Project, Task, Section } from './types'
 import type { TaskQueryOptions, SearchResults } from './storage';
 import { SQLITE_SCHEMA } from './sqlite-schema';
 import { normalizeTaskStatus } from './task-status';
+import { logWarn } from './logger';
 
 export interface SqliteClient {
     run(sql: string, params?: unknown[]): Promise<void>;
@@ -26,7 +27,11 @@ const fromJson = <T>(value: unknown, fallback: T): T => {
         }
         return parsed as T;
     } catch (error) {
-        console.warn('[SQLite] Failed to parse JSON value, falling back to defaults.', error);
+        logWarn('Failed to parse JSON value, falling back to defaults', {
+            scope: 'sqlite',
+            category: 'storage',
+            error,
+        });
         return fallback;
     }
 };
@@ -150,7 +155,11 @@ export class SqliteAdapter {
             await this.ensureFtsTriggers();
             await this.ensureFtsPopulated();
         } catch (error) {
-            console.warn('[SQLite] FTS setup failed, search may not work:', error);
+            logWarn('FTS setup failed, search may not work', {
+                scope: 'sqlite',
+                category: 'fts',
+                error,
+            });
         }
     }
 
@@ -199,7 +208,11 @@ export class SqliteAdapter {
 
             await this.client.run('INSERT OR IGNORE INTO schema_migrations (version) VALUES (2)');
         } catch (error) {
-            console.warn('[SQLite] Failed to migrate FTS triggers:', error);
+            logWarn('Failed to migrate FTS triggers', {
+                scope: 'sqlite',
+                category: 'fts',
+                error,
+            });
             // Continue without migrating - triggers may still work or will fail gracefully
         }
     }
@@ -341,7 +354,11 @@ export class SqliteAdapter {
                 await this.releaseFtsLock(lockOwner);
             }
         } catch (error) {
-            console.warn('[SQLite] Failed to populate FTS index:', error);
+            logWarn('Failed to populate FTS index', {
+                scope: 'sqlite',
+                category: 'fts',
+                error,
+            });
             // Continue without FTS - search will fail gracefully
         }
     }
@@ -514,7 +531,7 @@ export class SqliteAdapter {
                 await this.ensureFtsPopulated(true);
                 return await runSearch();
             } catch (retryError) {
-                console.warn('Search failed:', retryError);
+                logWarn('Search failed', { scope: 'sqlite', category: 'fts', error: retryError });
                 return { tasks: [], projects: [] };
             }
         }
@@ -569,7 +586,11 @@ export class SqliteAdapter {
                     try {
                         await this.client.run(`DROP TABLE ${tempTable}`);
                     } catch (dropError) {
-                        console.warn(`Failed to drop temp table ${tempTable}`, dropError);
+                        logWarn(`Failed to drop temp table ${tempTable}`, {
+                            scope: 'sqlite',
+                            category: 'storage',
+                            error: dropError,
+                        });
                     }
                 }
             };

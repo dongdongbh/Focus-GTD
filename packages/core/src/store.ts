@@ -8,6 +8,7 @@ import { createNextRecurringTask } from './recurrence';
 import { safeParseDate } from './date';
 import { normalizeTaskForLoad } from './task-status';
 import { rescheduleTask } from './task-utils';
+import { logError } from './logger';
 
 let storage: StorageAdapter = noopStorage;
 
@@ -380,7 +381,7 @@ const debouncedSave = (data: AppData, onError?: (msg: string) => void) => {
     pendingDataVersion = pendingVersion;
     if (onError) pendingOnError.push(onError);
     void flushPendingSave().catch((error) => {
-        console.error('Failed to flush pending save:', error);
+        logError('Failed to flush pending save', { scope: 'store', category: 'storage', error });
         try {
             useTaskStore.getState().setError('Failed to save data');
         } catch {
@@ -408,7 +409,7 @@ export const flushPendingSave = async (): Promise<void> => {
         saveInFlight = storage.saveData(dataToSave).then(() => {
             savedVersion = targetVersion;
         }).catch((e) => {
-            console.error('Failed to flush pending save:', e);
+            logError('Failed to flush pending save', { scope: 'store', category: 'storage', error: e });
             if (onErrorCallbacks.length > 0) {
                 onErrorCallbacks.forEach((callback) => callback('Failed to save data'));
             }
