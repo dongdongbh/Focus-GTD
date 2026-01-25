@@ -30,6 +30,7 @@ export function ListBulkActions({
                         key={status}
                         onClick={() => onMoveToStatus(status)}
                         className="text-xs px-2 py-1 rounded bg-muted/50 hover:bg-muted transition-colors"
+                        aria-label={t(`status.${status}`)}
                     >
                         {t(`status.${status}`)}
                     </button>
@@ -38,12 +39,14 @@ export function ListBulkActions({
             <button
                 onClick={onAddTag}
                 className="text-xs px-2 py-1 rounded bg-muted/50 hover:bg-muted transition-colors"
+                aria-label={t('bulk.addTag')}
             >
                 {t('bulk.addTag')}
             </button>
             <button
                 onClick={onDelete}
                 className="text-xs px-2 py-1 rounded bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
+                aria-label={t('bulk.delete')}
             >
                 {t('bulk.delete')}
             </button>

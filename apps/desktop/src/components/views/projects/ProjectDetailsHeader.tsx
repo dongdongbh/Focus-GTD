@@ -108,6 +108,7 @@ export function ProjectDetailsHeader({
                         onClick={onDelete}
                         className="text-destructive hover:bg-destructive/10 h-8 w-8 rounded-md transition-colors flex items-center justify-center"
                         title={t('common.delete')}
+                        aria-label={t('common.delete')}
                     >
                         <Trash2 className="w-4 h-4" />
                     </button>
@@ -125,6 +126,7 @@ export function ProjectDetailsHeader({
                                 : "bg-muted hover:bg-muted/80 text-muted-foreground"
                         )}
                         title={project.isSequential ? t('projects.sequentialTooltip') : t('projects.parallelTooltip')}
+                        aria-label={project.isSequential ? t('projects.sequential') : t('projects.parallel')}
                     >
                         <ListOrdered className="w-4 h-4" />
                         {project.isSequential ? t('projects.sequential') : t('projects.parallel')}
