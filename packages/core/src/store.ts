@@ -334,13 +334,18 @@ const sanitizeAppDataForStorage = (data: AppData): AppData => ({
     settings: stripSensitiveSettings(cloneSettings(data.settings)),
 });
 
-const projectOrderCache = new WeakMap<Task[], Map<string, number>>();
+let projectOrderCacheVersion: number | null = null;
+let projectOrderCache: Map<string, number> | null = null;
 
-const getNextProjectOrder = (projectId: string | undefined, tasks: Task[]): number | undefined => {
+const getNextProjectOrder = (
+    projectId: string | undefined,
+    tasks: Task[],
+    cacheKey?: number
+): number | undefined => {
     if (!projectId) return undefined;
-    let cache = projectOrderCache.get(tasks);
+    let cache = cacheKey !== undefined && projectOrderCacheVersion === cacheKey ? projectOrderCache : null;
     if (!cache) {
-        cache = new Map();
+        cache = new Map<string, number>();
         // Build a max-order index once per tasks array to avoid O(n) scans per project.
         for (const task of tasks) {
             if (!task.projectId || task.deletedAt) continue;
@@ -352,7 +357,10 @@ const getNextProjectOrder = (projectId: string | undefined, tasks: Task[]): numb
                 cache.set(task.projectId, order + 1);
             }
         }
-        projectOrderCache.set(tasks, cache);
+        if (cacheKey !== undefined) {
+            projectOrderCacheVersion = cacheKey;
+            projectOrderCache = cache;
+        }
     }
     const cached = cache.get(projectId);
     if (cached !== undefined) return cached;
@@ -754,7 +762,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
         set((state) => {
             const resolvedOrderNum = !hasOrderNum && resolvedProjectId
-                ? getNextProjectOrder(resolvedProjectId, state._allTasks)
+                ? getNextProjectOrder(resolvedProjectId, state._allTasks, state.lastDataChangeAt)
                 : initialProps?.orderNum;
             const newTask: Task = {
                 id: uuidv4(),
@@ -814,7 +822,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
                         if (!hasOrderNum) {
                             adjustedUpdates = {
                                 ...adjustedUpdates,
-                                orderNum: getNextProjectOrder(nextProjectId, state._allTasks),
+                                orderNum: getNextProjectOrder(nextProjectId, state._allTasks, state.lastDataChangeAt),
                             };
                         }
                         if (!Object.prototype.hasOwnProperty.call(updates, 'areaId')) {
@@ -1013,7 +1021,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
                 createdAt: now,
                 updatedAt: now,
                 orderNum: sourceTask.projectId
-                    ? getNextProjectOrder(sourceTask.projectId, state._allTasks)
+                    ? getNextProjectOrder(sourceTask.projectId, state._allTasks, state.lastDataChangeAt)
                     : undefined,
             };
 
