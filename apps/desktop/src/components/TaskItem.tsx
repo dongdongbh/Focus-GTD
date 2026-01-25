@@ -29,7 +29,9 @@ import {
     DEFAULT_TASK_EDITOR_HIDDEN,
     DEFAULT_TASK_EDITOR_ORDER,
     getRecurrenceRuleValue,
+    getRecurrenceRRuleValue,
     getRecurrenceStrategyValue,
+    toDateTimeLocalValue,
 } from './Task/task-item-helpers';
 import { useTaskItemAttachments } from './Task/useTaskItemAttachments';
 import { useTaskItemRecurrence } from './Task/useTaskItemRecurrence';
@@ -682,6 +684,47 @@ export const TaskItem = memo(function TaskItem({
         setSelectedProjectId(projectId);
         window.dispatchEvent(new CustomEvent('mindwtr:navigate', { detail: { view: 'projects' } }));
     }, [setHighlightTask, setSelectedProjectId, task.id]);
+    const hasPendingEdits = useCallback(() => {
+        if (editTitle !== task.title) return true;
+        if (editDescription !== (task.description || '')) return true;
+        if (editProjectId !== (task.projectId || '')) return true;
+        if (editSectionId !== (task.sectionId || '')) return true;
+        if (editAreaId !== (task.areaId || '')) return true;
+        if (editStatus !== task.status) return true;
+        if (editContexts.trim() !== (task.contexts?.join(', ') || '').trim()) return true;
+        if (editTags.trim() !== (task.tags?.join(', ') || '').trim()) return true;
+        if (editTextDirection !== (task.textDirection ?? 'auto')) return true;
+        if (editLocation !== (task.location || '')) return true;
+        if (editRecurrence !== getRecurrenceRuleValue(task.recurrence)) return true;
+        if (editRecurrenceStrategy !== getRecurrenceStrategyValue(task.recurrence)) return true;
+        if (editRecurrenceRRule !== getRecurrenceRRuleValue(task.recurrence)) return true;
+        if (editTimeEstimate !== (task.timeEstimate || '')) return true;
+        if (editPriority !== (task.priority || '')) return true;
+        if (editDueDate !== toDateTimeLocalValue(task.dueDate)) return true;
+        if (editStartTime !== toDateTimeLocalValue(task.startTime)) return true;
+        if (editReviewAt !== toDateTimeLocalValue(task.reviewAt)) return true;
+        return false;
+    }, [
+        editTitle,
+        editDescription,
+        editProjectId,
+        editSectionId,
+        editAreaId,
+        editStatus,
+        editContexts,
+        editTags,
+        editTextDirection,
+        editLocation,
+        editRecurrence,
+        editRecurrenceStrategy,
+        editRecurrenceRRule,
+        editTimeEstimate,
+        editPriority,
+        editDueDate,
+        editStartTime,
+        editReviewAt,
+        task,
+    ]);
     const selectAriaLabel = (() => {
         const label = t('task.select');
         return label === 'task.select' ? 'Select task' : label;
@@ -782,6 +825,13 @@ export const TaskItem = memo(function TaskItem({
                                 inputContexts={allContexts}
                                 onDuplicateTask={() => duplicateTask(task.id, false)}
                                 onCancel={() => {
+                                    if (hasPendingEdits()) {
+                                        const translated = t('taskEdit.discardChanges');
+                                        const message = translated === 'taskEdit.discardChanges'
+                                            ? 'Discard unsaved changes?'
+                                            : translated;
+                                        if (!window.confirm(message)) return;
+                                    }
                                     resetEditState();
                                     setIsEditing(false);
                                 }}
