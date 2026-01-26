@@ -278,6 +278,7 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
     const handleSelect = (result: { type: 'project' | 'task', item: Project | Task }) => {
         setIsOpen(false);
         if (result.type === 'project') {
+            setProjectView({ selectedProjectId: result.item.id });
             onNavigate('projects', result.item.id);
         } else {
             // Map task status to appropriate view
