@@ -32,6 +32,25 @@ Mindwtr lets you attach files and links to **tasks** and **projects**. Attachmen
 
 When you enable **Save audio attachments** (Settings → General), Mindwtr keeps the original voice note alongside the transcript. This is useful if you want to replay or share the recording later.
 
+### Linux audio playback dependencies
+
+Audio playback on Linux uses **GStreamer**. If you see errors like `autoaudiosink not found`, install the GStreamer plugins:
+
+**Arch / Manjaro**
+```bash
+sudo pacman -S gstreamer gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav
+```
+
+**Debian / Ubuntu / Mint**
+```bash
+sudo apt install gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav
+```
+
+**Fedora** (RPM Fusion required for some codecs)
+```bash
+sudo dnf install gstreamer1-plugins-base gstreamer1-plugins-good gstreamer1-plugins-bad-free gstreamer1-plugins-ugly gstreamer1-libav
+```
+
 ---
 
 ## Sync behavior
