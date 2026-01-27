@@ -373,15 +373,6 @@ export function SettingsView() {
     }, [settings?.window, showSaved, updateSettings]);
 
     const handleTrayVisibleChange = useCallback(async (visible: boolean) => {
-        if (isTauri) {
-            try {
-                const { invoke } = await import('@tauri-apps/api/core');
-                await invoke('set_tray_visible', { visible });
-            } catch (error) {
-                reportError('Failed to set tray visibility', error);
-                return;
-            }
-        }
         updateSettings({
             window: {
                 ...(settings?.window ?? {}),
@@ -390,7 +381,7 @@ export function SettingsView() {
         })
             .then(showSaved)
             .catch((error) => reportError('Failed to update tray visibility setting', error));
-    }, [isTauri, settings?.window, showSaved, updateSettings]);
+    }, [settings?.window, showSaved, updateSettings]);
 
     const handleKeybindingStyleChange = (style: 'vim' | 'emacs') => {
         setKeybindingStyle(style);
