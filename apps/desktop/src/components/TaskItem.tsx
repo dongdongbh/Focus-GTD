@@ -194,6 +194,15 @@ export const TaskItem = memo(function TaskItem({
     const recurrenceStrategy = getRecurrenceStrategyValue(task.recurrence);
     const isStagnant = (task.pushCount ?? 0) > 3;
     const effectiveReadOnly = readOnly || task.status === 'done';
+    const handleToggleChecklistItem = useCallback((index: number) => {
+        if (effectiveReadOnly) return;
+        const checklist = task.checklist || [];
+        if (!checklist[index]) return;
+        const nextChecklist = checklist.map((item, i) =>
+            i === index ? { ...item, isCompleted: !item.isCompleted } : item
+        );
+        void updateTask(task.id, { checklist: nextChecklist });
+    }, [effectiveReadOnly, task, updateTask]);
     const {
         monthlyRecurrence,
         showCustomRecurrence,
@@ -862,6 +871,7 @@ export const TaskItem = memo(function TaskItem({
                             timeEstimatesEnabled={timeEstimatesEnabled}
                             isStagnant={isStagnant}
                             showQuickDone={showQuickDone}
+                            onToggleChecklistItem={handleToggleChecklistItem}
                             focusToggle={focusToggle}
                             readOnly={effectiveReadOnly}
                             compactMetaEnabled={compactMetaEnabled}

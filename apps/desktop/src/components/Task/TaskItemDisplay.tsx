@@ -28,6 +28,7 @@ interface TaskItemDisplayProps {
     timeEstimatesEnabled: boolean;
     isStagnant: boolean;
     showQuickDone: boolean;
+    onToggleChecklistItem?: (index: number) => void;
     focusToggle?: {
         isFocused: boolean;
         canToggle: boolean;
@@ -79,6 +80,7 @@ export function TaskItemDisplay({
     timeEstimatesEnabled,
     isStagnant,
     showQuickDone,
+    onToggleChecklistItem,
     focusToggle,
     readOnly,
     compactMetaEnabled = true,
@@ -376,7 +378,21 @@ export function TaskItemDisplay({
                                     onPointerDown={(e) => e.stopPropagation()}
                                 >
                                     {(task.checklist || []).map((item, index) => (
-                                        <div key={item.id || index} className="flex items-center gap-2 text-xs text-muted-foreground">
+                                        <button
+                                            key={item.id || index}
+                                            type="button"
+                                            className={cn(
+                                                "w-full flex items-center gap-2 text-left text-xs text-muted-foreground rounded px-1.5 py-1 hover:bg-muted/60 transition-colors",
+                                                readOnly && "hover:bg-transparent cursor-default"
+                                            )}
+                                            onClick={(event) => {
+                                                event.stopPropagation();
+                                                if (readOnly) return;
+                                                onToggleChecklistItem?.(index);
+                                            }}
+                                            aria-pressed={item.isCompleted}
+                                            disabled={readOnly || !onToggleChecklistItem}
+                                        >
                                             <span
                                                 className={cn(
                                                     "w-3 h-3 border rounded flex items-center justify-center",
@@ -388,7 +404,7 @@ export function TaskItemDisplay({
                                                 {item.isCompleted && <Check className="w-2 h-2" />}
                                             </span>
                                             <span className={cn(item.isCompleted && "line-through")}>{item.title}</span>
-                                        </div>
+                                        </button>
                                     ))}
                                 </div>
                             )}
