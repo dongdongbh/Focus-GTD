@@ -2479,9 +2479,9 @@ pub fn run() {
                 }
             }
 
+            let handle = app.handle();
             if !(cfg!(target_os = "linux") && is_flatpak()) {
                 // Build system tray with Quick Add entry.
-                let handle = app.handle();
                 let quick_add_item = MenuItem::with_id(handle, "quick_add", "Quick Add", true, None::<&str>)?;
                 let show_item = MenuItem::with_id(handle, "show", "Show Mindwtr", true, None::<&str>)?;
                 let quit_item = MenuItem::with_id(handle, "quit", "Quit", true, None::<&str>)?;
