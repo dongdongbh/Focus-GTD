@@ -151,8 +151,8 @@ sudo dpkg -i mindwtr_*.deb
 **AppImage (Universal):**
 Download the `.AppImage` from [GitHub Releases](https://github.com/dongdongbh/Mindwtr/releases):
 ```bash
-chmod +x Mindwtr_*.AppImage
-./Mindwtr_*.AppImage
+chmod +x mindwtr_*.AppImage
+./mindwtr_*.AppImage
 ```
 
 **Fedora/RHEL/openSUSE:**

@@ -52,12 +52,27 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Normalize deb filename for packaging
+        run: |
+          DEB_PATH=$(find apps/desktop/src-tauri/target/release/bundle/deb -name "*.deb" | head -1)
+          if [ -n "$DEB_PATH" ]; then
+            DIR=$(dirname "$DEB_PATH")
+            BASE=$(basename "$DEB_PATH")
+            LOWER=$(echo "$BASE" | tr 'A-Z' 'a-z')
+            if [ "$BASE" != "$LOWER" ]; then
+              cp "$DEB_PATH" "$DIR/$LOWER"
+            fi
+          fi
+        shell: bash
+
       - name: Collect Linux artifacts
         run: |
           mkdir -p release-artifacts
-          find apps/desktop/src-tauri/target -name "*.AppImage" -exec cp {} release-artifacts/ \;
-          find apps/desktop/src-tauri/target -name "*.deb" -exec cp {} release-artifacts/ \;
-          find apps/desktop/src-tauri/target -name "*.rpm" -exec cp {} release-artifacts/ \;
+          for f in $(find apps/desktop/src-tauri/target -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm"); do
+            base=$(basename "$f")
+            lower=$(echo "$base" | tr 'A-Z' 'a-z')
+            cp "$f" "release-artifacts/$lower"
+          done
           ls -la release-artifacts/ || true
         shell: bash
 

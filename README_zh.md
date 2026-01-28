@@ -150,8 +150,8 @@ sudo dpkg -i mindwtr_*.deb
 **AppImage（通用）：**
 从 [GitHub Releases](https://github.com/dongdongbh/Mindwtr/releases) 下载 `.AppImage`：
 ```bash
-chmod +x Mindwtr_*.AppImage
-./Mindwtr_*.AppImage
+chmod +x mindwtr_*.AppImage
+./mindwtr_*.AppImage
 ```
 
 **Fedora/RHEL/openSUSE：**

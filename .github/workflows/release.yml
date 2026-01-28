@@ -127,9 +127,9 @@ jobs:
           TAG="${{ steps.version.outputs.tag }}"
           VERSION="${{ steps.version.outputs.version }}"
 
-          URL_DMG_ARM="https://github.com/${{ github.repository }}/releases/download/${TAG}/Mindwtr_${VERSION}_aarch64.dmg"
-          URL_DMG_INTEL="https://github.com/${{ github.repository }}/releases/download/${TAG}/Mindwtr_${VERSION}_x64.dmg"
-          URL_EXE="https://github.com/${{ github.repository }}/releases/download/${TAG}/Mindwtr_${VERSION}_x64-setup.exe"
+          URL_DMG_ARM="https://github.com/${{ github.repository }}/releases/download/${TAG}/mindwtr_${VERSION}_aarch64.dmg"
+          URL_DMG_INTEL="https://github.com/${{ github.repository }}/releases/download/${TAG}/mindwtr_${VERSION}_x64.dmg"
+          URL_EXE="https://github.com/${{ github.repository }}/releases/download/${TAG}/mindwtr_${VERSION}_x64-setup.exe"
 
           curl -fL -o mindwtr-arm.dmg "$URL_DMG_ARM"
           curl -fL -o mindwtr-intel.dmg "$URL_DMG_INTEL"
@@ -157,7 +157,7 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           SHA_EXE="${{ steps.hashes.outputs.sha_exe }}"
-          URL_EXE="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/Mindwtr_${VERSION}_x64-setup.exe#/dl.7z"
+          URL_EXE="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/mindwtr_${VERSION}_x64-setup.exe#/dl.7z"
 
           FILE="packages-repo/bucket/mindwtr.json"
           jq --arg v "$VERSION" \
@@ -166,7 +166,7 @@ jobs:
              '.version = $v
               | .architecture."64bit".url = $url
               | .architecture."64bit".hash = $hash
-             | .autoupdate.architecture."64bit".url = "https://github.com/dongdongbh/Mindwtr/releases/download/v\($v)/Mindwtr_\($v)_x64-setup.exe#/dl.7z"' \
+             | .autoupdate.architecture."64bit".url = "https://github.com/dongdongbh/Mindwtr/releases/download/v\($v)/mindwtr_\($v)_x64-setup.exe#/dl.7z"' \
              "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
 
       - name: Check Winget package exists
@@ -200,7 +200,7 @@ jobs:
           REPO="${{ github.repository }}"
           SHA_EXE="${{ steps.hashes.outputs.sha_exe }}"
           RELEASE_DATE="$(date -u +%Y-%m-%d)"
-          INSTALLER_URL="https://github.com/${REPO}/releases/download/${TAG}/Mindwtr_${VERSION}_x64-setup.exe"
+          INSTALLER_URL="https://github.com/${REPO}/releases/download/${TAG}/mindwtr_${VERSION}_x64-setup.exe"
           MANIFEST_DIR="winget-pkgs/manifests/d/dongdongbh/Mindwtr/${VERSION}"
 
           mkdir -p "$MANIFEST_DIR"

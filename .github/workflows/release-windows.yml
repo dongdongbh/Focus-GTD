@@ -43,6 +43,18 @@ jobs:
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2.0"
 
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          if (-not $tag) { $tag = "${{ github.event.inputs.tag }}" }
+          $version = $tag -replace '^v',''
+          if (-not $version) { $version = "0.0.0" }
+          $msixVersion = ($version.Split('.') + @('0','0','0','0'))[0..3] -join '.'
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+          echo "msix_version=$msixVersion" >> $env:GITHUB_OUTPUT
+
       - name: Build Tauri app
         run: |
           cd apps/desktop
@@ -79,7 +91,7 @@ jobs:
                    xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
             <Identity Name="$env:MS_IDENTITY_NAME" 
                       Publisher="$env:MS_PUBLISHER_ID" 
-                      Version="1.0.0.0" />
+                      Version="${{ steps.version.outputs.msix_version }}" />
             <Properties>
               <DisplayName>Mindwtr</DisplayName>
               <PublisherDisplayName>$env:MS_PUBLISHER_DISPLAY_NAME</PublisherDisplayName>
@@ -111,7 +123,7 @@ jobs:
       - name: Build MSIX package
         shell: pwsh
         run: |
-          $msixPath = "Mindwtr.msix"
+          $msixPath = "mindwtr_${{ steps.version.outputs.version }}_x64.msix"
           $makeappx = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits" -Recurse -Filter "makeappx.exe" -ErrorAction SilentlyContinue |
             Where-Object { $_.FullName -match "\\x64\\makeappx.exe$" } |
             Select-Object -First 1 -ExpandProperty FullName
@@ -124,9 +136,17 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path release-artifacts | Out-Null
-          Copy-Item "apps/desktop/src-tauri/target/release/bundle/nsis/*.exe" "release-artifacts/" -ErrorAction SilentlyContinue
-          Copy-Item "apps/desktop/src-tauri/target/release/bundle/msi/*.msi" "release-artifacts/" -ErrorAction SilentlyContinue
-          Copy-Item "Mindwtr.msix" "release-artifacts/" -ErrorAction SilentlyContinue
+          Get-ChildItem "apps/desktop/src-tauri/target/release/bundle/nsis/*.exe" -ErrorAction SilentlyContinue | ForEach-Object {
+            $lower = $_.Name.ToLower()
+            Copy-Item $_.FullName "release-artifacts/$lower"
+          }
+          Get-ChildItem "apps/desktop/src-tauri/target/release/bundle/msi/*.msi" -ErrorAction SilentlyContinue | ForEach-Object {
+            $lower = $_.Name.ToLower()
+            Copy-Item $_.FullName "release-artifacts/$lower"
+          }
+          Get-ChildItem "mindwtr_*.msix" -ErrorAction SilentlyContinue | ForEach-Object {
+            Copy-Item $_.FullName "release-artifacts/$($_.Name.ToLower())"
+          }
           Get-ChildItem release-artifacts
 
       - name: Upload Windows artifacts
