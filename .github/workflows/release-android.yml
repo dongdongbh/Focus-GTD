@@ -1,0 +1,117 @@
+name: Release Android
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    name: Android Build + Publish
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Setup EAS CLI
+        run: npm install -g eas-cli
+
+      - name: Resolve version
+        id: version
+        run: |
+          TAG_INPUT="${{ github.event.inputs.tag }}"
+          if [ -n "$TAG_INPUT" ]; then
+            TAG="$TAG_INPUT"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build Android APK + AAB (local EAS)
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          cd apps/mobile
+          MINDWTR_ANDROID_ARCHS=arm64-v8a,armeabi-v7a eas build --platform android --profile production-apk --local --non-interactive --output ./build/mindwtr-${VERSION}.apk
+          MINDWTR_ANDROID_ARCHS=arm64-v8a,armeabi-v7a eas build --platform android --profile production --local --non-interactive --output ./build/mindwtr-${VERSION}.aab
+          ls -la ./build
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Prepare Google Play release notes
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          NOTES_FILE="docs/release-notes/google-play/${VERSION}.txt"
+          if [ ! -f "$NOTES_FILE" ]; then
+            echo "Missing release notes file: $NOTES_FILE" >&2
+            exit 1
+          fi
+          OUT_DIR="apps/mobile/build/play-release-notes"
+          rm -rf "$OUT_DIR"
+          mkdir -p "$OUT_DIR"
+          awk -v out="$OUT_DIR" '
+            /^<[^>]+>$/ {
+              tag=$0
+              gsub(/[<>]/, "", tag)
+              file=out "/whatsnew-" tag
+              next
+            }
+            /^<\/[^>]+>$/ {
+              tag=""
+              next
+            }
+            tag != "" { print >> file }
+          ' "$NOTES_FILE"
+          ls -la "$OUT_DIR"
+
+      - name: Publish to Google Play Store
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}
+          packageName: tech.dongdongbh.mindwtr
+          releaseFiles: apps/mobile/build/mindwtr-*.aab
+          track: production
+          status: completed
+          releaseName: ${{ steps.version.outputs.version }}
+          whatsNewDirectory: apps/mobile/build/play-release-notes
+
+      - name: Collect Android artifacts
+        run: |
+          mkdir -p release-artifacts
+          cp apps/mobile/build/mindwtr-*.apk release-artifacts/
+          cp apps/mobile/build/mindwtr-*.aab release-artifacts/
+          ls -la release-artifacts
+
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-android
+          path: release-artifacts/*
+          if-no-files-found: error

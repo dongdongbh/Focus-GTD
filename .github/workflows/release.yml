@@ -10,331 +10,44 @@ on:
         description: 'Release tag (e.g., v0.2.3)'
         required: true
         type: string
-      build_ios:
-        description: 'Build iOS App (uses EAS cloud minutes)'
-        required: false
-        type: boolean
-        default: false
 
 permissions:
   contents: write
 
 jobs:
-  # Build desktop app for all platforms using Tauri
-  desktop:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: ubuntu-22.04
-            target: linux
-            deps: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev
-            artifacts: |
-              find apps/desktop/src-tauri/target -name "*.AppImage" -exec cp {} release-artifacts/ \;
-              find apps/desktop/src-tauri/target -name "*.deb" -exec cp {} release-artifacts/ \;
-              find apps/desktop/src-tauri/target -name "*.rpm" -exec cp {} release-artifacts/ \;
-          - platform: windows-latest
-            target: windows
-            deps: echo "No extra deps needed for Windows"
-            artifacts: |
-              cp apps/desktop/src-tauri/target/release/bundle/msi/*.msi release-artifacts/ 2>/dev/null || true
-              cp apps/desktop/src-tauri/target/release/bundle/nsis/*.exe release-artifacts/ 2>/dev/null || true
-          - platform: macos-14  # ARM64 runner (Apple Silicon)
-            target: macos-arm64
-            rust_target: aarch64-apple-darwin
-            deps: echo "No extra deps needed for macOS"
-            artifacts: |
-              cp apps/desktop/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg release-artifacts/ 2>/dev/null || true
-              cp apps/desktop/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app.tar.gz release-artifacts/ 2>/dev/null || true
-          - platform: macos-15  # x86_64 runner (Intel)
-            target: macos-x64
-            rust_target: x86_64-apple-darwin
-            deps: echo "No extra deps needed for macOS"
-            artifacts: |
-              cp apps/desktop/src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg release-artifacts/ 2>/dev/null || true
-              cp apps/desktop/src-tauri/target/x86_64-apple-darwin/release/bundle/macos/*.app.tar.gz release-artifacts/ 2>/dev/null || true
+  linux:
+    uses: ./.github/workflows/release-linux.yml
+    secrets: inherit
 
-    runs-on: ${{ matrix.platform }}
-    name: Desktop Build (${{ matrix.target }})
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  macos:
+    uses: ./.github/workflows/release-macos.yml
+    secrets: inherit
 
-      - name: Install system dependencies
-        run: ${{ matrix.deps }}
-        shell: bash
+  windows:
+    uses: ./.github/workflows/release-windows.yml
+    secrets: inherit
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.rust_target || '' }}
-
-      - name: Ensure macOS SetFile is on PATH
-        if: runner.os == 'macOS'
-        run: |
-          if [ -z "$DEVELOPER_DIR" ]; then
-            DEVELOPER_DIR="$(xcode-select -p)"
-            echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> "$GITHUB_ENV"
-          fi
-          export DEVELOPER_DIR
-          SETFILE_PATH="$(xcrun --find SetFile || true)"
-          if [ -n "$SETFILE_PATH" ]; then
-            echo "$(dirname "$SETFILE_PATH")" >> "$GITHUB_PATH"
-          fi
-          which SetFile || true
-
-      - name: Rust cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: apps/desktop/src-tauri
-
-      - name: Install Tauri CLI
-        run: cargo install tauri-cli --version "^2.0"
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Install dependencies
-        run: bun install
-
-      - name: Build Tauri app (with target)
-        if: matrix.rust_target != ''
-        run: |
-          cd apps/desktop
-          cargo tauri build --target ${{ matrix.rust_target }}
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MACOSX_DEPLOYMENT_TARGET: "10.15"
-          CMAKE_OSX_DEPLOYMENT_TARGET: "10.15"
-          DEVELOPER_DIR: ${{ env.DEVELOPER_DIR }}
-
-      - name: Build Tauri app (default)
-        if: matrix.rust_target == '' || matrix.rust_target == null
-        run: |
-          cd apps/desktop
-          cargo tauri build
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MACOSX_DEPLOYMENT_TARGET: "10.15"
-          CMAKE_OSX_DEPLOYMENT_TARGET: "10.15"
-          DEVELOPER_DIR: ${{ env.DEVELOPER_DIR }}
-
-      - name: Sign macOS app (ad-hoc)
-        if: runner.os == 'macOS'
-        run: |
-          APP_PATH=$(find apps/desktop/src-tauri/target -name "*.app" -type d | head -1)
-          if [ -n "$APP_PATH" ]; then
-            echo "Signing $APP_PATH"
-            codesign --force --deep --sign - "$APP_PATH"
-          fi
-        shell: bash
-
-      - name: Locate and Move artifacts
-        run: |
-          mkdir -p release-artifacts
-          echo "Listing build output for debugging:"
-          ls -R apps/desktop/src-tauri/target/release/bundle || echo "Bundle dir not found"
-          ${{ matrix.artifacts }}
-          ls -la release-artifacts/
-        shell: bash
-      
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: desktop-${{ matrix.target }}
-          path: release-artifacts/*
-          if-no-files-found: warn
-
-
-  # Android build (EAS local)
   android:
-    runs-on: ubuntu-latest
-    name: Android Build (EAS Local)
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    uses: ./.github/workflows/release-android.yml
+    secrets: inherit
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Install dependencies
-        run: bun install
-
-      - name: Setup EAS CLI
-        run: npm install -g eas-cli
-
-      - name: Resolve version
-        id: version
-        run: |
-          TAG_INPUT="${{ github.event.inputs.tag }}"
-          if [ -n "$TAG_INPUT" ]; then
-            TAG="$TAG_INPUT"
-          else
-            TAG="${GITHUB_REF#refs/tags/}"
-          fi
-          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
-
-      - name: Build Android APK + AAB (local EAS)
-        run: |
-          VERSION=${{ steps.version.outputs.version }}
-          cd apps/mobile
-          MINDWTR_ANDROID_ARCHS=arm64-v8a,armeabi-v7a eas build --platform android --profile production-apk --local --non-interactive --output ./build/mindwtr-${VERSION}.apk
-          MINDWTR_ANDROID_ARCHS=arm64-v8a,armeabi-v7a eas build --platform android --profile production --local --non-interactive --output ./build/mindwtr-${VERSION}.aab
-          ls -la ./build
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Prepare Google Play release notes
-        run: |
-          VERSION=${{ steps.version.outputs.version }}
-          NOTES_FILE="docs/release-notes/google-play/${VERSION}.txt"
-          if [ ! -f "$NOTES_FILE" ]; then
-            echo "Missing release notes file: $NOTES_FILE" >&2
-            exit 1
-          fi
-          OUT_DIR="apps/mobile/build/play-release-notes"
-          rm -rf "$OUT_DIR"
-          mkdir -p "$OUT_DIR"
-          awk -v out="$OUT_DIR" '
-            /^<[^>]+>$/ {
-              tag=$0
-              gsub(/[<>]/, "", tag)
-              file=out "/whatsnew-" tag
-              next
-            }
-            /^<\/[^>]+>$/ {
-              tag=""
-              next
-            }
-            tag != "" { print >> file }
-          ' "$NOTES_FILE"
-          ls -la "$OUT_DIR"
-
-      - name: Publish to Google Play Store
-        uses: r0adkll/upload-google-play@v1
-        with:
-          serviceAccountJsonPlainText: ${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}
-          packageName: tech.dongdongbh.mindwtr
-          releaseFiles: apps/mobile/build/mindwtr-*.aab
-          track: production
-          status: completed
-          releaseName: ${{ steps.version.outputs.version }}
-          whatsNewDirectory: apps/mobile/build/play-release-notes
-
-      - name: Upload Android APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-apk
-          path: apps/mobile/build/mindwtr-*.apk
-          if-no-files-found: error
-
-      - name: Upload Android AAB
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-aab
-          path: apps/mobile/build/mindwtr-*.aab
-          if-no-files-found: error
-
-  # Optional iOS build (only when manually triggered with build_ios=true)
-  ios:
-    runs-on: ubuntu-latest
-    name: iOS Build (EAS)
-    if: ${{ github.event.inputs.build_ios == 'true' }}
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Install dependencies
-        run: bun install
-
-      - name: Setup EAS CLI
-        run: npm install -g eas-cli
-
-      - name: Build iOS App
-        run: |
-          cd apps/mobile
-          eas build --platform ios --profile preview --non-interactive
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Download Artifact from EAS
-        run: |
-          cd apps/mobile
-          eas build:list --platform ios --status finished --limit 1 --json > build_ios.json
-          BUILD_URL=$(cat build_ios.json | jq -r '.[0].artifacts.buildUrl')
-          # Extension depends on build type (tar.gz for simulator, ipa for device)
-          curl -L -o ios-app.tar.gz "$BUILD_URL"
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Upload iOS artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-app
-          path: apps/mobile/ios-app.tar.gz
-          if-no-files-found: error
-
-  # Create GitHub Release with all artifacts
   release:
-    needs: [desktop, android, ios]
+    needs: [linux, macos, windows, android]
     runs-on: ubuntu-latest
     name: Create Release
-    if: always() && needs.desktop.result == 'success'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Download all Desktop artifacts
+      - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: desktop-*
+          pattern: release-*
           path: ./release-assets
           merge-multiple: true
-
-      - name: Download Android artifact
-        if: ${{ needs.android.result == 'success' }}
-        uses: actions/download-artifact@v4
-        with:
-          name: android-apk
-          path: ./release-assets
-
-      - name: Download iOS artifact
-        if: ${{ needs.ios.result == 'success' }}
-        uses: actions/download-artifact@v4
-        with:
-          name: ios-app
-          path: ./release-assets
 
       - name: List release assets
         run: ls -la ./release-assets/ || echo "No assets found"
@@ -362,26 +75,18 @@ jobs:
         id: changelog
         if: ${{ steps.release_notes.outputs.body_path == 'CHANGELOG.md' }}
         run: |
-          # Get the previous tag
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           CURRENT_TAG=${GITHUB_REF#refs/tags/}
-          
           echo "## What's Changed in $CURRENT_TAG" > CHANGELOG.md
           echo "" >> CHANGELOG.md
-          
           if [ -n "$PREV_TAG" ]; then
-            # Get commit messages between tags
             git log --pretty=format:"- %s" $PREV_TAG..HEAD >> CHANGELOG.md
           else
-            # First release - get all commits
             git log --pretty=format:"- %s" >> CHANGELOG.md
           fi
-          
           echo "" >> CHANGELOG.md
           echo "" >> CHANGELOG.md
           echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREV_TAG...$CURRENT_TAG" >> CHANGELOG.md
-          
-          cat CHANGELOG.md
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -392,44 +97,6 @@ jobs:
           prerelease: ${{ contains(github.ref, '-') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  aur-release:
-    needs: release
-    runs-on: ubuntu-latest
-    name: AUR Release
-    if: always() && needs.release.result == 'success'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Update PKGBUILD version
-        run: |
-          # Strip 'v' prefix from tag
-          VERSION=${GITHUB_REF#refs/tags/v}
-          echo "Updating PKGBUILD to version $VERSION"
-          sed -i "s/^pkgver=.*/pkgver=$VERSION/" aur/PKGBUILD
-          sed -i "s/^pkgrel=.*/pkgrel=1/" aur/PKGBUILD
-        shell: bash
-
-      - name: Update .SRCINFO
-        run: |
-          docker run --rm \
-            -v "$PWD/aur:/aur" \
-            -w /aur \
-            archlinux:latest \
-            bash -lc "pacman -Sy --noconfirm --needed base-devel git && useradd -m builder && chown -R builder:builder /aur && su builder -c 'makepkg --printsrcinfo > .SRCINFO'"
-        shell: bash
-
-      - name: Publish to AUR
-        uses: KSXGitHub/github-actions-deploy-aur@v3
-        with:
-          pkgname: mindwtr-bin
-          pkgbuild: ./aur/PKGBUILD
-          commit_username: ${{ secrets.AUR_USERNAME }}
-          commit_email: ${{ secrets.AUR_EMAIL }}
-          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-          commit_message: Update to ${{ github.ref_name }}
-          updpkgsums: true
 
   update-packages:
     needs: release

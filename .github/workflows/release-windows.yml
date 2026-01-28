@@ -1,0 +1,137 @@
+name: Release Windows
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  MS_IDENTITY_NAME: "DongdaLi.Mindwtr"
+  MS_PUBLISHER_ID: "CN=76AC9B15-7A1B-49FF-9342-2BE80735A1E6"
+  MS_PUBLISHER_DISPLAY_NAME: "Dongda Li"
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    name: Windows Build (EXE + MSIX)
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2.0"
+
+      - name: Build Tauri app
+        run: |
+          cd apps/desktop
+          cargo tauri build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Windows SDK (MakeAppx)
+        run: choco install windows-sdk-10-version-2004-all -y --no-progress
+
+      - name: Create MSIX layout
+        shell: pwsh
+        run: |
+          $buildDir = "apps/desktop/src-tauri/target/release"
+          $outDir = "msix-staging"
+          $iconDir = "apps/desktop/src-tauri/icons"
+          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+          New-Item -ItemType Directory -Force -Path "$outDir\Assets" | Out-Null
+          Copy-Item "$buildDir/mindwtr.exe" -Destination "$outDir/mindwtr.exe"
+          if (Test-Path "$buildDir/WebView2Loader.dll") {
+            Copy-Item "$buildDir/WebView2Loader.dll" -Destination "$outDir"
+          }
+          Copy-Item "$iconDir/Square44x44Logo.png" "$outDir\Assets\StoreLogo.png"
+          Copy-Item "$iconDir/Square150x150Logo.png" "$outDir\Assets\Square150x150Logo.png"
+          Copy-Item "$iconDir/Square44x44Logo.png" "$outDir\Assets\Square44x44Logo.png"
+
+      - name: Generate AppxManifest.xml
+        shell: pwsh
+        run: |
+          $manifest = @"
+          <?xml version="1.0" encoding="utf-8"?>
+          <Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10" 
+                   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10" 
+                   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities">
+            <Identity Name="$env:MS_IDENTITY_NAME" 
+                      Publisher="$env:MS_PUBLISHER_ID" 
+                      Version="1.0.0.0" />
+            <Properties>
+              <DisplayName>Mindwtr</DisplayName>
+              <PublisherDisplayName>$env:MS_PUBLISHER_DISPLAY_NAME</PublisherDisplayName>
+              <Logo>Assets\StoreLogo.png</Logo>
+            </Properties>
+            <Dependencies>
+              <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.19041.0" />
+            </Dependencies>
+            <Resources>
+              <Resource Language="en-us" />
+            </Resources>
+            <Applications>
+              <Application Id="App" Executable="mindwtr.exe" EntryPoint="Windows.FullTrustApplication">
+                <uap:VisualElements DisplayName="Mindwtr" 
+                                    Description="Local-first GTD application" 
+                                    BackgroundColor="transparent" 
+                                    Square150x150Logo="Assets\Square150x150Logo.png" 
+                                    Square44x44Logo="Assets\Square44x44Logo.png">
+                </uap:VisualElements>
+              </Application>
+            </Applications>
+            <Capabilities>
+              <rescap:Capability Name="runFullTrust" />
+            </Capabilities>
+          </Package>
+          "@
+          $manifest | Out-File -FilePath "msix-staging\AppxManifest.xml" -Encoding UTF8
+
+      - name: Build MSIX package
+        shell: pwsh
+        run: |
+          $msixPath = "Mindwtr.msix"
+          $makeappx = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits" -Recurse -Filter "makeappx.exe" -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match "\\x64\\makeappx.exe$" } |
+            Select-Object -First 1 -ExpandProperty FullName
+          if (-not $makeappx) {
+            throw "makeappx.exe not found for x64"
+          }
+          & $makeappx pack /d msix-staging /p $msixPath /o
+
+      - name: Collect Windows artifacts
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path release-artifacts | Out-Null
+          Copy-Item "apps/desktop/src-tauri/target/release/bundle/nsis/*.exe" "release-artifacts/" -ErrorAction SilentlyContinue
+          Copy-Item "apps/desktop/src-tauri/target/release/bundle/msi/*.msi" "release-artifacts/" -ErrorAction SilentlyContinue
+          Copy-Item "Mindwtr.msix" "release-artifacts/" -ErrorAction SilentlyContinue
+          Get-ChildItem release-artifacts
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: release-artifacts/*
+          if-no-files-found: warn

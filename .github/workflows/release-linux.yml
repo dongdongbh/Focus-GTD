@@ -1,0 +1,120 @@
+name: Release Linux
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    runs-on: ubuntu-22.04
+    name: Linux Build + Snap + AUR
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev
+        shell: bash
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2.0"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build Tauri app
+        run: |
+          cd apps/desktop
+          cargo tauri build
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Collect Linux artifacts
+        run: |
+          mkdir -p release-artifacts
+          find apps/desktop/src-tauri/target -name "*.AppImage" -exec cp {} release-artifacts/ \;
+          find apps/desktop/src-tauri/target -name "*.deb" -exec cp {} release-artifacts/ \;
+          find apps/desktop/src-tauri/target -name "*.rpm" -exec cp {} release-artifacts/ \;
+          ls -la release-artifacts/ || true
+        shell: bash
+
+      - name: Build Snap
+        uses: snapcore/action-build@v1
+        id: snap_build
+
+      - name: Add Snap to artifacts
+        run: |
+          mkdir -p release-artifacts
+          cp "${{ steps.snap_build.outputs.snap }}" release-artifacts/ || true
+          ls -la release-artifacts/ || true
+        shell: bash
+
+      - name: Publish Snap (stable)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_TOKEN }}
+        with:
+          snap: ${{ steps.snap_build.outputs.snap }}
+          release: stable
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-linux
+          path: release-artifacts/*
+          if-no-files-found: warn
+
+      - name: Update PKGBUILD version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "Updating PKGBUILD to version $VERSION"
+          sed -i "s/^pkgver=.*/pkgver=$VERSION/" aur/PKGBUILD
+          sed -i "s/^pkgrel=.*/pkgrel=1/" aur/PKGBUILD
+        shell: bash
+
+      - name: Update .SRCINFO
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          docker run --rm \
+            -v "$PWD/aur:/aur" \
+            -w /aur \
+            archlinux:latest \
+            bash -lc "pacman -Sy --noconfirm --needed base-devel git && useradd -m builder && chown -R builder:builder /aur && su builder -c 'makepkg --printsrcinfo > .SRCINFO'"
+        shell: bash
+
+      - name: Publish to AUR
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: KSXGitHub/github-actions-deploy-aur@v3
+        with:
+          pkgname: mindwtr-bin
+          pkgbuild: ./aur/PKGBUILD
+          commit_username: ${{ secrets.AUR_USERNAME }}
+          commit_email: ${{ secrets.AUR_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: Update to ${{ github.ref_name }}
+          updpkgsums: true

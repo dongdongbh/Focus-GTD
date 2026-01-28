@@ -1,0 +1,99 @@
+name: Release macOS
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-14
+            rust_target: aarch64-apple-darwin
+            artifact_name: release-macos-arm64
+          - platform: macos-15
+            rust_target: x86_64-apple-darwin
+            artifact_name: release-macos-x64
+    runs-on: ${{ matrix.platform }}
+    name: macOS Build (${{ matrix.rust_target }})
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
+
+      - name: Ensure macOS SetFile is on PATH
+        run: |
+          if [ -z "$DEVELOPER_DIR" ]; then
+            DEVELOPER_DIR="$(xcode-select -p)"
+            echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> "$GITHUB_ENV"
+          fi
+          export DEVELOPER_DIR
+          SETFILE_PATH="$(xcrun --find SetFile || true)"
+          if [ -n "$SETFILE_PATH" ]; then
+            echo "$(dirname "$SETFILE_PATH")" >> "$GITHUB_PATH"
+          fi
+          which SetFile || true
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2.0"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build Tauri app
+        run: |
+          cd apps/desktop
+          cargo tauri build --target ${{ matrix.rust_target }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MACOSX_DEPLOYMENT_TARGET: "10.15"
+          CMAKE_OSX_DEPLOYMENT_TARGET: "10.15"
+          DEVELOPER_DIR: ${{ env.DEVELOPER_DIR }}
+
+      - name: Sign macOS app (ad-hoc)
+        run: |
+          APP_PATH=$(find apps/desktop/src-tauri/target -name "*.app" -type d | head -1)
+          if [ -n "$APP_PATH" ]; then
+            echo "Signing $APP_PATH"
+            codesign --force --deep --sign - "$APP_PATH"
+          fi
+        shell: bash
+
+      - name: Collect macOS artifacts
+        run: |
+          mkdir -p release-artifacts
+          find apps/desktop/src-tauri/target/${{ matrix.rust_target }}/release/bundle -name "*.dmg" -exec cp {} release-artifacts/ \;
+          find apps/desktop/src-tauri/target/${{ matrix.rust_target }}/release/bundle -name "*.app.tar.gz" -exec cp {} release-artifacts/ \;
+          ls -la release-artifacts/ || true
+        shell: bash
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: release-artifacts/*
+          if-no-files-found: warn
