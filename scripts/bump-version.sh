@@ -75,7 +75,7 @@ let content = fs.readFileSync(filePath, 'utf8');
 content = content.replace(/^(version:\s*)['"]?[^'"\n]+['"]?/m, `$1'${version}'`);
 content = content.replace(
   /^(\s*source:\s*).*/m,
-  `$1apps/desktop/src-tauri/target/release/bundle/deb/mindwtr_${version}_amd64.deb`
+  `$1apps/desktop/src-tauri/target/release/bundle/deb/Mindwtr_${version}_amd64.deb`
 );
 
 fs.writeFileSync(filePath, content);
