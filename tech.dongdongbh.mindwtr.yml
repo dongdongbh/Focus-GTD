@@ -19,6 +19,7 @@ modules:
       - tar -xvf data.tar.gz
       - install -D usr/bin/mindwtr /app/bin/mindwtr
       - install -D usr/share/icons/hicolor/128x128/apps/mindwtr.png /app/share/icons/hicolor/128x128/apps/tech.dongdongbh.mindwtr.png
+      - install -D usr/share/icons/hicolor/256x256@2/apps/mindwtr.png /app/share/icons/hicolor/256x256/apps/tech.dongdongbh.mindwtr.png
       - install -D usr/share/applications/Mindwtr.desktop /app/share/applications/tech.dongdongbh.mindwtr.desktop
       - sed -i 's|Icon=mindwtr|Icon=tech.dongdongbh.mindwtr|g' /app/share/applications/tech.dongdongbh.mindwtr.desktop
       - |
