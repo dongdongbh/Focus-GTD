@@ -23,7 +23,7 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "versionCode": 18,
+      "versionCode": 19,
       "package": "tech.dongdongbh.mindwtr",
       "permissions": [
         "RECORD_AUDIO",
