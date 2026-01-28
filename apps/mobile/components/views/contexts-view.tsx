@@ -20,6 +20,8 @@ export function ContextsView() {
 
   const tc = useThemeColors();
 
+  const NO_CONTEXT_TOKEN = '__no_context__';
+
   // Combine preset contexts with contexts from tasks
   const allContexts = Array.from(
     new Set([...PRESET_CONTEXTS, ...tasks.flatMap((t) => [...(t.contexts || []), ...(t.tags || [])])])
@@ -33,13 +35,17 @@ export function ContextsView() {
   // ...
 
   const activeTasks = tasks.filter((t) => t.status !== 'done' && t.status !== 'reference' && !t.deletedAt);
+  const hasContext = (task: Task) => (task.contexts?.length || 0) > 0 || (task.tags?.length || 0) > 0;
   const matchesSelected = (task: Task, context: string) => {
     const tokens = [...(task.contexts || []), ...(task.tags || [])];
     return tokens.some(token => matchesHierarchicalToken(context, token));
   };
-  const filteredTasks = selectedContexts.length > 0
-    ? activeTasks.filter((t) => selectedContexts.every((ctx) => matchesSelected(t, ctx)))
-    : activeTasks.filter((t) => (t.contexts?.length || 0) > 0 || (t.tags?.length || 0) > 0);
+  const noContextSelected = selectedContexts.includes(NO_CONTEXT_TOKEN);
+  const filteredTasks = noContextSelected
+    ? activeTasks.filter((t) => !hasContext(t))
+    : selectedContexts.length > 0
+      ? activeTasks.filter((t) => selectedContexts.every((ctx) => matchesSelected(t, ctx)))
+      : activeTasks.filter((t) => hasContext(t));
 
   const sortBy = (settings?.taskSortBy ?? 'default') as TaskSortBy;
   const sortedTasks = sortTasksBy(filteredTasks, sortBy);
@@ -108,7 +114,43 @@ export function ContextsView() {
               ]}
             >
               <Text style={[styles.contextBadgeText, { color: selectedContexts.length === 0 ? '#FFFFFF' : tc.secondaryText }]}>
-                {activeTasks.filter((t) => (t.contexts?.length || 0) > 0 || (t.tags?.length || 0) > 0).length}
+              {activeTasks.filter((t) => (t.contexts?.length || 0) > 0 || (t.tags?.length || 0) > 0).length}
+            </Text>
+          </View>
+        </Pressable>
+
+          <Pressable
+            style={[
+              styles.contextButton,
+              {
+                backgroundColor: noContextSelected ? tc.tint : tc.filterBg,
+                borderColor: tc.border,
+              },
+            ]}
+            onPress={() => setSelectedContexts(noContextSelected ? [] : [NO_CONTEXT_TOKEN])}
+          >
+            <Text
+              style={[
+                styles.contextButtonText,
+                { color: noContextSelected ? '#FFFFFF' : tc.text },
+              ]}
+            >
+              {t('contexts.none')}
+            </Text>
+            <View
+              style={[
+                styles.contextBadge,
+                {
+                  backgroundColor: noContextSelected
+                    ? 'rgba(255, 255, 255, 0.25)'
+                    : isDark
+                      ? 'rgba(255, 255, 255, 0.12)'
+                      : 'rgba(0, 0, 0, 0.08)',
+                },
+              ]}
+            >
+              <Text style={[styles.contextBadgeText, { color: noContextSelected ? '#FFFFFF' : tc.secondaryText }]}>
+                {activeTasks.filter((t) => !hasContext(t)).length}
               </Text>
             </View>
           </Pressable>
@@ -123,9 +165,12 @@ export function ContextsView() {
                   styles.contextButton,
                   { backgroundColor: isActive ? tc.tint : tc.filterBg, borderColor: tc.border },
                 ]}
-                onPress={() => setSelectedContexts((prev) => (
-                  prev.includes(context) ? prev.filter((item) => item !== context) : [...prev, context]
-                ))}
+                onPress={() => setSelectedContexts((prev) => {
+                  if (prev.includes(NO_CONTEXT_TOKEN)) {
+                    return [context];
+                  }
+                  return prev.includes(context) ? prev.filter((item) => item !== context) : [...prev, context];
+                })}
               >
                 <Text
                   style={[
@@ -157,7 +202,9 @@ export function ContextsView() {
         <View style={styles.content}>
           <View style={[styles.contentHeader, { backgroundColor: tc.cardBg, borderBottomColor: tc.border }]}>
             <Text style={[styles.contentTitle, { color: tc.text }]}>
-              {selectedContexts.length > 0 ? selectedContexts.join(', ') : t('contexts.all')}
+              {noContextSelected
+                ? t('contexts.none')
+                : (selectedContexts.length > 0 ? selectedContexts.join(', ') : t('contexts.all'))}
             </Text>
             <Text style={[styles.contentCount, { color: tc.secondaryText }]}>{sortedTasks.length} {t('common.tasks')}</Text>
           </View>

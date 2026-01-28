@@ -302,6 +302,7 @@ const en: Record<string, string> = {
         'filters.projects': 'Projects',
         'filters.noMatch': 'No tasks match these filters.',
         'contexts.all': 'All Contexts',
+        'contexts.none': 'No context',
         'contexts.noContexts': 'No contexts found. Add contexts like @home, @work, @computer to your tasks',
         'contexts.noTasks': 'No active tasks for this context',
 
@@ -1220,6 +1221,7 @@ const zh: Record<string, string> = {
         'filters.projects': '项目',
         'filters.noMatch': '没有匹配这些筛选条件的任务。',
         'contexts.all': '所有情境',
+        'contexts.none': '无情境',
         'contexts.noContexts': '未找到情境。为任务添加 @家, @工作, @电脑 等情境',
         'contexts.noTasks': '此情境没有活跃任务',
 
@@ -2059,6 +2061,7 @@ const esOverrides: Record<string, string> = {
         'filters.projects': 'Proyectos',
         'filters.noMatch': 'No hay tareas que coincidan con estos filtros.',
         'contexts.all': 'Todos los contextos',
+        'contexts.none': 'Sin contexto',
         'contexts.noContexts': 'No se han encontrado contextos. Añade contextos como @casa, @oficina, @PC a tus tareas',
         'contexts.noTasks': 'No hay tareas activas para este contexto',
 

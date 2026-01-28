@@ -15,6 +15,7 @@ export function ContextsView() {
     );
     const { t } = useLanguage();
     const [selectedContext, setSelectedContext] = useState<string | null>(null);
+    const NO_CONTEXT_TOKEN = '__no_context__';
     const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
 
     useEffect(() => {
@@ -43,9 +44,14 @@ export function ContextsView() {
         return tokens.some(token => matchesHierarchicalToken(context, token));
     };
 
-    const filteredTasks = selectedContext
-        ? scopedTasks.filter(t => matchesSelected(t, selectedContext))
-        : scopedTasks.filter(t => ((t.contexts?.length || 0) > 0 || (t.tags?.length || 0) > 0));
+    const hasContext = (task: typeof activeTasks[number]) =>
+        (task.contexts?.length || 0) > 0 || (task.tags?.length || 0) > 0;
+
+    const filteredTasks = selectedContext === NO_CONTEXT_TOKEN
+        ? scopedTasks.filter((t) => !hasContext(t))
+        : selectedContext
+            ? scopedTasks.filter(t => matchesSelected(t, selectedContext))
+            : scopedTasks.filter((t) => hasContext(t));
 
     const statusOptions: Array<{ value: TaskStatus | 'all'; label: string }> = [
         { value: 'next', label: t('status.next') },
@@ -74,7 +80,21 @@ export function ContextsView() {
                         <Tag className="w-4 h-4" />
                         <span className="flex-1">{t('contexts.all')}</span>
                         <span className="text-xs text-muted-foreground">
-                            {scopedTasks.filter(t => ((t.contexts?.length || 0) > 0 || (t.tags?.length || 0) > 0)).length}
+                            {scopedTasks.filter((t) => hasContext(t)).length}
+                        </span>
+                    </div>
+
+                    <div
+                        onClick={() => setSelectedContext(NO_CONTEXT_TOKEN)}
+                        className={cn(
+                            "flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors text-sm",
+                            selectedContext === NO_CONTEXT_TOKEN ? "bg-accent text-accent-foreground" : "hover:bg-muted/50"
+                        )}
+                    >
+                        <Tag className="w-4 h-4" />
+                        <span className="flex-1">{t('contexts.none')}</span>
+                        <span className="text-xs text-muted-foreground">
+                            {scopedTasks.filter((t) => !hasContext(t)).length}
                         </span>
                     </div>
 
@@ -111,7 +131,7 @@ export function ContextsView() {
                     </div>
                     <div>
                         <h2 className="text-2xl font-bold">
-                            {selectedContext ? selectedContext : t('contexts.all')}
+                            {selectedContext === NO_CONTEXT_TOKEN ? t('contexts.none') : (selectedContext ?? t('contexts.all'))}
                         </h2>
                         <p className="text-muted-foreground text-sm">
                             {filteredTasks.length} {t('common.tasks')}
