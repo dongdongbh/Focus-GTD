@@ -28,7 +28,7 @@ jobs:
         include:
           - platform: ubuntu-22.04
             target: linux
-            deps: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev
+            deps: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libasound2-dev
             artifacts: |
               find apps/desktop/src-tauri/target -name "*.AppImage" -exec cp {} release-artifacts/ \;
               find apps/desktop/src-tauri/target -name "*.deb" -exec cp {} release-artifacts/ \;
