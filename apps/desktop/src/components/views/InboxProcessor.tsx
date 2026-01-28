@@ -51,6 +51,7 @@ export function InboxProcessor({
     const [scheduleDate, setScheduleDate] = useState('');
     const [scheduleTime, setScheduleTime] = useState('');
     const [scheduleTimeDraft, setScheduleTimeDraft] = useState('');
+    const [skippedIds, setSkippedIds] = useState<Set<string>>(new Set());
 
     const inboxProcessing = settings?.gtd?.inboxProcessing ?? {};
     const twoMinuteFirst = inboxProcessing.twoMinuteFirst === true;
@@ -81,8 +82,8 @@ export function InboxProcessor({
     ), [tasks]);
 
     const remainingInboxCount = useMemo(
-        () => tasks.filter((task) => task.status === 'inbox').length,
-        [tasks]
+        () => tasks.filter((task) => task.status === 'inbox' && !skippedIds.has(task.id)).length,
+        [tasks, skippedIds]
     );
 
     useEffect(() => {
@@ -105,6 +106,7 @@ export function InboxProcessor({
         setScheduleDate('');
         setScheduleTime('');
         setScheduleTimeDraft('');
+        setSkippedIds(new Set());
     }, [isProcessing]);
 
     const hydrateProcessingTask = useCallback((task: Task) => {
@@ -140,7 +142,7 @@ export function InboxProcessor({
 
     const processNext = useCallback(() => {
         const currentTaskId = processingTask?.id;
-        const inboxTasks = tasks.filter((task) => task.status === 'inbox' && task.id !== currentTaskId);
+        const inboxTasks = tasks.filter((task) => task.status === 'inbox' && task.id !== currentTaskId && !skippedIds.has(task.id));
         if (inboxTasks.length > 0) {
             hydrateProcessingTask(inboxTasks[0]);
             return;
@@ -148,7 +150,18 @@ export function InboxProcessor({
         setIsProcessing(false);
         setProcessingTask(null);
         setSelectedContexts([]);
-    }, [hydrateProcessingTask, processingTask?.id, tasks, setIsProcessing]);
+    }, [hydrateProcessingTask, processingTask?.id, tasks, setIsProcessing, skippedIds]);
+
+    const handleSkip = useCallback(() => {
+        if (processingTask) {
+            setSkippedIds((prev) => {
+                const next = new Set(prev);
+                next.add(processingTask.id);
+                return next;
+            });
+        }
+        processNext();
+    }, [processNext, processingTask]);
 
     const applyProcessingEdits = useCallback((updates: Partial<Task>) => {
         if (!processingTask) return;
@@ -417,6 +430,7 @@ export function InboxProcessor({
                 canGoBack={stepHistory.length > 0}
                 onBack={goBack}
                 handleRefineNext={() => goToStep(twoMinuteFirst ? 'twomin' : 'actionable')}
+                handleSkip={handleSkip}
                 handleNotActionable={handleNotActionable}
                 handleActionable={handleActionable}
                 handleTwoMinDone={handleTwoMinDone}

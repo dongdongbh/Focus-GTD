@@ -19,6 +19,7 @@ type InboxProcessingWizardProps = {
     canGoBack: boolean;
     onBack: () => void;
     handleRefineNext: () => void;
+    handleSkip: () => void;
     handleNotActionable: (destination: 'trash' | 'someday' | 'reference') => void;
     handleActionable: () => void;
     handleTwoMinDone: () => void;
@@ -81,6 +82,7 @@ export function InboxProcessingWizard({
     canGoBack,
     onBack,
     handleRefineNext,
+    handleSkip,
     handleNotActionable,
     handleActionable,
     handleTwoMinDone,
@@ -151,12 +153,21 @@ export function InboxProcessingWizard({
                     )}
                     <h3 className="font-semibold text-lg">📋 {t('process.title')}</h3>
                 </div>
-                <button
-                    onClick={() => setIsProcessing(false)}
-                    className="text-muted-foreground hover:text-foreground"
-                >
-                    <X className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        type="button"
+                        onClick={handleSkip}
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                    >
+                        {t('inbox.skip')} →
+                    </button>
+                    <button
+                        onClick={() => setIsProcessing(false)}
+                        className="text-muted-foreground hover:text-foreground"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
             </div>
 
             {processingStep === 'refine' ? (

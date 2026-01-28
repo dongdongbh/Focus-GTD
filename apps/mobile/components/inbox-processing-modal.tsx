@@ -34,10 +34,16 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
   const [processingDescription, setProcessingDescription] = useState('');
   const [processingTitleFocused, setProcessingTitleFocused] = useState(false);
   const titleInputRef = useRef<TextInput | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [pendingStartDate, setPendingStartDate] = useState<Date | null>(null);
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [isAIWorking, setIsAIWorking] = useState(false);
   const [aiModal, setAiModal] = useState<{ title: string; message?: string; actions: AIResponseAction[] } | null>(null);
+
+  const inboxProcessing = settings?.gtd?.inboxProcessing ?? {};
+  const twoMinuteFirst = inboxProcessing.twoMinuteFirst === true;
+  const projectFirst = inboxProcessing.projectFirst === true;
+  const scheduleEnabled = inboxProcessing.scheduleEnabled !== false;
 
   const aiEnabled = settings?.ai?.enabled === true;
   const aiProvider = (settings?.ai?.provider ?? 'openai') as AIProviderId;
@@ -103,6 +109,7 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
     setSelectedTags([]);
     setNewContext('');
     setProjectSearch('');
+    setSelectedProjectId(null);
     setProcessingTitle('');
     setProcessingDescription('');
     setAiModal(null);
@@ -139,6 +146,7 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
     setSelectedTags(firstTask?.tags ?? []);
     setNewContext('');
     setProjectSearch('');
+    setSelectedProjectId(firstTask?.projectId ?? null);
     resetTitleFocus();
     setProcessingTitle(firstTask?.title ?? '');
     setProcessingDescription(firstTask?.description ?? '');
@@ -170,6 +178,7 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
       setSelectedContexts(nextTask?.contexts ?? []);
       setNewContext('');
       setProjectSearch('');
+      setSelectedProjectId(nextTask?.projectId ?? null);
       resetTitleFocus();
       setProcessingTitle(nextTask?.title ?? '');
       setProcessingDescription(nextTask?.description ?? '');
@@ -197,6 +206,7 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
     setSelectedTags(nextTask?.tags ?? []);
     setNewContext('');
     setProjectSearch('');
+    setSelectedProjectId(nextTask?.projectId ?? null);
     resetTitleFocus();
     setProcessingTitle(nextTask?.title ?? '');
     setProcessingDescription(nextTask?.description ?? '');
@@ -238,7 +248,7 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
   };
 
   const handleActionable = () => {
-    setProcessingStep('twomin');
+    setProcessingStep(twoMinuteFirst ? 'decide' : 'twomin');
   };
 
   const handleTwoMinYes = () => {
@@ -249,7 +259,7 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
   };
 
   const handleTwoMinNo = () => {
-    setProcessingStep('decide');
+    setProcessingStep(twoMinuteFirst ? 'actionable' : 'decide');
   };
 
   const handleDecision = (decision: 'delegate' | 'defer') => {
@@ -260,7 +270,7 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
       setProcessingStep('delegate');
     } else {
       setSelectedContexts(currentTask.contexts ?? []);
-      setProcessingStep('context');
+      setProcessingStep(projectFirst ? 'project' : 'context');
     }
   };
 
@@ -337,28 +347,34 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
     setNewContext('');
   };
 
-  const handleConfirmContextsMobile = () => {
-    applyProcessingEdits({
-      status: 'next',
-      contexts: selectedContexts,
-      tags: selectedTags,
-      startTime: pendingStartDate ? pendingStartDate.toISOString() : undefined,
-    });
-    setPendingStartDate(null);
-    moveToNext();
-  };
-
-  const handleSetProject = (projectId: string | null) => {
+  const finalizeNextAction = (projectId: string | null) => {
     applyProcessingEdits({
       status: 'next',
       projectId: projectId ?? undefined,
       contexts: selectedContexts,
       tags: selectedTags,
-      startTime: pendingStartDate ? pendingStartDate.toISOString() : undefined,
+      startTime: scheduleEnabled && pendingStartDate ? pendingStartDate.toISOString() : undefined,
     });
     setPendingStartDate(null);
-    setProjectSearch('');
     moveToNext();
+  };
+
+  const handleConfirmContextsMobile = () => {
+    if (projectFirst) {
+      finalizeNextAction(selectedProjectId);
+      return;
+    }
+    setProcessingStep('project');
+  };
+
+  const handleSetProject = (projectId: string | null) => {
+    setSelectedProjectId(projectId);
+    setProjectSearch('');
+    if (projectFirst) {
+      setProcessingStep('context');
+      return;
+    }
+    finalizeNextAction(projectId);
   };
 
   const handleAIClarifyInbox = async () => {
@@ -470,11 +486,11 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
     );
   }
 
-  const projectTitle = currentTask.projectId
-    ? projects.find((p) => p.id === currentTask.projectId)?.title
+  const projectTitle = selectedProjectId
+    ? projects.find((p) => p.id === selectedProjectId)?.title
     : null;
-  const currentProject = currentTask.projectId
-    ? projects.find((p) => p.id === currentTask.projectId) ?? null
+  const currentProject = selectedProjectId
+    ? projects.find((p) => p.id === selectedProjectId) ?? null
     : null;
   const displayDescription = processingDescription || currentTask.description || '';
   const windowHeight = Dimensions.get('window').height;
@@ -742,6 +758,7 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
                   {t('inbox.whatNext')}
                 </Text>
 
+                {scheduleEnabled && (
                 <View style={styles.startDateRow}>
                   <Text style={[styles.stepHint, { color: tc.secondaryText }]}>
                     {t('taskEdit.startDateLabel')} ({t('common.notSet')})
@@ -765,6 +782,7 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
                     )}
                   </View>
                 </View>
+                )}
 
                 <View style={styles.buttonColumn}>
                   <TouchableOpacity
@@ -783,7 +801,7 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
               </View>
             )}
 
-            {showStartDatePicker && (
+            {scheduleEnabled && showStartDatePicker && (
               <DateTimePicker
                 value={pendingStartDate ?? new Date()}
                 mode="date"
@@ -1053,7 +1071,7 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
                   </TouchableOpacity>
                   {filteredProjects.map(proj => {
                     const projectColor = proj.areaId ? areaById.get(proj.areaId)?.color : undefined;
-                    const isSelected = currentTask.projectId === proj.id;
+                    const isSelected = selectedProjectId === proj.id;
                     return (
                       <TouchableOpacity
                         key={proj.id}

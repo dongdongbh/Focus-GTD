@@ -275,6 +275,10 @@ export default function SettingsPage() {
         : defaultTimeEstimatePresets) as TimeEstimate[];
     const defaultCaptureMethod = settings.gtd?.defaultCaptureMethod ?? 'text';
     const saveAudioAttachments = settings.gtd?.saveAudioAttachments !== false;
+    const inboxProcessing = settings.gtd?.inboxProcessing ?? {};
+    const inboxTwoMinuteFirst = inboxProcessing.twoMinuteFirst === true;
+    const inboxProjectFirst = inboxProcessing.projectFirst === true;
+    const inboxScheduleEnabled = inboxProcessing.scheduleEnabled !== false;
     const autoArchiveDays = Number.isFinite(settings.gtd?.autoArchiveDays)
         ? Math.max(0, Math.floor(settings.gtd?.autoArchiveDays as number))
         : 7;
@@ -303,6 +307,18 @@ export default function SettingsPage() {
     };
 
     const formatTime = (time: string) => time;
+
+    const updateInboxProcessing = (partial: Partial<NonNullable<AppData['settings']['gtd']>['inboxProcessing']>) => {
+        updateSettings({
+            gtd: {
+                ...(settings.gtd ?? {}),
+                inboxProcessing: {
+                    ...(settings.gtd?.inboxProcessing ?? {}),
+                    ...partial,
+                },
+            },
+        }).catch(logSettingsError);
+    };
     const localeMap: Record<Language, string> = {
         en: 'en-US',
         zh: 'zh-CN',
@@ -2166,6 +2182,47 @@ export default function SettingsPage() {
                                 />
                             </View>
                         ) : null}
+                    </View>
+
+                    <View style={[styles.settingCard, { backgroundColor: tc.cardBg, marginTop: 12 }]}>
+                        <View style={styles.settingRow}>
+                            <View style={styles.settingInfo}>
+                                <Text style={[styles.settingLabel, { color: tc.text }]}>{t('settings.inboxProcessing')}</Text>
+                                <Text style={[styles.settingDescription, { color: tc.secondaryText }]}>
+                                    {t('settings.inboxProcessingDesc')}
+                                </Text>
+                            </View>
+                        </View>
+                        <View style={[styles.settingRow, { borderTopWidth: 1, borderTopColor: tc.border }]}>
+                            <View style={styles.settingInfo}>
+                                <Text style={[styles.settingLabel, { color: tc.text }]}>{t('settings.inboxTwoMinuteFirst')}</Text>
+                            </View>
+                            <Switch
+                                value={inboxTwoMinuteFirst}
+                                onValueChange={(value) => updateInboxProcessing({ twoMinuteFirst: value })}
+                                trackColor={{ false: '#767577', true: '#3B82F6' }}
+                            />
+                        </View>
+                        <View style={[styles.settingRow, { borderTopWidth: 1, borderTopColor: tc.border }]}>
+                            <View style={styles.settingInfo}>
+                                <Text style={[styles.settingLabel, { color: tc.text }]}>{t('settings.inboxProjectFirst')}</Text>
+                            </View>
+                            <Switch
+                                value={inboxProjectFirst}
+                                onValueChange={(value) => updateInboxProcessing({ projectFirst: value })}
+                                trackColor={{ false: '#767577', true: '#3B82F6' }}
+                            />
+                        </View>
+                        <View style={[styles.settingRow, { borderTopWidth: 1, borderTopColor: tc.border }]}>
+                            <View style={styles.settingInfo}>
+                                <Text style={[styles.settingLabel, { color: tc.text }]}>{t('settings.inboxScheduleEnabled')}</Text>
+                            </View>
+                            <Switch
+                                value={inboxScheduleEnabled}
+                                onValueChange={(value) => updateInboxProcessing({ scheduleEnabled: value })}
+                                trackColor={{ false: '#767577', true: '#3B82F6' }}
+                            />
+                        </View>
                     </View>
                 </ScrollView>
             </SafeAreaView>
