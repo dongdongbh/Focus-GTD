@@ -39,6 +39,33 @@ cat /dev/urandom | LC_ALL=C tr -dc 'a-zA-Z0-9' | fold -w 50 | head -n 1
 
 Or you can use https://it-tools.tech/token-generator
 
+## API (task automation)
+
+The cloud container now exposes the REST API on the same host/port as sync, using the **same Bearer token**.
+
+Base URL:
+
+```
+http://localhost:8787/v1
+```
+
+Create a task:
+
+```
+curl -X POST \
+  -H "Authorization: Bearer your_token_here" \
+  -H "Content-Type: application/json" \
+  -d '{"input":"Review invoice from Paperless /due:tomorrow #finance"}' \
+  http://localhost:8787/v1/tasks
+```
+
+List tasks:
+
+```
+curl -H "Authorization: Bearer your_token_here" \
+  "http://localhost:8787/v1/tasks?status=next"
+```
+
 ## Volumes
 
 Persist cloud data by mounting a host path:
