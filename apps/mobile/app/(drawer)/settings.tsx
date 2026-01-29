@@ -487,7 +487,7 @@ export default function SettingsPage() {
         updateAISettings({ speechToText: { ...(settings.ai?.speechToText ?? {}), ...next } });
     };
 
-    const getWhisperDirectory = () => {
+    const getWhisperDirectories = () => {
         const candidates: Directory[] = [];
         try {
             candidates.push(new Directory(Paths.document, 'whisper-models'));
@@ -499,6 +499,11 @@ export default function SettingsPage() {
         } catch (error) {
             logSettingsWarn('Whisper cache directory unavailable', error);
         }
+        return candidates;
+    };
+
+    const getWhisperDirectory = () => {
+        const candidates = getWhisperDirectories();
         return candidates.length ? candidates[0] : null;
     };
 
@@ -525,7 +530,7 @@ export default function SettingsPage() {
 
     const selectedWhisperModel = WHISPER_MODELS.find((model) => model.id === speechModel) ?? WHISPER_MODELS[0];
     const whisperModelPath = speechProvider === 'whisper'
-        ? (resolveWhisperModelPath(speechModel) ?? speechSettings.offlineModelPath)
+        ? (speechSettings.offlineModelPath ?? resolveWhisperModelPath(speechModel))
         : undefined;
     let whisperDownloaded = false;
     let whisperSizeLabel = '';
@@ -552,72 +557,82 @@ export default function SettingsPage() {
             setTimeout(() => setWhisperDownloadState('idle'), 2000);
         };
         try {
-            const directory = getWhisperDirectory();
-            if (!directory) {
+            const directories = getWhisperDirectories();
+            if (!directories.length) {
                 throw new Error('Whisper storage unavailable');
             }
-            directory.create({ intermediates: true, idempotent: true });
             const fileName = selectedWhisperModel.fileName;
             if (!fileName) {
                 throw new Error('Whisper model filename missing');
             }
             const url = `${WHISPER_MODEL_BASE_URL}/${fileName}`;
-            const targetFile = new File(directory, fileName);
-            try {
-                const entries = directory.list();
-                const conflict = entries.find((entry) => Paths.basename(entry.uri) === fileName);
-                if (conflict instanceof Directory) {
-                    conflict.delete();
-                }
-                if (conflict instanceof File) {
-                    conflict.delete();
-                }
-            } catch (cleanupError) {
-                logSettingsWarn('Whisper model cleanup failed', cleanupError);
-            }
-            const conflictInfo = safePathInfo(targetFile.uri);
-            if (conflictInfo?.exists && conflictInfo.isDirectory) {
+            let lastError: Error | null = null;
+            for (const directory of directories) {
                 try {
-                    new Directory(targetFile.uri).delete();
-                } catch (deleteError) {
-                    logSettingsWarn('Whisper model directory cleanup failed', deleteError);
-                }
-            }
-            const postCleanupInfo = safePathInfo(targetFile.uri);
-            if (postCleanupInfo?.exists && postCleanupInfo.isDirectory) {
-                throw new Error(localize(
-                    'Offline model path is a folder. Please remove it and try again.',
-                    '离线模型路径是文件夹，请删除后重试。'
-                ));
-            }
-            const existingInfo = safePathInfo(targetFile.uri);
-            if (existingInfo?.exists && existingInfo.isDirectory === false) {
-                try {
-                    const existingFile = new File(targetFile.uri);
-                    if ((existingFile.size ?? 0) > 0) {
-                        updateSpeechSettings({ offlineModelPath: targetFile.uri, model: selectedWhisperModel.id });
-                        setWhisperDownloadState('success');
-                        clearSuccess();
-                        return;
+                    directory.create({ intermediates: true, idempotent: true });
+                    const targetFile = new File(directory, fileName);
+                    try {
+                        const entries = directory.list();
+                        const conflict = entries.find((entry) => Paths.basename(entry.uri) === fileName);
+                        if (conflict instanceof Directory) {
+                            conflict.delete();
+                        }
+                        if (conflict instanceof File) {
+                            conflict.delete();
+                        }
+                    } catch (cleanupError) {
+                        logSettingsWarn('Whisper model cleanup failed', cleanupError);
                     }
+                    const conflictInfo = safePathInfo(targetFile.uri);
+                    if (conflictInfo?.exists && conflictInfo.isDirectory) {
+                        try {
+                            new Directory(targetFile.uri).delete();
+                        } catch (deleteError) {
+                            logSettingsWarn('Whisper model directory cleanup failed', deleteError);
+                        }
+                    }
+                    const postCleanupInfo = safePathInfo(targetFile.uri);
+                    if (postCleanupInfo?.exists && postCleanupInfo.isDirectory) {
+                        throw new Error(localize(
+                            `Offline model path is a folder (${targetFile.uri}). Please remove it and try again.`,
+                            `离线模型路径是文件夹（${targetFile.uri}），请删除后重试。`
+                        ));
+                    }
+                    const existingInfo = safePathInfo(targetFile.uri);
+                    if (existingInfo?.exists && existingInfo.isDirectory === false) {
+                        try {
+                            const existingFile = new File(targetFile.uri);
+                            if ((existingFile.size ?? 0) > 0) {
+                                updateSpeechSettings({ offlineModelPath: targetFile.uri, model: selectedWhisperModel.id });
+                                setWhisperDownloadState('success');
+                                clearSuccess();
+                                return;
+                            }
+                        } catch (error) {
+                            logSettingsWarn('Whisper existing file check failed', error);
+                        }
+                    }
+                    try {
+                        const file = await File.downloadFileAsync(url, targetFile, { idempotent: true });
+                        updateSpeechSettings({ offlineModelPath: file.uri, model: selectedWhisperModel.id });
+                    } catch (downloadError) {
+                        const fallbackMessage = localize(
+                            'Download failed. Please retry on Wi‑Fi. Large models cannot be buffered into memory.',
+                            '下载失败。请在 Wi‑Fi 下重试。大型模型无法加载到内存。'
+                        );
+                        throw new Error(downloadError instanceof Error
+                            ? `${fallbackMessage}\n${downloadError.message}`
+                            : fallbackMessage);
+                    }
+                    setWhisperDownloadState('success');
+                    clearSuccess();
+                    return;
                 } catch (error) {
-                    logSettingsWarn('Whisper existing file check failed', error);
+                    lastError = error instanceof Error ? error : new Error(String(error));
+                    logSettingsWarn('Whisper model download failed', error);
                 }
             }
-            try {
-                const file = await File.downloadFileAsync(url, targetFile, { idempotent: true });
-                updateSpeechSettings({ offlineModelPath: file.uri, model: selectedWhisperModel.id });
-            } catch (downloadError) {
-                const fallbackMessage = localize(
-                    'Download failed. Please retry on Wi‑Fi. Large models cannot be buffered into memory.',
-                    '下载失败。请在 Wi‑Fi 下重试。大型模型无法加载到内存。'
-                );
-                throw new Error(downloadError instanceof Error
-                    ? `${fallbackMessage}\n${downloadError.message}`
-                    : fallbackMessage);
-            }
-            setWhisperDownloadState('success');
-            clearSuccess();
+            throw lastError ?? new Error('Whisper storage unavailable');
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             setWhisperDownloadError(message);
