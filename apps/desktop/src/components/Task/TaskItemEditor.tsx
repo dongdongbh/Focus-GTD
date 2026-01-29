@@ -211,6 +211,7 @@ export function TaskItemEditor({
                         }}
                         projects={projects}
                         contexts={inputContexts}
+                        areas={areas}
                         onCreateProject={onCreateProject}
                         placeholder={t('taskEdit.titleLabel')}
                         className="w-full bg-transparent border-b border-primary/50 p-1 text-base font-medium focus:ring-0 focus:border-primary outline-none"

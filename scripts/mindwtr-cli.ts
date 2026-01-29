@@ -116,7 +116,7 @@ async function main() {
         }
 
         const now = new Date().toISOString();
-        const { title, props } = parseQuickAdd(input, data.projects);
+        const { title, props } = parseQuickAdd(input, data.projects, new Date(now), data.areas);
         const finalTitle = (title || input).trim();
         const status = asStatus(props.status) || 'inbox';
         const tags = Array.isArray(props.tags) ? props.tags : [];

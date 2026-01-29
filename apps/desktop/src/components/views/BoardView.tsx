@@ -21,6 +21,7 @@ import { Filter, GripVertical } from 'lucide-react';
 import { useUiStore } from '../../store/ui-store';
 import { usePerformanceMonitor } from '../../hooks/usePerformanceMonitor';
 import { checkBudget } from '../../config/performanceBudgets';
+import { projectMatchesAreaFilter, resolveAreaFilter, taskMatchesAreaFilter } from '../../lib/area-filter';
 
 const getColumns = (t: (key: string) => string): { id: TaskStatus; label: string }[] => [
     { id: 'inbox', label: t('list.inbox') || 'Inbox' },
@@ -166,9 +167,17 @@ export function BoardView() {
     const showFiltersPanel = boardFilters.open || hasProjectFilters;
     const areaById = React.useMemo(() => new Map(areas.map((area) => [area.id, area])), [areas]);
     const projectMap = React.useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
+    const resolvedAreaFilter = React.useMemo(
+        () => resolveAreaFilter(settings?.filters?.areaId, areas),
+        [settings?.filters?.areaId, areas],
+    );
     const sortedProjects = React.useMemo(
-        () => projects.filter(p => !p.deletedAt).sort((a, b) => a.title.localeCompare(b.title)),
-        [projects]
+        () =>
+            projects
+                .filter((project) => !project.deletedAt)
+                .filter((project) => projectMatchesAreaFilter(project, resolvedAreaFilter, areaById))
+                .sort((a, b) => a.title.localeCompare(b.title)),
+        [projects, resolvedAreaFilter, areaById]
     );
     const projectOrderMap = React.useMemo(() => {
         const sorted = [...projects]
@@ -246,12 +255,15 @@ export function BoardView() {
         [tasks, sortBy],
     );
     const filteredTasks = React.useMemo(() => {
-        if (!hasProjectFilters) return sortedTasks;
-            return sortedTasks.filter((task) => {
+        const areaFiltered = sortedTasks.filter((task) =>
+            taskMatchesAreaFilter(task, resolvedAreaFilter, projectMap, areaById)
+        );
+        if (!hasProjectFilters) return areaFiltered;
+        return areaFiltered.filter((task) => {
             const projectKey = task.projectId ?? NO_PROJECT_FILTER;
             return boardFilters.selectedProjectIds.includes(projectKey);
         });
-    }, [hasProjectFilters, sortedTasks, boardFilters.selectedProjectIds]);
+    }, [hasProjectFilters, sortedTasks, boardFilters.selectedProjectIds, resolvedAreaFilter, projectMap, areaById]);
 
     const sequentialProjectIds = React.useMemo(() => {
         return new Set(projects.filter((p) => p.isSequential && !p.deletedAt).map((p) => p.id));

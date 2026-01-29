@@ -21,6 +21,7 @@ import { usePerformanceMonitor } from '../../hooks/usePerformanceMonitor';
 import { checkBudget } from '../../config/performanceBudgets';
 import { useListViewOptimizations } from '../../hooks/useListViewOptimizations';
 import { reportError } from '../../lib/report-error';
+import { AREA_FILTER_ALL, AREA_FILTER_NONE, projectMatchesAreaFilter, resolveAreaFilter, taskMatchesAreaFilter } from '../../lib/area-filter';
 
 
 interface ListViewProps {
@@ -81,6 +82,10 @@ export function ListView({ title, statusFilter }: ListViewProps) {
     const { t } = useLanguage();
     const { registerTaskListScope } = useKeybindings();
     const sortBy = (settings?.taskSortBy ?? 'default') as TaskSortBy;
+    const resolvedAreaFilter = useMemo(
+        () => resolveAreaFilter(settings?.filters?.areaId, areas),
+        [settings?.filters?.areaId, areas],
+    );
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const listFilters = useUiStore((state) => state.listFilters);
     const setListFilters = useUiStore((state) => state.setListFilters);
@@ -230,6 +235,7 @@ export function ListView({ title, statusFilter }: ListViewProps) {
         };
     }, [statusFilter, queryTasks, lastDataChangeAt, tasks]);
 
+    const areaById = useMemo(() => new Map(areas.map((area) => [area.id, area])), [areas]);
     const filteredTasks = useMemo(() => {
         perf.trackUseMemo();
         return perf.measure('filteredTasks', () => {
@@ -242,6 +248,7 @@ export function ListView({ title, statusFilter }: ListViewProps) {
                 if (statusFilter !== 'all' && t.status !== statusFilter) return false;
                 // Respect statusFilter (handled above).
                 if (!allowDeferredProjectTasks && !isTaskInActiveProject(t, projectMap)) return false;
+                if (!taskMatchesAreaFilter(t, resolvedAreaFilter, projectMap, areaById)) return false;
 
                 if (statusFilter === 'inbox') {
                     const start = safeParseDate(t.startTime);
@@ -280,13 +287,13 @@ export function ListView({ title, statusFilter }: ListViewProps) {
 
             return sortTasksBy(filtered, sortBy);
         });
-    }, [baseTasks, statusFilter, selectedTokens, activePriorities, activeTimeEstimates, sequentialProjectFirstTasks, projectMap, sortBy, sortByProjectOrder]);
+    }, [baseTasks, statusFilter, selectedTokens, activePriorities, activeTimeEstimates, sequentialProjectFirstTasks, projectMap, sortBy, sortByProjectOrder, resolvedAreaFilter, areaById]);
 
     const showDeferredProjects = statusFilter === 'someday' || statusFilter === 'waiting';
-    const areaById = useMemo(() => new Map(areas.map((area) => [area.id, area])), [areas]);
     const deferredProjects = showDeferredProjects
         ? [...projects]
             .filter((project) => !project.deletedAt && project.status === statusFilter)
+            .filter((project) => projectMatchesAreaFilter(project, resolvedAreaFilter, areaById))
             .sort((a, b) => (a.order - b.order) || a.title.localeCompare(b.title))
         : [];
     const showDeferredProjectSection = showDeferredProjects && deferredProjects.length > 0;
@@ -319,6 +326,7 @@ export function ListView({ title, statusFilter }: ListViewProps) {
             selectedTokens.join('|'),
             selectedPriorities.join('|'),
             selectedTimeEstimates.join('|'),
+            resolvedAreaFilter,
         ].join('::');
         if (lastFilterKeyRef.current !== filterKey) {
             lastFilterKeyRef.current = filterKey;
@@ -505,13 +513,16 @@ export function ListView({ title, statusFilter }: ListViewProps) {
     const handleAddTask = async (e: React.FormEvent) => {
         e.preventDefault();
         if (newTaskTitle.trim()) {
-            const { title: parsedTitle, props, projectTitle } = parseQuickAdd(newTaskTitle, projects);
+            const { title: parsedTitle, props, projectTitle } = parseQuickAdd(newTaskTitle, projects, new Date(), areas);
             const finalTitle = parsedTitle || newTaskTitle;
             const initialProps: Partial<Task> = { ...props };
             if (!initialProps.projectId && projectTitle) {
                 const created = await addProject(projectTitle, '#94a3b8');
                 if (!created) return;
                 initialProps.projectId = created.id;
+            }
+            if (!initialProps.projectId && !initialProps.areaId && resolvedAreaFilter !== AREA_FILTER_ALL && resolvedAreaFilter !== AREA_FILTER_NONE) {
+                initialProps.areaId = resolvedAreaFilter;
             }
             // Only set status if we have an explicit filter and parser didn't set one
             if (!initialProps.status && statusFilter !== 'all') {
@@ -780,6 +791,7 @@ export function ListView({ title, statusFilter }: ListViewProps) {
                     inputRef={addInputRef}
                     value={newTaskTitle}
                     projects={projects}
+                    areas={areas}
                     contexts={allContexts}
                     t={t}
                     onCreateProject={async (title) => {

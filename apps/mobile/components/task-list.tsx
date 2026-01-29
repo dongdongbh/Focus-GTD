@@ -64,6 +64,7 @@ function TaskListComponent({
   const tasks = useTaskStore((state) => state.tasks);
   const projects = useTaskStore((state) => state.projects);
   const sections = useTaskStore((state) => state.sections);
+  const areas = useTaskStore((state) => state.areas);
   const addTask = useTaskStore((state) => state.addTask);
   const addProject = useTaskStore((state) => state.addProject);
   const updateTask = useTaskStore((state) => state.updateTask);
@@ -369,7 +370,7 @@ function TaskListComponent({
       ? 'next'
       : (statusFilter !== 'all' ? statusFilter : 'inbox');
 
-    const { title: parsedTitle, props, projectTitle } = parseQuickAdd(newTaskTitle, projects);
+    const { title: parsedTitle, props, projectTitle } = parseQuickAdd(newTaskTitle, projects, new Date(), areas);
     const finalTitle = parsedTitle || newTaskTitle;
     if (!finalTitle.trim()) return;
 

@@ -10,14 +10,16 @@ import { reportError } from '../../lib/report-error';
 import { usePerformanceMonitor } from '../../hooks/usePerformanceMonitor';
 import { checkBudget } from '../../config/performanceBudgets';
 import { TaskItem } from '../TaskItem';
+import { resolveAreaFilter, taskMatchesAreaFilter } from '../../lib/area-filter';
 
 const dayKey = (date: Date) => format(date, 'yyyy-MM-dd');
 
 export function CalendarView() {
     const perf = usePerformanceMonitor('CalendarView');
-    const { tasks, updateTask, deleteTask, settings, getDerivedState } = useTaskStore(
+    const { tasks, areas, updateTask, deleteTask, settings, getDerivedState } = useTaskStore(
         (state) => ({
             tasks: state.tasks,
+            areas: state.areas,
             updateTask: state.updateTask,
             deleteTask: state.deleteTask,
             settings: state.settings,
@@ -35,6 +37,11 @@ export function CalendarView() {
         [t]
     );
     const timeEstimatesEnabled = settings?.features?.timeEstimates === true;
+    const areaById = useMemo(() => new Map(areas.map((area) => [area.id, area])), [areas]);
+    const resolvedAreaFilter = useMemo(
+        () => resolveAreaFilter(settings?.filters?.areaId, areas),
+        [settings?.filters?.areaId, areas],
+    );
     const today = new Date();
     const [currentMonth, setCurrentMonth] = useState(today);
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -67,6 +74,7 @@ export function CalendarView() {
         if (task.deletedAt) return false;
         if (task.status === 'done' || task.status === 'archived' || task.status === 'reference') return false;
         if (!isTaskInActiveProject(task, projectMap)) return false;
+        if (!taskMatchesAreaFilter(task, resolvedAreaFilter, projectMap, areaById)) return false;
         return true;
     };
 
@@ -83,7 +91,7 @@ export function CalendarView() {
             else map.set(key, [task]);
         }
         return map;
-    }, [tasks, projectMap]);
+    }, [tasks, projectMap, resolvedAreaFilter, areaById]);
 
     const scheduledByDay = useMemo(() => {
         const map = new Map<string, Task[]>();
@@ -98,7 +106,7 @@ export function CalendarView() {
             else map.set(key, [task]);
         }
         return map;
-    }, [tasks, projectMap]);
+    }, [tasks, projectMap, resolvedAreaFilter, areaById]);
 
     const getDeadlinesForDay = (date: Date) => deadlinesByDay.get(dayKey(date)) ?? [];
     const getScheduledForDay = (date: Date) => scheduledByDay.get(dayKey(date)) ?? [];

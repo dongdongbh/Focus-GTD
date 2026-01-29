@@ -302,7 +302,7 @@ async function main() {
                         const rawTitle = typeof (body as any).title === 'string' ? String((body as any).title) : '';
                         const initialProps = typeof (body as any).props === 'object' && (body as any).props ? (body as any).props : {};
 
-                        const parsed = input ? parseQuickAdd(input, data.projects, new Date(nowIso)) : { title: rawTitle, props: {} };
+                        const parsed = input ? parseQuickAdd(input, data.projects, new Date(nowIso), data.areas) : { title: rawTitle, props: {} };
                         const title = (parsed.title || rawTitle || input).trim();
                         if (!title) return errorResponse('Missing task title');
 

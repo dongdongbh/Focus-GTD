@@ -6,17 +6,23 @@ import { cn } from '../../lib/utils';
 import { useLanguage } from '../../contexts/language-context';
 import { usePerformanceMonitor } from '../../hooks/usePerformanceMonitor';
 import { checkBudget } from '../../config/performanceBudgets';
+import { resolveAreaFilter, taskMatchesAreaFilter } from '../../lib/area-filter';
 
 export function ContextsView() {
     const perf = usePerformanceMonitor('ContextsView');
-    const { tasks, projects } = useTaskStore(
-        (state) => ({ tasks: state.tasks, projects: state.projects }),
+    const { tasks, projects, areas, settings } = useTaskStore(
+        (state) => ({ tasks: state.tasks, projects: state.projects, areas: state.areas, settings: state.settings }),
         shallow
     );
     const { t } = useLanguage();
     const [selectedContext, setSelectedContext] = useState<string | null>(null);
     const NO_CONTEXT_TOKEN = '__no_context__';
     const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
+    const areaById = useMemo(() => new Map(areas.map((area) => [area.id, area])), [areas]);
+    const resolvedAreaFilter = useMemo(
+        () => resolveAreaFilter(settings?.filters?.areaId, areas),
+        [settings?.filters?.areaId, areas],
+    );
 
     useEffect(() => {
         if (!perf.enabled) return;
@@ -28,7 +34,11 @@ export function ContextsView() {
 
     // Filter out deleted tasks first
     const projectMap = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
-    const activeTasks = tasks.filter(t => !t.deletedAt && isTaskInActiveProject(t, projectMap));
+    const activeTasks = tasks.filter(t =>
+        !t.deletedAt
+        && isTaskInActiveProject(t, projectMap)
+        && taskMatchesAreaFilter(t, resolvedAreaFilter, projectMap, areaById)
+    );
     const baseTasks = activeTasks.filter(t => t.status !== 'done' && t.status !== 'archived' && t.status !== 'reference');
     const scopedTasks = statusFilter === 'all'
         ? baseTasks

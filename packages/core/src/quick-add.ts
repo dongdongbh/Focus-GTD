@@ -1,5 +1,5 @@
 import { addDays, addMonths, addWeeks, addYears, isValid, nextDay, parseISO, set } from 'date-fns';
-import type { Project, Task, TaskStatus } from './types';
+import type { Area, Project, Task, TaskStatus } from './types';
 import { normalizeTaskStatus } from './task-status';
 
 export interface QuickAddResult {
@@ -40,7 +40,7 @@ const DOW_MAP: Partial<Record<string, DayOfWeek>> = {
 };
 
 const ESCAPE_SENTINEL = '__MW_ESC__';
-const QUICK_ADD_ESCAPE_CHARS = new Set(['@', '#', '+', '/']);
+const QUICK_ADD_ESCAPE_CHARS = new Set(['@', '#', '+', '/', '!']);
 
 function protectEscapes(input: string): string {
     let result = '';
@@ -130,7 +130,7 @@ function stripToken(source: string, token: string): string {
     return source.replace(token, '').replace(/\s{2,}/g, ' ').trim();
 }
 
-export function parseQuickAdd(input: string, projects?: Project[], now: Date = new Date()): QuickAddResult {
+export function parseQuickAdd(input: string, projects?: Project[], now: Date = new Date(), areas?: Area[]): QuickAddResult {
     let working = protectEscapes(input.trim());
 
     const contexts = new Set<string>();
@@ -143,6 +143,31 @@ export function parseQuickAdd(input: string, projects?: Project[], now: Date = n
     const tagMatches = working.match(/#[\w\-]+/g) || [];
     tagMatches.forEach((tag) => tags.add(tag));
     tagMatches.forEach((tag) => (working = stripToken(working, tag)));
+
+    // Area: /area:<id> or !Area Name
+    let areaId: string | undefined;
+    const areaIdMatch = working.match(/\/area:([^\s/]+)/i);
+    if (areaIdMatch) {
+        const token = areaIdMatch[1];
+        if (token) {
+            areaId = token;
+        }
+        working = stripToken(working, areaIdMatch[0]);
+    } else {
+        const areaMatch = working.match(/(?:^|\s)!([^\s/]+(?:\s+(?![@#+/!])[^/\s]+)*)/);
+        if (areaMatch) {
+            const rawArea = restoreEscapes((areaMatch[1] || '').replace(/\s+/g, ' ').trim());
+            if (rawArea) {
+                if (areas && areas.length > 0) {
+                    const found = areas.find((area) => area.name.toLowerCase() === rawArea.toLowerCase());
+                    if (found) areaId = found.id;
+                } else if (/^[0-9a-f-]{8,}$/i.test(rawArea)) {
+                    areaId = rawArea;
+                }
+            }
+            working = stripToken(working, areaMatch[0]);
+        }
+    }
 
     // Note: /note:...
     let description: string | undefined;
@@ -211,6 +236,7 @@ export function parseQuickAdd(input: string, projects?: Project[], now: Date = n
     if (contexts.size > 0) props.contexts = Array.from(contexts);
     if (tags.size > 0) props.tags = Array.from(tags);
     if (projectId) props.projectId = projectId;
+    if (areaId) props.areaId = areaId;
 
     return { title, props, projectTitle };
 }

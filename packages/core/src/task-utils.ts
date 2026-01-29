@@ -2,7 +2,7 @@
  * Utility functions for task operations
  */
 
-import { Task, TaskStatus, TaskSortBy } from './types';
+import { Task, TaskStatus, TaskSortBy, Project } from './types';
 import { safeParseDueDate } from './date';
 import { TASK_STATUS_ORDER } from './task-status';
 import type { Language } from './i18n-types';
@@ -207,6 +207,17 @@ export function getTaskUrgency(task: Partial<Task>): 'overdue' | 'urgent' | 'upc
     if (diffHours < 24) return 'urgent';
     if (diffHours < 72) return 'upcoming';
     return 'normal';
+}
+
+export function getTaskAreaId(
+    task: Pick<Task, 'areaId' | 'projectId'>,
+    projectMap?: Map<string, Project> | Record<string, Project>,
+): string | undefined {
+    if (task.projectId && projectMap) {
+        const project = projectMap instanceof Map ? projectMap.get(task.projectId) : projectMap[task.projectId];
+        if (project?.areaId) return project.areaId;
+    }
+    return task.areaId;
 }
 
 /**

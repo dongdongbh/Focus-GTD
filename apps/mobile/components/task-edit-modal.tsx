@@ -423,7 +423,7 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
             descriptionDebounceRef.current = null;
         }
         const rawTitle = String(titleDraftRef.current ?? '');
-        const { title: parsedTitle, props: parsedProps, projectTitle } = parseQuickAdd(rawTitle, projects);
+        const { title: parsedTitle, props: parsedProps, projectTitle } = parseQuickAdd(rawTitle, projects, new Date(), areas);
         const existingProjectId = editedTask.projectId ?? task?.projectId;
         const hasProjectCommand = Boolean(parsedProps.projectId || projectTitle);
         let resolvedProjectId = parsedProps.projectId;

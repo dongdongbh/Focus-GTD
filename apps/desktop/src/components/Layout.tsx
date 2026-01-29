@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Calendar, Inbox, CheckSquare, Archive, Layers, Tag, CheckCircle2, HelpCircle, Folder, Settings, Target, Search, ChevronsLeft, ChevronsRight, Trash2, PauseCircle, Book } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useTaskStore, safeParseDate } from '@mindwtr/core';
@@ -6,6 +6,7 @@ import { useLanguage } from '../contexts/language-context';
 import { useUiStore } from '../store/ui-store';
 import { reportError } from '../lib/report-error';
 import { ToastHost } from './ToastHost';
+import { AREA_FILTER_ALL, AREA_FILTER_NONE, resolveAreaFilter, taskMatchesAreaFilter } from '../lib/area-filter';
 
 interface LayoutProps {
     children: React.ReactNode;
@@ -14,27 +15,40 @@ interface LayoutProps {
 }
 
 export function Layout({ children, currentView, onViewChange }: LayoutProps) {
-    const inboxCount = useTaskStore(useCallback((state) => {
-        const now = Date.now();
-        let count = 0;
-        for (const task of state.tasks) {
-            if (task.deletedAt) continue;
-            if (task.status !== 'inbox') continue;
-            const start = safeParseDate(task.startTime);
-            if (start && start.getTime() > now) continue;
-            count += 1;
-        }
-        return count;
-    }, []));
-    const settings = useTaskStore((state) => state.settings);
-    const updateSettings = useTaskStore((state) => state.updateSettings);
-    const error = useTaskStore((state) => state.error);
-    const setError = useTaskStore((state) => state.setError);
+    const { tasks, projects, areas, settings, updateSettings, error, setError } = useTaskStore((state) => ({
+        tasks: state.tasks,
+        projects: state.projects,
+        areas: state.areas,
+        settings: state.settings,
+        updateSettings: state.updateSettings,
+        error: state.error,
+        setError: state.setError,
+    }));
     const { t } = useLanguage();
     const isCollapsed = settings?.sidebarCollapsed ?? false;
     const isFocusMode = useUiStore((state) => state.isFocusMode);
     const dismissLabel = t('common.dismiss');
     const dismissText = dismissLabel && dismissLabel !== 'common.dismiss' ? dismissLabel : 'Dismiss';
+    const areaById = useMemo(() => new Map(areas.map((area) => [area.id, area])), [areas]);
+    const projectMap = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
+    const resolvedAreaFilter = useMemo(
+        () => resolveAreaFilter(settings?.filters?.areaId, areas),
+        [settings?.filters?.areaId, areas],
+    );
+    const sortedAreas = useMemo(() => [...areas].sort((a, b) => a.order - b.order), [areas]);
+    const inboxCount = useMemo(() => {
+        const now = Date.now();
+        let count = 0;
+        for (const task of tasks) {
+            if (task.deletedAt) continue;
+            if (task.status !== 'inbox') continue;
+            const start = safeParseDate(task.startTime);
+            if (start && start.getTime() > now) continue;
+            if (!taskMatchesAreaFilter(task, resolvedAreaFilter, projectMap, areaById)) continue;
+            count += 1;
+        }
+        return count;
+    }, [tasks, resolvedAreaFilter, projectMap, areaById]);
     const wideViews = new Set([
         'inbox',
         'next',
@@ -79,6 +93,18 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
 
     const toggleSidebar = () => {
         updateSettings({ sidebarCollapsed: !isCollapsed }).catch((error) => reportError('Failed to update settings', error));
+    };
+
+    useEffect(() => {
+        if (areas.length === 0) return;
+        if (resolvedAreaFilter === (settings?.filters?.areaId ?? AREA_FILTER_ALL)) return;
+        updateSettings({ filters: { ...(settings?.filters ?? {}), areaId: resolvedAreaFilter } })
+            .catch((error) => reportError('Failed to update area filter', error));
+    }, [areas.length, resolvedAreaFilter, settings?.filters?.areaId, updateSettings]);
+
+    const handleAreaFilterChange = (value: string) => {
+        updateSettings({ filters: { ...(settings?.filters ?? {}), areaId: value } })
+            .catch((error) => reportError('Failed to update area filter', error));
     };
 
 
@@ -200,7 +226,27 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
                     </nav>
                 </div>
 
-                <div className="mt-auto pt-4 border-t border-border space-y-1">
+                <div className="mt-auto pt-4 border-t border-border space-y-3">
+                    {!isCollapsed && (
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                                {t('projects.areaFilter')}
+                            </label>
+                            <select
+                                value={resolvedAreaFilter}
+                                onChange={(event) => handleAreaFilterChange(event.target.value)}
+                                className="w-full text-xs bg-muted/50 border border-border rounded px-2 py-1 text-foreground"
+                            >
+                                <option value={AREA_FILTER_ALL}>{t('projects.allAreas')}</option>
+                                {sortedAreas.map((area) => (
+                                    <option key={area.id} value={area.id}>
+                                        {area.name}
+                                    </option>
+                                ))}
+                                <option value={AREA_FILTER_NONE}>{t('projects.noArea')}</option>
+                            </select>
+                        </div>
+                    )}
                     <button
                         onClick={() => onViewChange('settings')}
                         className={cn(

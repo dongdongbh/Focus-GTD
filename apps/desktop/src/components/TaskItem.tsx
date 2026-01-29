@@ -625,7 +625,7 @@ export const TaskItem = memo(function TaskItem({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const { title: parsedTitle, props: parsedProps, projectTitle } = parseQuickAdd(editTitle, projects);
+        const { title: parsedTitle, props: parsedProps, projectTitle } = parseQuickAdd(editTitle, projects, new Date(), areas);
         const cleanedTitle = parsedTitle.trim() ? parsedTitle : task.title;
         if (!cleanedTitle.trim()) return;
 

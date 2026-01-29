@@ -10,7 +10,7 @@ import { logError } from '../lib/app-log';
 export default function CaptureScreen() {
   const params = useLocalSearchParams<{ text?: string }>();
   const router = useRouter();
-  const { addTask, projects, tasks, settings } = useTaskStore();
+  const { addTask, projects, tasks, settings, areas } = useTaskStore();
   const tc = useThemeColors();
   const { t } = useLanguage();
   const initialText = typeof params.text === 'string' ? decodeURIComponent(params.text) : '';
@@ -134,7 +134,7 @@ export default function CaptureScreen() {
 
   const handleSave = () => {
     if (!value.trim()) return;
-    const { title, props } = parseQuickAdd(value, projects);
+    const { title, props } = parseQuickAdd(value, projects, new Date(), areas);
     const finalTitle = title || value;
     if (!finalTitle.trim()) return;
     const initialProps: Partial<Task> = { status: 'inbox', ...props };

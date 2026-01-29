@@ -13,15 +13,17 @@ import { PromptModal } from '../PromptModal';
 import { useLanguage } from '../../contexts/language-context';
 import { usePerformanceMonitor } from '../../hooks/usePerformanceMonitor';
 import { checkBudget } from '../../config/performanceBudgets';
+import { resolveAreaFilter, taskMatchesAreaFilter } from '../../lib/area-filter';
 
 const STATUS_OPTIONS: TaskStatus[] = ['inbox', 'next', 'waiting', 'someday', 'done'];
 
 export function ReviewView() {
     const perf = usePerformanceMonitor('ReviewView');
-    const { tasks, projects, settings, batchMoveTasks, batchDeleteTasks, batchUpdateTasks } = useTaskStore(
+    const { tasks, projects, areas, settings, batchMoveTasks, batchDeleteTasks, batchUpdateTasks } = useTaskStore(
         (state) => ({
             tasks: state.tasks,
             projects: state.projects,
+            areas: state.areas,
             settings: state.settings,
             batchMoveTasks: state.batchMoveTasks,
             batchDeleteTasks: state.batchDeleteTasks,
@@ -41,6 +43,12 @@ export function ReviewView() {
 
     const sortBy = (settings?.taskSortBy ?? 'default') as TaskSortBy;
     const statusOptions = STATUS_OPTIONS;
+    const projectMapById = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
+    const areaById = useMemo(() => new Map(areas.map((area) => [area.id, area])), [areas]);
+    const resolvedAreaFilter = useMemo(
+        () => resolveAreaFilter(settings?.filters?.areaId, areas),
+        [settings?.filters?.areaId, areas],
+    );
 
     useEffect(() => {
         if (!perf.enabled) return;
@@ -70,6 +78,7 @@ export function ReviewView() {
                 if (task.deletedAt) return;
                 if (task.status === 'reference') return;
                 if (!isTaskInActiveProject(task, nextProjectMap)) return;
+                if (!taskMatchesAreaFilter(task, resolvedAreaFilter, projectMapById, areaById)) return;
                 nextActiveTasks.push(task);
                 nextStatusCounts.all += 1;
                 if (nextStatusCounts[task.status] !== undefined) {
@@ -88,7 +97,7 @@ export function ReviewView() {
                 filteredTasks: sortTasksBy(list, sortBy),
             };
         });
-    }, [filterStatus, projects, sortBy, tasks]);
+    }, [filterStatus, projects, sortBy, tasks, resolvedAreaFilter, projectMapById, areaById]);
 
     const selectedIdsArray = useMemo(() => Array.from(multiSelectedIds), [multiSelectedIds]);
 

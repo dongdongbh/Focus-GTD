@@ -3,6 +3,7 @@ import { Play } from 'lucide-react';
 import { safeParseDate, safeFormatDate, hasTimeComponent, type AppData, type Area, type Project, type Task } from '@mindwtr/core';
 
 import { InboxProcessingWizard, type ProcessingStep } from '../InboxProcessingWizard';
+import { resolveAreaFilter, taskMatchesAreaFilter } from '../../lib/area-filter';
 
 type InboxProcessorProps = {
     t: (key: string) => string;
@@ -59,6 +60,15 @@ export function InboxProcessor({
     const scheduleEnabled = inboxProcessing.scheduleEnabled !== false;
 
     const areaById = useMemo(() => new Map(areas.map((area) => [area.id, area])), [areas]);
+    const projectMap = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
+    const resolvedAreaFilter = useMemo(
+        () => resolveAreaFilter(settings?.filters?.areaId, areas),
+        [settings?.filters?.areaId, areas],
+    );
+    const matchesAreaFilter = useCallback(
+        (task: Task) => taskMatchesAreaFilter(task, resolvedAreaFilter, projectMap, areaById),
+        [resolvedAreaFilter, projectMap, areaById],
+    );
 
     const filteredProjects = useMemo(() => {
         if (!projectSearch.trim()) return projects;
@@ -77,13 +87,14 @@ export function InboxProcessor({
             if (task.status !== 'inbox' || task.deletedAt) return false;
             const start = safeParseDate(task.startTime);
             if (start && start > new Date()) return false;
+            if (!matchesAreaFilter(task)) return false;
             return true;
         }).length
-    ), [tasks]);
+    ), [tasks, matchesAreaFilter]);
 
     const remainingInboxCount = useMemo(
-        () => tasks.filter((task) => task.status === 'inbox' && !skippedIds.has(task.id)).length,
-        [tasks, skippedIds]
+        () => tasks.filter((task) => task.status === 'inbox' && !skippedIds.has(task.id) && matchesAreaFilter(task)).length,
+        [tasks, skippedIds, matchesAreaFilter]
     );
 
     useEffect(() => {
@@ -134,15 +145,20 @@ export function InboxProcessor({
     }, []);
 
     const startProcessing = useCallback(() => {
-        const inboxTasks = tasks.filter((task) => task.status === 'inbox');
+        const inboxTasks = tasks.filter((task) => task.status === 'inbox' && matchesAreaFilter(task));
         if (inboxTasks.length === 0) return;
         hydrateProcessingTask(inboxTasks[0]);
         setIsProcessing(true);
-    }, [tasks, hydrateProcessingTask, setIsProcessing]);
+    }, [tasks, hydrateProcessingTask, setIsProcessing, matchesAreaFilter]);
 
     const processNext = useCallback(() => {
         const currentTaskId = processingTask?.id;
-        const inboxTasks = tasks.filter((task) => task.status === 'inbox' && task.id !== currentTaskId && !skippedIds.has(task.id));
+        const inboxTasks = tasks.filter((task) =>
+            task.status === 'inbox'
+            && task.id !== currentTaskId
+            && !skippedIds.has(task.id)
+            && matchesAreaFilter(task)
+        );
         if (inboxTasks.length > 0) {
             hydrateProcessingTask(inboxTasks[0]);
             return;
@@ -150,7 +166,7 @@ export function InboxProcessor({
         setIsProcessing(false);
         setProcessingTask(null);
         setSelectedContexts([]);
-    }, [hydrateProcessingTask, processingTask?.id, tasks, setIsProcessing, skippedIds]);
+    }, [hydrateProcessingTask, processingTask?.id, tasks, setIsProcessing, skippedIds, matchesAreaFilter]);
 
     const handleSkip = useCallback(() => {
         if (processingTask) {

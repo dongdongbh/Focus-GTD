@@ -5,6 +5,7 @@ import { useLanguage } from '../contexts/language-context';
 import { cn } from '../lib/utils';
 import { PromptModal } from './PromptModal';
 import { useUiStore } from '../store/ui-store';
+import { AREA_FILTER_ALL, AREA_FILTER_NONE, resolveAreaFilter } from '../lib/area-filter';
 
 interface GlobalSearchProps {
     onNavigate: (view: string, itemId?: string) => void;
@@ -49,7 +50,7 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
     // Toggle search with Cmd+K / Ctrl+K
     useEffect(() => {
         isOpenRef.current = isOpen;
-    }, [isOpen]);
+    }, [isOpen, globalAreaFilter]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -83,7 +84,12 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
             setIncludeReference(false);
             setFiltersOpen(false);
             setSelectedStatuses([]);
-            setSelectedArea('all');
+            const initialArea = globalAreaFilter === AREA_FILTER_ALL
+                ? 'all'
+                : globalAreaFilter === AREA_FILTER_NONE
+                    ? 'none'
+                    : globalAreaFilter;
+            setSelectedArea(initialArea);
             setSelectedTokens([]);
             setDuePreset('any');
             setScope('all');
@@ -155,18 +161,29 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
         : includeReferenceLabel;
     const hasStatusFilter = selectedStatuses.length > 0;
     const projectById = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
+    const areaById = useMemo(() => new Map(areas.map((area) => [area.id, area])), [areas]);
+    const globalAreaFilter = useMemo(
+        () => resolveAreaFilter(settings?.filters?.areaId, areas),
+        [settings?.filters?.areaId, areas],
+    );
+    const matchesGlobalArea = (areaId?: string | null) => {
+        const normalized = areaId && areaById.has(areaId) ? areaId : null;
+        if (globalAreaFilter === AREA_FILTER_ALL) return true;
+        if (globalAreaFilter === AREA_FILTER_NONE) return !normalized;
+        return normalized === globalAreaFilter;
+    };
     const matchesArea = (areaId?: string | null) => {
+        const normalized = areaId && areaById.has(areaId) ? areaId : null;
+        if (!matchesGlobalArea(normalized)) return false;
         if (selectedArea === 'all') return true;
-        if (selectedArea === 'none') return !areaId;
-        return areaId === selectedArea;
+        if (selectedArea === 'none') return !normalized;
+        return normalized === selectedArea;
     };
     const matchesTaskArea = (task: Task) => {
-        if (selectedArea === 'all') return true;
-        if (task.projectId) {
-            const project = projectById.get(task.projectId);
-            return matchesArea(project?.areaId ?? null);
-        }
-        return matchesArea(task.areaId ?? null);
+        const areaId = task.projectId
+            ? projectById.get(task.projectId)?.areaId ?? null
+            : task.areaId ?? null;
+        return matchesArea(areaId);
     };
     const matchesTokens = (task: Task) => {
         if (selectedTokens.length === 0) return true;

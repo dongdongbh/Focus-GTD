@@ -1,9 +1,9 @@
 import { useMemo, useRef, useState } from 'react';
 import type { KeyboardEventHandler, RefObject } from 'react';
-import type { Project } from '@mindwtr/core';
+import type { Area, Project } from '@mindwtr/core';
 import { cn } from '../../lib/utils';
 
-type TriggerType = 'project' | 'context';
+type TriggerType = 'project' | 'context' | 'area';
 
 interface TriggerState {
     type: TriggerType;
@@ -15,13 +15,15 @@ interface TriggerState {
 type Option =
     | { kind: 'create'; label: string; value: string }
     | { kind: 'project'; label: string; value: string }
-    | { kind: 'context'; label: string; value: string };
+    | { kind: 'context'; label: string; value: string }
+    | { kind: 'area'; label: string; value: string };
 
 interface TaskInputProps {
     value: string;
     onChange: (value: string) => void;
     projects: Project[];
     contexts: readonly string[];
+    areas?: Area[];
     onCreateProject?: (title: string) => Promise<string | null>;
     placeholder?: string;
     className?: string;
@@ -38,8 +40,12 @@ function getTrigger(text: string, caret: number): TriggerState | null {
     const lastSpace = Math.max(before.lastIndexOf(' '), before.lastIndexOf('\n'), before.lastIndexOf('\t'));
     const start = lastSpace + 1;
     const token = before.slice(start);
-    if (!token.startsWith('+') && !token.startsWith('@')) return null;
-    const type: TriggerType = token.startsWith('+') ? 'project' : 'context';
+    if (!token.startsWith('+') && !token.startsWith('@') && !token.startsWith('!')) return null;
+    const type: TriggerType = token.startsWith('+')
+        ? 'project'
+        : token.startsWith('@')
+            ? 'context'
+            : 'area';
     return {
         type,
         start,
@@ -53,6 +59,7 @@ export function TaskInput({
     onChange,
     projects,
     contexts,
+    areas = [],
     onCreateProject,
     placeholder,
     className,
@@ -92,6 +99,14 @@ export function TaskInput({
             );
             return result;
         }
+        if (trigger.type === 'area') {
+            const matches = areas.filter((area) => area.name.toLowerCase().includes(query));
+            return matches.map((area) => ({
+                kind: 'area' as const,
+                label: area.name,
+                value: area.name,
+            }));
+        }
         const matches = contexts.filter((context) => {
             const raw = context.startsWith('@') || context.startsWith('#') ? context.slice(1) : context;
             return raw.toLowerCase().includes(query);
@@ -101,7 +116,7 @@ export function TaskInput({
             label: context,
             value: context,
         }));
-    }, [trigger, projects, contexts]);
+    }, [trigger, projects, contexts, areas]);
 
     const closeTrigger = () => {
         setTrigger(null);
@@ -125,6 +140,8 @@ export function TaskInput({
         }
         if (trigger.type === 'project') {
             tokenValue = `+${tokenValue}`;
+        } else if (trigger.type === 'area') {
+            tokenValue = `!${tokenValue}`;
         } else {
             tokenValue = tokenValue.startsWith('@') ? tokenValue : `@${tokenValue}`;
         }

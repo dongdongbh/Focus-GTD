@@ -9,13 +9,15 @@ import { Clock, Star, Calendar, AlertCircle, ArrowRight, Filter, Folder, List, t
 import { usePerformanceMonitor } from '../../hooks/usePerformanceMonitor';
 import { checkBudget } from '../../config/performanceBudgets';
 import { TaskItem } from '../TaskItem';
+import { projectMatchesAreaFilter, resolveAreaFilter, taskMatchesAreaFilter } from '../../lib/area-filter';
 
 export function AgendaView() {
     const perf = usePerformanceMonitor('AgendaView');
-    const { tasks, projects, updateTask, settings, highlightTaskId, setHighlightTask } = useTaskStore(
+    const { tasks, projects, areas, updateTask, settings, highlightTaskId, setHighlightTask } = useTaskStore(
         (state) => ({
             tasks: state.tasks,
             projects: state.projects,
+            areas: state.areas,
             updateTask: state.updateTask,
             settings: state.settings,
             highlightTaskId: state.highlightTaskId,
@@ -39,6 +41,11 @@ export function AgendaView() {
     const timeEstimatesEnabled = settings?.features?.timeEstimates === true;
     const activePriorities = prioritiesEnabled ? selectedPriorities : [];
     const activeTimeEstimates = timeEstimatesEnabled ? selectedTimeEstimates : [];
+    const areaById = useMemo(() => new Map(areas.map((area) => [area.id, area])), [areas]);
+    const resolvedAreaFilter = useMemo(
+        () => resolveAreaFilter(settings?.filters?.areaId, areas),
+        [settings?.filters?.areaId, areas],
+    );
 
     useEffect(() => {
         if (!perf.enabled) return;
@@ -50,13 +57,19 @@ export function AgendaView() {
 
     // Filter active tasks
     const { activeTasks, allTokens } = useMemo(() => {
-        const active = tasks.filter(t => !t.deletedAt && t.status !== 'done' && t.status !== 'reference' && isTaskInActiveProject(t, projectMap));
+        const active = tasks.filter(t =>
+            !t.deletedAt
+            && t.status !== 'done'
+            && t.status !== 'reference'
+            && isTaskInActiveProject(t, projectMap)
+            && taskMatchesAreaFilter(t, resolvedAreaFilter, projectMap, areaById)
+        );
         const taskTokens = active.flatMap(t => [...(t.contexts || []), ...(t.tags || [])]);
         return {
             activeTasks: active,
             allTokens: Array.from(new Set([...PRESET_CONTEXTS, ...PRESET_TAGS, ...taskTokens])).sort(),
         };
-    }, [tasks, projectMap]);
+    }, [tasks, projectMap, resolvedAreaFilter, areaById]);
     const priorityOptions: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
     const timeEstimateOptions: TimeEstimate[] = ['5min', '10min', '15min', '30min', '1hr', '2hr', '3hr', '4hr', '4hr+'];
     const formatEstimate = (estimate: TimeEstimate) => {
@@ -91,11 +104,12 @@ export function AgendaView() {
                     if (project?.deletedAt) return false;
                     if (project?.status === 'archived') return false;
                 }
+                if (!taskMatchesAreaFilter(task, resolvedAreaFilter, projectMap, areaById)) return false;
                 return true;
             })
             .filter(matchesFilters);
         return { filteredActiveTasks: filtered, reviewDueCandidates: reviewDue };
-    }, [activeTasks, tasks, projectMap, matchesFilters]);
+    }, [activeTasks, tasks, projectMap, matchesFilters, resolvedAreaFilter, areaById]);
 
     const reviewDueProjects = useMemo(() => {
         const now = new Date();
@@ -103,6 +117,7 @@ export function AgendaView() {
             .filter((project) => {
                 if (project.deletedAt) return false;
                 if (project.status === 'archived') return false;
+                if (!projectMatchesAreaFilter(project, resolvedAreaFilter, areaById)) return false;
                 return isDueForReview(project.reviewAt, now);
             })
             .sort((a, b) => {
@@ -111,7 +126,7 @@ export function AgendaView() {
                 if (aReview !== bReview) return aReview - bReview;
                 return a.title.localeCompare(b.title);
             });
-    }, [projects]);
+    }, [projects, resolvedAreaFilter, areaById]);
     const hasFilters = selectedTokens.length > 0 || activePriorities.length > 0 || activeTimeEstimates.length > 0;
     const showFiltersPanel = filtersOpen || hasFilters;
     const toggleTokenFilter = (token: string) => {

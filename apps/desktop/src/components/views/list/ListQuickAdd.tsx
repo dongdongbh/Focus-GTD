@@ -1,5 +1,5 @@
 import type { FormEvent, RefObject } from 'react';
-import type { Project } from '@mindwtr/core';
+import type { Area, Project } from '@mindwtr/core';
 import { Mic, Plus } from 'lucide-react';
 import { TaskInput } from '../../Task/TaskInput';
 
@@ -12,6 +12,7 @@ type ListQuickAddProps = {
     onCreateProject: (title: string) => Promise<string | null>;
     inputRef: RefObject<HTMLInputElement | null>;
     projects: Project[];
+    areas: Area[];
     contexts: string[];
     onResetCopilot: () => void;
 };
@@ -25,6 +26,7 @@ export function ListQuickAdd({
     onCreateProject,
     inputRef,
     projects,
+    areas,
     contexts,
     onResetCopilot,
 }: ListQuickAddProps) {
@@ -35,6 +37,7 @@ export function ListQuickAdd({
                 value={value}
                 projects={projects}
                 contexts={contexts}
+                areas={areas}
                 onCreateProject={onCreateProject}
                 onChange={(next) => {
                     onChange(next);

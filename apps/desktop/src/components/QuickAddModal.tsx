@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     shallow,
     useTaskStore,
@@ -22,16 +22,19 @@ import { encodeWav, resampleAudio } from '../lib/audio-utils';
 import { processAudioCapture, type SpeechToTextResult } from '../lib/speech-to-text';
 import { DEFAULT_WHISPER_MODEL } from '../lib/speech-models';
 import { TaskInput } from './Task/TaskInput';
+import { AreaSelector } from './ui/AreaSelector';
+import { AREA_FILTER_ALL, AREA_FILTER_NONE, resolveAreaFilter } from '../lib/area-filter';
 
 const AUDIO_CAPTURE_DIR = 'mindwtr/audio-captures';
 const TARGET_SAMPLE_RATE = 16_000;
 
 export function QuickAddModal() {
-    const { addTask, addProject, projects, settings } = useTaskStore(
+    const { addTask, addProject, projects, areas, settings } = useTaskStore(
         (state) => ({
             addTask: state.addTask,
             addProject: state.addProject,
             projects: state.projects,
+            areas: state.areas,
             settings: state.settings,
         }),
         shallow
@@ -39,6 +42,7 @@ export function QuickAddModal() {
     const { t } = useLanguage();
     const [isOpen, setIsOpen] = useState(false);
     const [value, setValue] = useState('');
+    const [selectedAreaId, setSelectedAreaId] = useState('');
     const [initialProps, setInitialProps] = useState<Partial<Task> | null>(null);
     const [forcedCaptureMode, setForcedCaptureMode] = useState<'text' | 'audio' | null>(null);
     const [captureMode, setCaptureMode] = useState<'text' | 'audio'>(
@@ -56,6 +60,20 @@ export function QuickAddModal() {
     const audioProcessorRef = useRef<ScriptProcessorNode | null>(null);
     const audioChunksRef = useRef<Float32Array[]>([]);
     const inputSampleRateRef = useRef<number>(16_000);
+    const sortedAreas = useMemo(() => [...areas].sort((a, b) => a.order - b.order), [areas]);
+    const resolvedAreaFilter = useMemo(
+        () => resolveAreaFilter(settings?.filters?.areaId, areas),
+        [settings?.filters?.areaId, areas],
+    );
+    const defaultAreaId = resolvedAreaFilter !== AREA_FILTER_ALL && resolvedAreaFilter !== AREA_FILTER_NONE
+        ? resolvedAreaFilter
+        : '';
+    const parsedInput = useMemo(
+        () => parseQuickAdd(value, projects, new Date(), areas),
+        [value, projects, areas],
+    );
+    const hasProjectOverride = Boolean(initialProps?.projectId || parsedInput.props.projectId || parsedInput.projectTitle);
+    const showAreaSelector = !hasProjectOverride;
 
     useEffect(() => {
         if (!isTauriRuntime()) return;
@@ -112,6 +130,19 @@ export function QuickAddModal() {
         lastActiveElementRef.current = document.activeElement as HTMLElement | null;
         if (!value) setValue('');
     }, [isOpen, value]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        const nextArea = initialProps?.areaId ?? (initialProps?.projectId ? '' : defaultAreaId);
+        setSelectedAreaId(nextArea ?? '');
+    }, [defaultAreaId, initialProps?.areaId, initialProps?.projectId, isOpen]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+        if (parsedInput.props.areaId) {
+            setSelectedAreaId(parsedInput.props.areaId);
+        }
+    }, [isOpen, parsedInput.props.areaId]);
 
 
     useEffect(() => {
@@ -227,6 +258,7 @@ export function QuickAddModal() {
         setIsOpen(false);
         setInitialProps(null);
         setValue('');
+        setSelectedAreaId('');
         setForcedCaptureMode(null);
         lastActiveElementRef.current?.focus();
     };
@@ -524,10 +556,13 @@ export function QuickAddModal() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!value.trim()) return;
-        const { title, props, projectTitle } = parseQuickAdd(value, projects);
+        const { title, props, projectTitle } = parseQuickAdd(value, projects, new Date(), areas);
         const finalTitle = title || value;
         if (!finalTitle.trim()) return;
         const baseProps: Partial<Task> = { ...initialProps, ...props };
+        if (!baseProps.areaId && selectedAreaId) {
+            baseProps.areaId = selectedAreaId;
+        }
         let projectId = baseProps.projectId;
         if (!projectId && projectTitle) {
             const created = await addProject(projectTitle, '#94a3b8');
@@ -535,6 +570,7 @@ export function QuickAddModal() {
             projectId = created.id;
         }
         const mergedProps: Partial<Task> = { status: 'inbox', ...baseProps, projectId };
+        if (projectId) mergedProps.areaId = undefined;
         if (!baseProps.status) mergedProps.status = 'inbox';
         addTask(finalTitle, mergedProps);
         close();
@@ -622,6 +658,7 @@ export function QuickAddModal() {
                             autoFocus={captureMode === 'text'}
                             projects={projects}
                             contexts={PRESET_CONTEXTS}
+                            areas={areas}
                             onCreateProject={async (title) => {
                                 const created = await addProject(title, '#94a3b8');
                                 return created?.id ?? null;
@@ -638,6 +675,19 @@ export function QuickAddModal() {
                                 "w-full bg-card border border-border rounded-lg py-3 px-4 shadow-sm focus:ring-2 focus:ring-primary focus:border-transparent transition-all",
                             )}
                         />
+                        {showAreaSelector && (
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs text-muted-foreground font-medium">{t('taskEdit.areaLabel')}</label>
+                                <AreaSelector
+                                    areas={sortedAreas}
+                                    value={selectedAreaId}
+                                    onChange={setSelectedAreaId}
+                                    placeholder={t('taskEdit.noAreaOption')}
+                                    noAreaLabel={t('taskEdit.noAreaOption')}
+                                    className="w-full"
+                                />
+                            </div>
+                        )}
                         <p className="text-xs text-muted-foreground">{t('quickAdd.help')}</p>
                         {scheduledLabel && (
                             <p className="text-xs text-muted-foreground">

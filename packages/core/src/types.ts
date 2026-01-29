@@ -246,6 +246,9 @@ export interface AppData {
         diagnostics?: {
             loggingEnabled?: boolean;
         };
+        filters?: {
+            areaId?: string;
+        };
         deviceId?: string;
         migrations?: {
             version?: number;

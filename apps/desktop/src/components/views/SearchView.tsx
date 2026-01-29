@@ -10,6 +10,7 @@ import { checkBudget } from '../../config/performanceBudgets';
 import { ListBulkActions } from './list/ListBulkActions';
 import { PromptModal } from '../PromptModal';
 import { cn } from '../../lib/utils';
+import { resolveAreaFilter, taskMatchesAreaFilter } from '../../lib/area-filter';
 
 interface SearchViewProps {
     savedSearchId: string;
@@ -18,10 +19,11 @@ interface SearchViewProps {
 
 export function SearchView({ savedSearchId, onDelete }: SearchViewProps) {
     const perf = usePerformanceMonitor('SearchView');
-    const { tasks, projects, settings, updateSettings, batchUpdateTasks, batchDeleteTasks, batchMoveTasks } = useTaskStore(
+    const { tasks, projects, areas, settings, updateSettings, batchUpdateTasks, batchDeleteTasks, batchMoveTasks } = useTaskStore(
         (state) => ({
             tasks: state.tasks,
             projects: state.projects,
+            areas: state.areas,
             settings: state.settings,
             updateSettings: state.updateSettings,
             batchUpdateTasks: state.batchUpdateTasks,
@@ -57,11 +59,22 @@ export function SearchView({ savedSearchId, onDelete }: SearchViewProps) {
             return acc;
         }, {} as Record<string, Project>);
     }, [projects]);
+    const projectMapById = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
+    const areaById = useMemo(() => new Map(areas.map((area) => [area.id, area])), [areas]);
+    const resolvedAreaFilter = useMemo(
+        () => resolveAreaFilter(settings?.filters?.areaId, areas),
+        [settings?.filters?.areaId, areas],
+    );
 
     const filteredTasks = useMemo(() => {
         if (!query) return [];
-        return sortTasksBy(filterTasksBySearch(tasks, projects, query), sortBy);
-    }, [tasks, projects, query, sortBy]);
+        return sortTasksBy(
+            filterTasksBySearch(tasks, projects, query).filter((task) =>
+                taskMatchesAreaFilter(task, resolvedAreaFilter, projectMapById, areaById)
+            ),
+            sortBy
+        );
+    }, [tasks, projects, query, sortBy, resolvedAreaFilter, projectMapById, areaById]);
 
     const tasksById = useMemo(() => {
         return tasks.reduce((acc, task) => {

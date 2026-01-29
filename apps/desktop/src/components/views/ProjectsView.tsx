@@ -30,6 +30,7 @@ import { usePerformanceMonitor } from '../../hooks/usePerformanceMonitor';
 import { checkBudget } from '../../config/performanceBudgets';
 import { useUiStore } from '../../store/ui-store';
 import { logWarn } from '../../lib/app-log';
+import { AREA_FILTER_ALL, AREA_FILTER_NONE, projectMatchesAreaFilter, resolveAreaFilter } from '../../lib/area-filter';
 
 const SECTION_CONTAINER_PREFIX = 'section:';
 const NO_SECTION_CONTAINER = `${SECTION_CONTAINER_PREFIX}none`;
@@ -64,6 +65,8 @@ export function ProjectsView() {
         _allTasks,
         highlightTaskId,
         setHighlightTask,
+        settings,
+        updateSettings,
     } = useTaskStore(
         (state) => ({
             projects: state.projects,
@@ -89,6 +92,8 @@ export function ProjectsView() {
             _allTasks: state._allTasks,
             highlightTaskId: state.highlightTaskId,
             setHighlightTask: state.setHighlightTask,
+            settings: state.settings,
+            updateSettings: state.updateSettings,
         }),
         shallow
     );
@@ -125,11 +130,15 @@ export function ProjectsView() {
     const [isCreatingProject, setIsCreatingProject] = useState(false);
     const [isProjectAttachmentBusy, setIsProjectAttachmentBusy] = useState(false);
     const [isProjectDeleting, setIsProjectDeleting] = useState(false);
-    const ALL_AREAS = '__all__';
-    const NO_AREA = '__none__';
+    const ALL_AREAS = AREA_FILTER_ALL;
+    const NO_AREA = AREA_FILTER_NONE;
     const ALL_TAGS = '__all__';
     const NO_TAGS = '__none__';
-    const [selectedArea, setSelectedArea] = useState(ALL_AREAS);
+    const resolvedAreaFilter = useMemo(
+        () => resolveAreaFilter(settings?.filters?.areaId, areas),
+        [settings?.filters?.areaId, areas],
+    );
+    const selectedArea = resolvedAreaFilter;
     const [selectedTag, setSelectedTag] = useState(ALL_TAGS);
 
     const handleDuplicateProject = useCallback(async (projectId: string) => {
@@ -170,13 +179,6 @@ export function ProjectsView() {
             activationConstraint: { distance: 6 },
         }),
     );
-
-    useEffect(() => {
-        if (selectedArea === ALL_AREAS || selectedArea === NO_AREA) return;
-        if (!areaById.has(selectedArea)) {
-            setSelectedArea(ALL_AREAS);
-        }
-    }, [areaById, selectedArea, ALL_AREAS, NO_AREA]);
 
     const toggleAreaCollapse = (areaId: string) => {
         setCollapsedAreas((prev) => ({ ...prev, [areaId]: !prev[areaId] }));
@@ -251,6 +253,13 @@ export function ProjectsView() {
 
     const sortAreasByName = () => reorderAreas(sortAreasByNameIds(sortedAreas));
     const sortAreasByColor = () => reorderAreas(sortAreasByColorIds(sortedAreas));
+    const handleAreaFilterChange = useCallback(
+        (value: string) => {
+            updateSettings({ filters: { ...(settings?.filters ?? {}), areaId: value } })
+                .catch((error) => logWarn('Failed to update area filter', error));
+        },
+        [settings?.filters, updateSettings],
+    );
 
     // Group tasks by project to avoid O(N*M) filtering
     const { tasksByProject, areaTasks, areaOptions } = useMemo(() => {
@@ -376,6 +385,13 @@ export function ProjectsView() {
     };
 
     const selectedProject = projects.find(p => p.id === selectedProjectId);
+
+    useEffect(() => {
+        if (!selectedProjectId || !selectedProject) return;
+        if (!projectMatchesAreaFilter(selectedProject, selectedArea, areaById)) {
+            setSelectedProjectId(null);
+        }
+    }, [areaById, selectedArea, selectedProject, selectedProjectId, setSelectedProjectId]);
 
     useEffect(() => {
         setEditProjectTitle(selectedProject?.title ?? '');
@@ -633,7 +649,7 @@ export function ProjectsView() {
     const handleAddTaskForProject = useCallback(
         async (value: string, sectionId?: string | null) => {
             if (!selectedProject) return;
-            const { title: parsedTitle, props, projectTitle } = parseQuickAdd(value, projects);
+            const { title: parsedTitle, props, projectTitle } = parseQuickAdd(value, projects, new Date(), areas);
             const finalTitle = (parsedTitle || value).trim();
             if (!finalTitle) return;
             const initialProps: Partial<Task> = { projectId: selectedProject.id, status: 'next', ...props };
@@ -763,7 +779,7 @@ export function ProjectsView() {
                         onCancelCreate={() => setIsCreating(false)}
                         onCreateProject={handleCreateProject}
                         onChangeNewProjectTitle={setNewProjectTitle}
-                        onSelectArea={setSelectedArea}
+                        onSelectArea={handleAreaFilterChange}
                         onSelectTag={setSelectedTag}
                         groupedActiveProjects={groupedActiveProjects}
                         groupedDeferredProjects={groupedDeferredProjects}

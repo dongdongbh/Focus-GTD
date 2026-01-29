@@ -43,7 +43,7 @@ export function QuickCaptureSheet({
   initialValue?: string;
   autoRecord?: boolean;
 }) {
-  const { addTask, addProject, updateTask, projects, settings, tasks } = useTaskStore();
+  const { addTask, addProject, updateTask, projects, settings, tasks, areas } = useTaskStore();
   const { t } = useLanguage();
   const tc = useThemeColors();
   const insets = useSafeAreaInsets();
@@ -150,7 +150,7 @@ export function QuickCaptureSheet({
     let parsedProps: Partial<Task> = {};
 
     if (trimmed) {
-      const parsed = parseQuickAdd(trimmed, projects);
+      const parsed = parseQuickAdd(trimmed, projects, new Date(), areas);
       finalTitle = parsed.title || trimmed;
       parsedProps = parsed.props;
       projectTitle = parsed.projectTitle;

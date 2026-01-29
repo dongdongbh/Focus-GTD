@@ -74,4 +74,16 @@ describe('quick-add', () => {
         expect(result.props.projectId).toBe('p1');
         expect(result.projectTitle).toBeUndefined();
     });
+
+    it('matches area by name when provided', () => {
+        const now = new Date('2025-01-01T10:00:00Z');
+        const areas = [
+            { id: 'a1', name: 'Work', color: '#111111', order: 0, createdAt: now.toISOString(), updatedAt: now.toISOString() },
+            { id: 'a2', name: 'Personal', color: '#222222', order: 1, createdAt: now.toISOString(), updatedAt: now.toISOString() },
+        ];
+
+        const result = parseQuickAdd('Draft report !Work /next', undefined, now, areas as any);
+        expect(result.title).toBe('Draft report');
+        expect(result.props.areaId).toBe('a1');
+    });
 });
