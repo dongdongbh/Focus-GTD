@@ -244,7 +244,7 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
 
   const handleRefineNext = () => {
     applyProcessingEdits();
-    setProcessingStep('actionable');
+    setProcessingStep(twoMinuteFirst ? 'twomin' : 'actionable');
   };
 
   const handleActionable = () => {
@@ -270,7 +270,7 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
       setProcessingStep('delegate');
     } else {
       setSelectedContexts(currentTask.contexts ?? []);
-      setProcessingStep(projectFirst ? 'project' : 'context');
+      setProcessingStep('context');
     }
   };
 
@@ -345,6 +345,24 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
       }
     }
     setNewContext('');
+  };
+
+  const selectProjectEarly = (projectId: string | null) => {
+    setSelectedProjectId(projectId);
+    setProjectSearch('');
+  };
+
+  const handleCreateProjectEarly = async () => {
+    const title = projectSearch.trim();
+    if (!title) return;
+    const existing = projects.find((project) => project.title.toLowerCase() === title.toLowerCase());
+    if (existing) {
+      selectProjectEarly(existing.id);
+      return;
+    }
+    const created = await addProject(title, '#94a3b8');
+    if (!created) return;
+    selectProjectEarly(created.id);
   };
 
   const finalizeNextAction = (projectId: string | null) => {
@@ -553,6 +571,67 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
                   multiline
                   numberOfLines={4}
                 />
+                {projectFirst && (
+                  <View style={styles.projectRefineSection}>
+                    <Text style={[styles.refineLabel, { color: tc.secondaryText }]}>
+                      {t('taskEdit.projectLabel')}
+                    </Text>
+                    {currentProject && (
+                      <TouchableOpacity
+                        style={[styles.projectChip, { backgroundColor: tc.tint }]}
+                        onPress={() => selectProjectEarly(currentProject.id)}
+                      >
+                        <Text style={styles.projectChipText}>✓ {currentProject.title}</Text>
+                      </TouchableOpacity>
+                    )}
+                    <View style={styles.projectSearchRow}>
+                      <TextInput
+                        value={projectSearch}
+                        onChangeText={setProjectSearch}
+                        placeholder={t('projects.addPlaceholder')}
+                        placeholderTextColor={tc.secondaryText}
+                        style={[styles.projectSearchInput, { backgroundColor: tc.inputBg, borderColor: tc.border, color: tc.text }]}
+                        onSubmitEditing={handleCreateProjectEarly}
+                        returnKeyType="done"
+                      />
+                      {!hasExactProjectMatch && projectSearch.trim() && (
+                        <TouchableOpacity
+                          style={[styles.createProjectButton, { backgroundColor: tc.tint }]}
+                          onPress={handleCreateProjectEarly}
+                        >
+                          <Text style={styles.createProjectButtonText}>{t('projects.create')}</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    <ScrollView style={{ maxHeight: 200 }}>
+                      <TouchableOpacity
+                        style={[styles.projectChip, { backgroundColor: '#10B981' }]}
+                        onPress={() => selectProjectEarly(null)}
+                      >
+                        <Text style={styles.projectChipText}>✓ {t('inbox.noProject')}</Text>
+                      </TouchableOpacity>
+                      {filteredProjects.map(proj => {
+                        const projectColor = proj.areaId ? areaById.get(proj.areaId)?.color : undefined;
+                        const isSelected = selectedProjectId === proj.id;
+                        return (
+                          <TouchableOpacity
+                            key={proj.id}
+                            style={[
+                              styles.projectChip,
+                              isSelected
+                                ? { backgroundColor: '#3B82F620', borderWidth: 1, borderColor: tc.tint }
+                                : { backgroundColor: tc.cardBg, borderWidth: 1, borderColor: tc.border },
+                            ]}
+                            onPress={() => selectProjectEarly(proj.id)}
+                          >
+                            <View style={[styles.projectDot, { backgroundColor: projectColor || '#6B7280' }]} />
+                            <Text style={[styles.projectChipText, { color: tc.text }]}>{proj.title}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+                )}
               </View>
             ) : (
               <>
@@ -1281,6 +1360,10 @@ const styles = StyleSheet.create({
   refineContainer: {
     gap: 8,
   },
+  projectRefineSection: {
+    marginTop: 12,
+    gap: 8,
+  },
   refineLabel: {
     fontSize: 12,
     marginBottom: 4,
@@ -1309,6 +1392,7 @@ const styles = StyleSheet.create({
   },
   startDateRow: {
     marginTop: 12,
+    marginBottom: 12,
   },
   startDateActions: {
     flexDirection: 'row',
