@@ -47,26 +47,31 @@ function DroppableColumn({
     tasks,
     emptyState,
     onQuickAdd,
+    compact,
 }: {
     id: TaskStatus;
     label: string;
     tasks: Task[];
     emptyState: { title: string; body: string; action: string };
     onQuickAdd: (status: TaskStatus) => void;
+    compact?: boolean;
 }) {
     const { setNodeRef } = useDroppable({ id });
+    const columnPadding = compact ? 'p-2' : 'p-3';
+    const headerMargin = compact ? 'mb-3' : 'mb-4';
+    const listSpacing = compact ? 'space-y-2' : 'space-y-3';
 
     return (
         <div
             ref={setNodeRef}
-            className={`flex flex-col h-full min-w-[280px] flex-1 bg-muted/30 rounded-lg p-3 border border-border/50 border-t-4 ${STATUS_BORDER[id]}`}
+            className={`flex flex-col h-full min-w-[280px] flex-1 bg-muted/30 rounded-lg border border-border/50 border-t-4 ${columnPadding} ${STATUS_BORDER[id]}`}
         >
-            <h3 className="font-semibold mb-4 flex items-center justify-between">
+            <h3 className={`font-semibold ${headerMargin} flex items-center justify-between`}>
                 {label}
                 <span className="text-xs bg-muted px-2 py-0.5 rounded-full text-muted-foreground">{tasks.length}</span>
             </h3>
             <div
-                className="flex-1 space-y-3 overflow-y-auto min-h-[100px] focus:outline-none focus:ring-2 focus:ring-primary/50 rounded-md px-1"
+                className={`flex-1 ${listSpacing} overflow-y-auto min-h-[100px] focus:outline-none focus:ring-2 focus:ring-primary/50 rounded-md px-1`}
                 tabIndex={0}
                 role="list"
                 aria-label={`${label} tasks list`}
@@ -159,6 +164,7 @@ export function BoardView() {
     );
     const { t } = useLanguage();
     const sortBy = (settings?.taskSortBy ?? 'default') as TaskSortBy;
+    const isCompact = settings?.appearance?.density === 'compact';
 
     const [activeTask, setActiveTask] = React.useState<Task | null>(null);
     const [computeSequential, setComputeSequential] = React.useState(false);
@@ -482,6 +488,7 @@ export function BoardView() {
                             tasks={getColumnTasks(col.id)}
                             emptyState={getEmptyState(col.id)}
                             onQuickAdd={openQuickAdd}
+                            compact={isCompact}
                         />
                     ))}
 
