@@ -47,6 +47,11 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
     const setProjectView = useUiStore((state) => state.setProjectView);
     const { t } = useLanguage();
 
+    const globalAreaFilter = useMemo(
+        () => resolveAreaFilter(settings?.filters?.areaId, areas),
+        [settings?.filters?.areaId, areas],
+    );
+
     // Toggle search with Cmd+K / Ctrl+K
     useEffect(() => {
         isOpenRef.current = isOpen;
@@ -162,10 +167,6 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
     const hasStatusFilter = selectedStatuses.length > 0;
     const projectById = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
     const areaById = useMemo(() => new Map(areas.map((area) => [area.id, area])), [areas]);
-    const globalAreaFilter = useMemo(
-        () => resolveAreaFilter(settings?.filters?.areaId, areas),
-        [settings?.filters?.areaId, areas],
-    );
     const matchesGlobalArea = (areaId?: string | null) => {
         const normalized = areaId && areaById.has(areaId) ? areaId : null;
         if (globalAreaFilter === AREA_FILTER_ALL) return true;
