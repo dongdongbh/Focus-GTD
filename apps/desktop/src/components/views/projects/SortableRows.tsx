@@ -138,7 +138,7 @@ export function SortableProjectTaskRow({
                 <GripVertical className="w-3.5 h-3.5" />
             </button>
             <div className="flex-1 min-w-0">
-                <TaskItem task={task} project={project} />
+                <TaskItem task={task} project={project} enableDoubleClickEdit />
             </div>
         </div>
     );
