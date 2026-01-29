@@ -751,6 +751,7 @@ export function ProjectsView() {
                         t={t}
                         areaFilterLabel={areaFilterLabel ?? undefined}
                         selectedTag={selectedTag}
+                        noAreaId={NO_AREA}
                         allTagsId={ALL_TAGS}
                         noTagsId={NO_TAGS}
                         tagOptions={tagOptions}

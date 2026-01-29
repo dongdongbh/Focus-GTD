@@ -19,6 +19,7 @@ interface ProjectsSidebarProps {
     t: (key: string) => string;
     areaFilterLabel?: string;
     selectedTag: string;
+    noAreaId: string;
     allTagsId: string;
     noTagsId: string;
     tagOptions: TagOptionList;
@@ -51,6 +52,7 @@ export function ProjectsSidebar({
     t,
     areaFilterLabel,
     selectedTag,
+    noAreaId,
     allTagsId,
     noTagsId,
     tagOptions,
