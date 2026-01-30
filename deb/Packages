@@ -1,16 +1,16 @@
 Package: mindwtr
 Architecture: amd64
-Version: 0.6.3
+Version: 0.6.4
 Priority: optional
 Maintainer: DongDong
-Installed-Size: 29894
+Installed-Size: 32924
 Depends: libappindicator3-1, libwebkit2gtk-4.1-0, libgtk-3-0
-Filename: ./mindwtr_0.6.3_amd64.deb
-Size: 11472874
-MD5sum: 6b253d7e902b6dc4e1ccd36757f3df2e
-SHA1: 1570643e71befb0361ee8380a76d9002dda661c8
-SHA256: 54d710bb957bbe2d070de9e3798b7adea484e8ad12f6c7e05158a00d39a49190
-SHA512: ba18b45388554d3e2ff425b1eb1942e09293f5bb622da857d3cd6016eef1d728d899b6f0cb83a9a546468bcd8ab67312318fc14d590ea54706593a530ec710dc
+Filename: ./mindwtr_0.6.4_amd64.deb
+Size: 12503420
+MD5sum: e34044103ae8f119b5420054b1c0628f
+SHA1: 7c64862fa0892ecdacbae92e570270a78a1934ec
+SHA256: b4722c477d1a4723fefab15c871e155fed773deecce6002f02c665044a541a10
+SHA512: dc45bb5727219a388751a5102046b0f4664e0c0da181e6e8fe0a69a21cc794c69543dfa664efa67beecfbae26187a22343539030605e545ad0930bf956b0906f
 Description: A complete Getting Things Done (GTD) productivity system - Mind Like Water
  (none)
 
