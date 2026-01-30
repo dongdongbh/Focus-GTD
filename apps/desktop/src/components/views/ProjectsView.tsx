@@ -29,7 +29,8 @@ import { usePerformanceMonitor } from '../../hooks/usePerformanceMonitor';
 import { checkBudget } from '../../config/performanceBudgets';
 import { useUiStore } from '../../store/ui-store';
 import { logWarn } from '../../lib/app-log';
-import { AREA_FILTER_ALL, AREA_FILTER_NONE, projectMatchesAreaFilter, resolveAreaFilter } from '../../lib/area-filter';
+import { AREA_FILTER_ALL, AREA_FILTER_NONE, projectMatchesAreaFilter } from '../../lib/area-filter';
+import { useAreaSidebarState } from './projects/useAreaSidebarState';
 
 const SECTION_CONTAINER_PREFIX = 'section:';
 const NO_SECTION_CONTAINER = `${SECTION_CONTAINER_PREFIX}none`;
@@ -149,11 +150,6 @@ export function ProjectsView() {
     const NO_AREA = AREA_FILTER_NONE;
     const ALL_TAGS = '__all__';
     const NO_TAGS = '__none__';
-    const resolvedAreaFilter = useMemo(
-        () => resolveAreaFilter(settings?.filters?.areaId, areas),
-        [settings?.filters?.areaId, areas],
-    );
-    const selectedArea = resolvedAreaFilter;
     const [selectedTag, setSelectedTag] = useState(ALL_TAGS);
 
     const handleDuplicateProject = useCallback(async (projectId: string) => {
@@ -175,24 +171,23 @@ export function ProjectsView() {
         setAttachmentError(null);
     }, [selectedProjectId]);
 
-    const { sortedAreas, areaById } = useMemo(() => {
-        const sorted = [...areas].sort((a, b) => a.order - b.order);
-        return {
-            sortedAreas: sorted,
-            areaById: new Map(sorted.map((area) => [area.id, area])),
-        };
-    }, [areas]);
-    const areaFilterLabel = useMemo(() => {
-        if (selectedArea === ALL_AREAS) return null;
-        if (selectedArea === NO_AREA) return t('projects.noArea');
-        return areaById.get(selectedArea)?.name || t('projects.noArea');
-    }, [selectedArea, areaById, ALL_AREAS, NO_AREA, t]);
-
-    const areaSensors = useSensors(
-        useSensor(PointerSensor, {
-            activationConstraint: { distance: 4 },
-        }),
-    );
+    const {
+        selectedArea,
+        sortedAreas,
+        areaById,
+        areaFilterLabel,
+        areaSensors,
+        toggleAreaCollapse,
+        handleAreaDragEnd,
+        handleDeleteArea,
+    } = useAreaSidebarState({
+        areas,
+        settings,
+        t,
+        reorderAreas,
+        deleteArea,
+        setCollapsedAreas,
+    });
 
     const taskSensors = useSensors(
         useSensor(PointerSensor, {
@@ -200,35 +195,7 @@ export function ProjectsView() {
         }),
     );
 
-    const toggleAreaCollapse = (areaId: string) => {
-        setCollapsedAreas((prev) => ({ ...prev, [areaId]: !prev[areaId] }));
-    };
-
     const getProjectColorForTask = (project: Project) => getProjectColor(project, areaById, DEFAULT_AREA_COLOR);
-
-    const handleAreaDragEnd = (event: DragEndEvent) => {
-        const { active, over } = event;
-        if (!over || active.id === over.id) return;
-        const oldIndex = sortedAreas.findIndex((area) => area.id === active.id);
-        const newIndex = sortedAreas.findIndex((area) => area.id === over.id);
-        if (oldIndex === -1 || newIndex === -1) return;
-        const reordered = arrayMove(sortedAreas, oldIndex, newIndex).map((area) => area.id);
-        reorderAreas(reordered);
-    };
-
-    const handleDeleteArea = async (areaId: string) => {
-        const confirmed = isTauriRuntime()
-            ? await import('@tauri-apps/plugin-dialog').then(({ confirm }) =>
-                confirm(t('projects.deleteConfirm'), {
-                    title: 'Area',
-                    kind: 'warning',
-                }),
-            )
-            : window.confirm(t('projects.deleteConfirm'));
-        if (confirmed) {
-            deleteArea(areaId);
-        }
-    };
 
     const handleAddSection = () => {
         if (!selectedProject) return;
