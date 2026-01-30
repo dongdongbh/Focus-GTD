@@ -164,8 +164,9 @@ jobs:
           MS_SELLER_ID: ${{ secrets.MS_SELLER_ID }}
           MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
           MS_CLIENT_SECRET: ${{ secrets.MS_CLIENT_SECRET }}
+          MS_STORE_APP_ID: ${{ secrets.MS_STORE_APP_ID || '9N0V5B0B6FRX' }}
         run: |
-          $required = @('MS_TENANT_ID','MS_SELLER_ID','MS_CLIENT_ID','MS_CLIENT_SECRET')
+          $required = @('MS_TENANT_ID','MS_SELLER_ID','MS_CLIENT_ID','MS_CLIENT_SECRET','MS_STORE_APP_ID')
           foreach ($name in $required) {
             if (-not (Get-Item -Path "env:$name" -ErrorAction SilentlyContinue)) {
               Write-Error "$name is missing. Please set it in repository secrets."
@@ -180,6 +181,7 @@ jobs:
           MS_SELLER_ID: ${{ secrets.MS_SELLER_ID }}
           MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
           MS_CLIENT_SECRET: ${{ secrets.MS_CLIENT_SECRET }}
+          MS_STORE_APP_ID: ${{ secrets.MS_STORE_APP_ID || '9N0V5B0B6FRX' }}
         run: |
           $msix = (Resolve-Path "mindwtr_${{ steps.version.outputs.version }}_x64.msix").Path
           $tenantId = $env:MS_TENANT_ID.Trim()
@@ -193,7 +195,7 @@ jobs:
             --clientId $clientId `
             --clientSecret $clientSecret
 
-          & msstore publish $msix -v --appId $env:MS_IDENTITY_NAME
+          & msstore publish $msix -v --appId $env:MS_STORE_APP_ID
 
       - name: Collect Windows artifacts
         shell: pwsh
