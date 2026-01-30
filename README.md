@@ -36,8 +36,8 @@ A complete Getting Things Done (GTD) productivity system for desktop and mobile.
     <img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png"
          align="center"
          alt="Google Play"
-         style="height: 50px; width: 160px; object-fit: cover; object-position: center;"
-         height="50" />
+         style="height: 56px"
+         height="56" />
   </a>
   <a href="https://aur.archlinux.org/packages/mindwtr-bin" target="_blank">
     <img src="https://img.shields.io/aur/version/mindwtr-bin?logo=arch-linux&logoColor=white&color=1793d1&label=AUR"
