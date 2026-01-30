@@ -339,6 +339,7 @@ export function DailyReviewGuideModal({ onClose }: DailyReviewGuideModalProps) {
                             tasks={tasks}
                             projects={projects}
                             areas={areas}
+                            settings={settings}
                             addProject={addProject}
                             updateTask={updateTask}
                             deleteTask={deleteTask}
