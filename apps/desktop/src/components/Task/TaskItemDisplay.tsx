@@ -155,12 +155,47 @@ export function TaskItemDisplay({
         && !readOnly
         && task.status !== 'done'
         && task.status !== 'archived';
+    const overlayDragHandle = actionsOverlay && !!dragHandle;
+    const overlayQuickDone = actionsOverlay && showQuickDoneButton;
+    const inlineLeftControls = !actionsOverlay && (showQuickDoneButton || dragHandle);
 
     return (
         <div className={cn("flex-1 min-w-0 flex items-start gap-3", actionsOverlay && "relative")}>
-            <div className={cn("flex min-w-0 flex-1 items-start gap-2", actionsOverlay && "pr-10")}>
-                {(showQuickDoneButton || dragHandle) && (
-                    <div className="flex flex-col items-center gap-1 mt-1 shrink-0">
+            {overlayDragHandle && (
+                <div
+                    className="absolute left-0 top-2 flex items-center -translate-x-2"
+                    onPointerDown={(event) => event.stopPropagation()}
+                >
+                    {dragHandle}
+                </div>
+            )}
+            {overlayQuickDone && (
+                <div
+                    className="absolute left-4 top-2 flex items-center"
+                    onPointerDown={(event) => event.stopPropagation()}
+                >
+                    <button
+                        type="button"
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            onStatusChange('done');
+                        }}
+                        aria-label={t('status.done')}
+                        className="text-emerald-400 hover:text-emerald-300 p-1 rounded hover:bg-emerald-500/20"
+                    >
+                        <Check className="w-4 h-4" />
+                    </button>
+                </div>
+            )}
+            <div className={cn("flex min-w-0 flex-1 items-start gap-2")}>
+                {inlineLeftControls && (
+                    <div
+                        className={cn(
+                            "flex items-center gap-1 mt-1 shrink-0",
+                            actionsOverlay && dragHandle && "-ml-2"
+                        )}
+                    >
+                        {dragHandle}
                         {showQuickDoneButton && (
                             <button
                                 type="button"
@@ -174,7 +209,6 @@ export function TaskItemDisplay({
                                 <Check className="w-4 h-4" />
                             </button>
                         )}
-                        {dragHandle}
                     </div>
                 )}
                 <div
@@ -216,7 +250,7 @@ export function TaskItemDisplay({
                             }
                         }}
                         className={cn(
-                            "w-full text-left rounded px-0.5 py-0.5 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40",
+                            "block w-full text-left rounded px-0.5 py-0.5 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40",
                             selectionMode ? "cursor-pointer" : "cursor-default",
                             isRtl && "text-right"
                         )}
@@ -228,7 +262,9 @@ export function TaskItemDisplay({
                             className={cn(
                                 "font-medium truncate text-foreground group-hover/content:text-primary transition-colors",
                                 dense ? "text-sm" : "text-base",
-                                task.status === 'done' && "line-through text-muted-foreground"
+                                task.status === 'done' && "line-through text-muted-foreground",
+                                actionsOverlay && "pr-20",
+                                (overlayDragHandle || overlayQuickDone) && "pl-12"
                             )}
                         >
                             {task.title}
@@ -236,7 +272,7 @@ export function TaskItemDisplay({
                         {task.description && (
                             <p
                                 className={cn(
-                                    "text-muted-foreground mt-1",
+                                    "text-muted-foreground mt-1 w-full",
                                     dense ? "text-xs" : "text-sm",
                                     isRtl && "text-right"
                                 )}
@@ -246,7 +282,13 @@ export function TaskItemDisplay({
                             </p>
                         )}
                         {showCompactMeta && (
-                            <div className={cn("flex flex-wrap items-center gap-2 text-xs text-muted-foreground", dense ? "mt-0.5" : "mt-1")}>
+                            <div
+                                className={cn(
+                                    "flex flex-wrap items-center gap-2 text-xs text-muted-foreground",
+                                    dense ? "mt-0.5" : "mt-1",
+                                    (overlayDragHandle || overlayQuickDone) && "pl-12"
+                                )}
+                            >
                                 {renderProjectBadge()}
                                 {!project && area && (
                                     <MetadataBadge
