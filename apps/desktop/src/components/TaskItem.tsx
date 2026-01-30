@@ -98,6 +98,8 @@ export const TaskItem = memo(function TaskItem({
         addProject,
         addArea,
         addSection,
+        lockEditing,
+        unlockEditing,
     } = useTaskStore(
         (state) => ({
             updateTask: state.updateTask,
@@ -114,6 +116,8 @@ export const TaskItem = memo(function TaskItem({
             addProject: state.addProject,
             addArea: state.addArea,
             addSection: state.addSection,
+            lockEditing: state.lockEditing,
+            unlockEditing: state.unlockEditing,
         }),
         shallow
     );
@@ -663,6 +667,14 @@ export const TaskItem = memo(function TaskItem({
             setIsViewOpen(false);
         }
     }, [isEditing]);
+
+    useEffect(() => {
+        if (!isEditing) return;
+        lockEditing();
+        return () => {
+            unlockEditing();
+        };
+    }, [isEditing, lockEditing, unlockEditing]);
 
 
     const handleSubmit = async (e: React.FormEvent) => {

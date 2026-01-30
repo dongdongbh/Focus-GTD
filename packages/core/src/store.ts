@@ -8,7 +8,7 @@ import { createNextRecurringTask } from './recurrence';
 import { safeParseDate } from './date';
 import { normalizeTaskForLoad } from './task-status';
 import { rescheduleTask } from './task-utils';
-import { logError } from './logger';
+import { logError, logWarn } from './logger';
 
 let storage: StorageAdapter = noopStorage;
 
@@ -132,6 +132,8 @@ interface TaskStore {
     settings: AppData['settings'];
     isLoading: boolean;
     error: string | null;
+    /** Number of active edit locks (prevents fetchData from clobbering in-progress edits). */
+    editLockCount: number;
     /** Updated whenever tasks/projects change (not settings) */
     lastDataChangeAt: number;
     /** Ephemeral highlight task id for UI navigation */
@@ -175,6 +177,10 @@ interface TaskStore {
     queryTasks: (options: TaskQueryOptions) => Promise<Task[]>;
     /** Set or clear global error state */
     setError: (error: string | null) => void;
+    /** Increment edit lock count */
+    lockEditing: () => void;
+    /** Decrement edit lock count */
+    unlockEditing: () => void;
 
     // Project Actions
     /** Add a new project */
@@ -445,6 +451,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     settings: {},
     isLoading: false,
     error: null,
+    editLockCount: 0,
     lastDataChangeAt: 0,
     highlightTaskId: null,
     highlightTaskAt: null,
@@ -454,6 +461,8 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     _allSections: [],
     _allAreas: [],
     setError: (error: string | null) => set({ error }),
+    lockEditing: () => set((state) => ({ editLockCount: state.editLockCount + 1 })),
+    unlockEditing: () => set((state) => ({ editLockCount: Math.max(0, state.editLockCount - 1) })),
 
     /**
      * Fetch all data from the configured storage adapter.
@@ -465,6 +474,17 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
             set({ error: null });
         } else {
             set({ isLoading: true, error: null });
+        }
+        if (get().editLockCount > 0) {
+            if (!options?.silent) {
+                set({ isLoading: false });
+            }
+            logWarn('Skipped fetch while edits are in progress', {
+                scope: 'store',
+                category: 'fetch',
+                context: { editLockCount: get().editLockCount },
+            });
+            return;
         }
         try {
             const data = await withTimeout(storage.getData(), STORAGE_TIMEOUT_MS, 'Storage request timed out');
