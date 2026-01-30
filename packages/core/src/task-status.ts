@@ -61,6 +61,7 @@ export function normalizeTaskForLoad(task: Task, nowIso: string = new Date().toI
         typeof task.areaId === 'string' && task.areaId.trim().length > 0
             ? task.areaId
             : undefined;
+    const resolvedAreaId = projectId ? undefined : areaId;
     const textDirection =
         typeof task.textDirection === 'string' && ['auto', 'ltr', 'rtl'].includes(task.textDirection)
             ? task.textDirection
@@ -77,7 +78,7 @@ export function normalizeTaskForLoad(task: Task, nowIso: string = new Date().toI
         updatedAt: updatedAtIso,
         status: normalizedStatus,
         projectId,
-        areaId,
+        areaId: resolvedAreaId,
         rev,
         ...(revBy ? { revBy } : {}),
         ...(textDirection ? { textDirection } : {}),
