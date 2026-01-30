@@ -52,7 +52,7 @@ jobs:
         uses: robinraju/release-downloader@v1
         with:
           repository: ${{ github.repository }}
-          tag: ${{ env.RELEASE_TAG }}
+          tag: ${{ env.RELEASE_TAG || github.ref_name }}
           fileName: "*"
 
       - name: Prepare Repo Directories
