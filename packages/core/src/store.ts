@@ -242,7 +242,6 @@ type DerivedState = {
 type DerivedCache = {
     tasksRef: Task[];
     projectsRef: Project[];
-    areasRef: Area[];
     value: DerivedState;
 };
 
@@ -1950,7 +1949,6 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
             };
             createdArea = newArea;
             const newAllAreas = [...allAreas, newArea].sort((a, b) => a.order - b.order);
-            derivedCache = null;
             snapshot = buildSaveSnapshot(state, {
                 areas: newAllAreas,
                 ...(deviceState.updated ? { settings: deviceState.settings } : {}),
@@ -2011,7 +2009,6 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
                         };
                     });
                     const newVisibleProjects = newAllProjects.filter(p => !p.deletedAt);
-                    derivedCache = null;
                     snapshot = buildSaveSnapshot(state, {
                         areas: newAllAreas,
                         projects: newAllProjects,
@@ -2044,7 +2041,6 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
                     }
                     : a))
                 .sort((a, b) => a.order - b.order);
-            derivedCache = null;
             snapshot = buildSaveSnapshot(state, {
                 areas: newAllAreas,
                 ...(deviceState.updated ? { settings: deviceState.settings } : {}),
@@ -2149,7 +2145,6 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
                 rev: normalizeRevision(area.rev) + 1,
                 revBy: deviceState.deviceId,
             }));
-            derivedCache = null;
             snapshot = buildSaveSnapshot(state, {
                 areas: newAllAreas,
                 ...(deviceState.updated ? { settings: deviceState.settings } : {}),
@@ -2442,7 +2437,6 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
             derivedCache
             && derivedCache.tasksRef === state.tasks
             && derivedCache.projectsRef === state.projects
-            && derivedCache.areasRef === state.areas
         ) {
             return derivedCache.value;
         }
@@ -2450,7 +2444,6 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
         derivedCache = {
             tasksRef: state.tasks,
             projectsRef: state.projects,
-            areasRef: state.areas,
             value: derived,
         };
         return derived;

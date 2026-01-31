@@ -28,7 +28,7 @@ import { useUiStore } from './store/ui-store';
 function App() {
     const [currentView, setCurrentView] = useState('inbox');
     const [activeView, setActiveView] = useState('inbox');
-    const [isNavigating, startTransition] = useTransition();
+    const [, startTransition] = useTransition();
     const fetchData = useTaskStore((state) => state.fetchData);
     const isLoading = useTaskStore((state) => state.isLoading);
     const setError = useTaskStore((state) => state.setError);
