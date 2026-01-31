@@ -197,6 +197,19 @@ jobs:
 
           & msstore publish $msix --appId $env:MS_STORE_APP_ID
 
+      - name: Update Microsoft Store metadata
+        if: startsWith(github.ref, 'refs/tags/') && github.event_name != 'workflow_dispatch'
+        shell: pwsh
+        env:
+          MS_STORE_APP_ID: ${{ secrets.MS_STORE_APP_ID || '9N0V5B0B6FRX' }}
+        run: |
+          if (-not (Test-Path "metadata/metadata.json")) {
+            Write-Error "metadata/metadata.json not found. Commit the metadata file before releasing."
+          }
+          $metadata = Get-Content -Raw "metadata/metadata.json"
+          & msstore submission updateMetadata $env:MS_STORE_APP_ID $metadata
+          & msstore submission publish $env:MS_STORE_APP_ID
+
       - name: Collect Windows artifacts
         shell: pwsh
         run: |
