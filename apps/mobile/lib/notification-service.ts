@@ -151,7 +151,11 @@ async function rescheduleDailyDigest(api: NotificationsApi) {
         body: tr['digest.morningBody'],
         data: { kind: 'daily-digest', when: 'morning' },
       } as any,
-      trigger: { hour, minute, repeats: true } as any,
+      trigger: {
+        type: api.SchedulableTriggerInputTypes.DAILY,
+        hour,
+        minute,
+      } as any,
     });
     scheduledDigestByKind.set('morning', id);
   }
@@ -164,7 +168,11 @@ async function rescheduleDailyDigest(api: NotificationsApi) {
         body: tr['digest.eveningBody'],
         data: { kind: 'daily-digest', when: 'evening' },
       } as any,
-      trigger: { hour, minute, repeats: true } as any,
+      trigger: {
+        type: api.SchedulableTriggerInputTypes.DAILY,
+        hour,
+        minute,
+      } as any,
     });
     scheduledDigestByKind.set('evening', id);
   }
@@ -203,7 +211,12 @@ async function rescheduleWeeklyReview(api: NotificationsApi) {
       body: tr['digest.weeklyReviewBody'],
       data: { kind: 'weekly-review', weekday },
     } as any,
-    trigger: { weekday, hour, minute, repeats: true } as any,
+    trigger: {
+      type: api.SchedulableTriggerInputTypes.WEEKLY,
+      weekday,
+      hour,
+      minute,
+    } as any,
   });
 }
 
@@ -218,7 +231,11 @@ async function scheduleForTask(api: NotificationsApi, task: Task, when: Date) {
   const secondsUntil = Math.max(1, Math.floor((when.getTime() - Date.now()) / 1000));
   const id = await api.scheduleNotificationAsync({
     content,
-    trigger: { seconds: secondsUntil, repeats: false } as any,
+    trigger: {
+      type: api.SchedulableTriggerInputTypes.TIME_INTERVAL,
+      seconds: secondsUntil,
+      repeats: false,
+    } as any,
   });
 
   scheduledByTask.set(task.id, { scheduledAtIso: when.toISOString(), notificationId: id });
@@ -235,7 +252,11 @@ async function scheduleForProject(api: NotificationsApi, project: Project, when:
   const secondsUntil = Math.max(1, Math.floor((when.getTime() - Date.now()) / 1000));
   const id = await api.scheduleNotificationAsync({
     content,
-    trigger: { seconds: secondsUntil, repeats: false } as any,
+    trigger: {
+      type: api.SchedulableTriggerInputTypes.TIME_INTERVAL,
+      seconds: secondsUntil,
+      repeats: false,
+    } as any,
   });
 
   scheduledByProject.set(project.id, { scheduledAtIso: when.toISOString(), notificationId: id });
