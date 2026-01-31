@@ -454,8 +454,15 @@ async function main() {
                 const filePath = join(dataDir, `${key}.json`);
 
                 if (req.method === 'GET') {
+                    if (!existsSync(filePath)) {
+                        const emptyData: AppData = { tasks: [], projects: [], sections: [], areas: [], settings: {} };
+                        await withWriteLock(key, async () => {
+                            if (!existsSync(filePath)) writeData(filePath, emptyData);
+                        });
+                        return jsonResponse(emptyData);
+                    }
                     const data = readData(filePath);
-                    if (!data) return errorResponse('Not found', 404);
+                    if (!data) return errorResponse('Failed to read data', 500);
                     const validated = validateAppData(data);
                     if (!validated.ok) return errorResponse(validated.error, 500);
                     return jsonResponse(validated.data);
