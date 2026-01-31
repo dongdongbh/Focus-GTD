@@ -33,7 +33,7 @@ import type { DateTimePickerEvent } from '@react-native-community/datetimepicker
 import * as DocumentPicker from 'expo-document-picker';
 import * as Linking from 'expo-linking';
 import * as Sharing from 'expo-sharing';
-import { Audio, type AVPlaybackStatus } from 'expo-av';
+import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { Paths } from 'expo-file-system';
 import { useLanguage } from '../contexts/language-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -171,9 +171,9 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
     const [linkModalVisible, setLinkModalVisible] = useState(false);
     const [audioModalVisible, setAudioModalVisible] = useState(false);
     const [audioAttachment, setAudioAttachment] = useState<Attachment | null>(null);
-    const [audioStatus, setAudioStatus] = useState<AVPlaybackStatus | null>(null);
     const [audioLoading, setAudioLoading] = useState(false);
-    const audioSoundRef = useRef<Audio.Sound | null>(null);
+    const audioPlayer = useAudioPlayer(null, { updateInterval: 500 });
+    const audioStatus = useAudioPlayerStatus(audioPlayer);
     const [showProjectPicker, setShowProjectPicker] = useState(false);
     const [showSectionPicker, setShowSectionPicker] = useState(false);
     const [linkInput, setLinkInput] = useState('');
@@ -713,22 +713,17 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
     };
 
     const unloadAudio = useCallback(async () => {
-        const sound = audioSoundRef.current;
-        audioSoundRef.current = null;
-        if (sound) {
-            try {
-                await sound.stopAsync();
-            } catch (error) {
-                logTaskWarn('Stop audio failed', error);
-            }
-            try {
-                await sound.unloadAsync();
-            } catch (error) {
-                logTaskWarn('Unload audio failed', error);
-            }
+        try {
+            audioPlayer.pause();
+        } catch (error) {
+            logTaskWarn('Stop audio failed', error);
         }
-        setAudioStatus(null);
-    }, []);
+        try {
+            audioPlayer.replace(null);
+        } catch (error) {
+            logTaskWarn('Unload audio failed', error);
+        }
+    }, [audioPlayer]);
 
     const normalizeAudioUri = useCallback((uri: string) => {
         if (!uri) return '';
@@ -747,10 +742,11 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
         setAudioLoading(true);
         try {
             await unloadAudio();
-            await Audio.setAudioModeAsync({
-                playsInSilentModeIOS: true,
-                shouldDuckAndroid: true,
-                allowsRecordingIOS: false,
+            await setAudioModeAsync({
+                allowsRecording: false,
+                playsInSilentMode: true,
+                interruptionMode: 'duckOthers',
+                interruptionModeAndroid: 'duckOthers',
             });
             const normalizedUri = normalizeAudioUri(attachment.uri);
             if (normalizedUri) {
@@ -780,13 +776,8 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
                 setAudioAttachment(null);
                 return;
             }
-            const { sound, status } = await Audio.Sound.createAsync(
-                { uri: normalizedUri },
-                { shouldPlay: true },
-                (nextStatus) => setAudioStatus(nextStatus)
-            );
-            audioSoundRef.current = sound;
-            setAudioStatus(status);
+            audioPlayer.replace({ uri: normalizedUri });
+            audioPlayer.play();
         } catch (error) {
             logTaskError('Failed to play audio attachment', error);
             Alert.alert(t('quickAdd.audioErrorTitle'), t('quickAdd.audioErrorBody'));
@@ -795,7 +786,7 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
         } finally {
             setAudioLoading(false);
         }
-    }, [t, unloadAudio]);
+    }, [audioPlayer, normalizeAudioUri, t, unloadAudio]);
 
     const closeAudioModal = useCallback(() => {
         setAudioModalVisible(false);
@@ -805,18 +796,17 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
     }, [unloadAudio]);
 
     const toggleAudioPlayback = useCallback(async () => {
-        const sound = audioSoundRef.current;
-        if (!sound || !audioStatus || !audioStatus.isLoaded) return;
+        if (!audioStatus?.isLoaded) return;
         try {
-            if (audioStatus.isPlaying) {
-                await sound.pauseAsync();
+            if (audioStatus.playing) {
+                audioPlayer.pause();
             } else {
-                await sound.playAsync();
+                audioPlayer.play();
             }
         } catch (error) {
             logTaskWarn('Toggle audio playback failed', error);
         }
-    }, [audioStatus]);
+    }, [audioPlayer, audioStatus]);
 
     const updateAttachmentState = useCallback((nextAttachment: Attachment) => {
         setEditedTask((prev) => {
@@ -2373,8 +2363,8 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
                                 {audioAttachment?.title || t('quickAdd.audioNoteTitle')}
                             </Text>
                             <Text style={[styles.modalLabel, { color: tc.secondaryText }]}>
-                                {audioStatus && audioStatus.isLoaded
-                                    ? `${formatAudioTimestamp(audioStatus.positionMillis)} / ${formatAudioTimestamp(audioStatus.durationMillis)}`
+                                {audioStatus?.isLoaded
+                                    ? `${formatAudioTimestamp(audioStatus.currentTime * 1000)} / ${formatAudioTimestamp(audioStatus.duration * 1000)}`
                                     : t('audio.loading')}
                             </Text>
                             <View style={styles.modalButtons}>
@@ -2384,7 +2374,7 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
                                     style={[styles.modalButton, (audioLoading || !audioStatus?.isLoaded) && styles.modalButtonDisabled]}
                                 >
                                     <Text style={[styles.modalButtonText, { color: tc.tint }]}>
-                                        {audioStatus?.isLoaded && audioStatus.isPlaying ? t('common.pause') : t('common.play')}
+                                        {audioStatus?.isLoaded && audioStatus.playing ? t('common.pause') : t('common.play')}
                                     </Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity onPress={closeAudioModal} style={styles.modalButton}>

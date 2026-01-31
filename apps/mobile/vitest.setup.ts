@@ -15,19 +15,49 @@ globalThis.expo = globalThis.expo ?? {
   modules: {},
 };
 
-vi.mock('expo-av', () => ({
-  Audio: {
-    setAudioModeAsync: vi.fn().mockResolvedValue(undefined),
-    Sound: {
-      createAsync: vi.fn().mockResolvedValue({
-        sound: {
-          playAsync: vi.fn(),
-          stopAsync: vi.fn(),
-          unloadAsync: vi.fn(),
-        },
-        status: {},
-      }),
-    },
+vi.mock('expo-audio', () => ({
+  AudioModule: {
+    requestRecordingPermissionsAsync: vi.fn().mockResolvedValue({ granted: true, status: 'granted' }),
+  },
+  requestRecordingPermissionsAsync: vi.fn().mockResolvedValue({ granted: true, status: 'granted' }),
+  setAudioModeAsync: vi.fn().mockResolvedValue(undefined),
+  useAudioPlayer: vi.fn(() => ({
+    play: vi.fn(),
+    pause: vi.fn(),
+    replace: vi.fn(),
+    remove: vi.fn(),
+  })),
+  useAudioPlayerStatus: vi.fn(() => ({
+    id: 0,
+    currentTime: 0,
+    playbackState: 'stopped',
+    timeControlStatus: 'paused',
+    reasonForWaitingToPlay: '',
+    mute: false,
+    duration: 0,
+    playing: false,
+    loop: false,
+    didJustFinish: false,
+    isBuffering: false,
+    isLoaded: true,
+    playbackRate: 1,
+    shouldCorrectPitch: true,
+  })),
+  useAudioRecorder: vi.fn(() => ({
+    prepareToRecordAsync: vi.fn().mockResolvedValue(undefined),
+    record: vi.fn(),
+    stop: vi.fn().mockResolvedValue(undefined),
+    uri: 'file://recording.m4a',
+  })),
+  useAudioRecorderState: vi.fn(() => ({
+    canRecord: true,
+    isRecording: false,
+    durationMillis: 0,
+    mediaServicesDidReset: false,
+    url: null,
+  })),
+  RecordingPresets: {
+    HIGH_QUALITY: {},
   },
 }));
 

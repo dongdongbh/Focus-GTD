@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Modal, View, Text, TextInput, TouchableOpacity, StyleSheet, Pressable, ScrollView, Switch, Platform, KeyboardAvoidingView } from 'react-native';
 import { CalendarDays, Folder, Flag, X, Clock, Mic, Square } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Audio } from 'expo-av';
+import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder } from 'expo-audio';
 import { Directory, File, Paths } from 'expo-file-system';
 
 import { parseQuickAdd, safeFormatDate, safeParseDate, type Attachment, type Task, type TaskPriority, generateUUID, useTaskStore } from '@mindwtr/core';
@@ -10,7 +10,7 @@ import { useLanguage } from '../contexts/language-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { loadAIKey } from '../lib/ai-config';
-import { processAudioCapture, ensureWhisperModelPathForConfig, startWhisperRealtimeCapture, type SpeechToTextResult } from '../lib/speech-to-text';
+import { processAudioCapture, ensureWhisperModelPathForConfig, preloadWhisperContext, startWhisperRealtimeCapture, type SpeechToTextResult } from '../lib/speech-to-text';
 import { persistAttachmentLocally } from '../lib/attachment-sync';
 import { logError, logInfo, logWarn } from '../lib/app-log';
 
@@ -37,7 +37,7 @@ const logCaptureError = (message: string, error?: unknown) => {
 };
 
 type RecordingState =
-  | { kind: 'expo'; recording: Audio.Recording }
+  | { kind: 'expo' }
   | { kind: 'whisper'; stop: () => Promise<void>; result: Promise<SpeechToTextResult>; file: File };
 
 export function QuickCaptureSheet({
@@ -89,6 +89,8 @@ export function QuickCaptureSheet({
   const [addAnother, setAddAnother] = useState(false);
   const [recording, setRecording] = useState<RecordingState | null>(null);
   const [recordingBusy, setRecordingBusy] = useState(false);
+  const [recordingReady, setRecordingReady] = useState(false);
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 
   const filteredProjects = useMemo(() => {
     const query = projectQuery.trim().toLowerCase();
@@ -119,6 +121,24 @@ export function QuickCaptureSheet({
     setPriority(null);
     setShowPriorityPicker(false);
   }, [prioritiesEnabled]);
+
+  useEffect(() => {
+    if (!visible) return;
+    const speech = settings.ai?.speechToText;
+    if (!speech?.enabled || speech.provider !== 'whisper') return;
+    const model = speech.model ?? 'whisper-tiny';
+    const modelPath = speech.offlineModelPath;
+    const resolved = resolveWhisperModel(model, modelPath);
+    if (!resolved.exists) return;
+    let cancelled = false;
+    void preloadWhisperContext({ model, modelPath: resolved.path }).catch((error) => {
+      if (cancelled) return;
+      logCaptureWarn('Failed to preload whisper model', error);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [resolveWhisperModel, settings.ai?.speechToText, visible]);
 
   const ensureAudioDirectory = useCallback(async () => {
     const candidates: Directory[] = [];
@@ -405,6 +425,7 @@ export function QuickCaptureSheet({
     if (recording && !recordingBusy) {
       void stopRecording({ saveTask: false });
     }
+    setRecordingReady(false);
     resetState();
     onClose();
   };
@@ -428,16 +449,18 @@ export function QuickCaptureSheet({
   const startRecording = useCallback(async () => {
     if (recording || recordingBusy) return;
     setRecordingBusy(true);
+    setRecordingReady(false);
     try {
-      const permission = await Audio.requestPermissionsAsync();
+      const permission = await requestRecordingPermissionsAsync();
       if (!permission.granted) {
         Alert.alert(t('quickAdd.audioPermissionTitle'), t('quickAdd.audioPermissionBody'));
         return;
       }
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: true,
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
+        interruptionMode: 'duckOthers',
+        interruptionModeAndroid: 'duckOthers',
       });
       const speech = settings.ai?.speechToText;
       const provider = speech?.provider ?? 'gemini';
@@ -502,23 +525,26 @@ export function QuickCaptureSheet({
             },
           });
           setRecording({ kind: 'whisper', stop: handle.stop, result: handle.result, file: outputFile });
+          setRecordingReady(true);
           return;
         } catch (error) {
           logCaptureWarn('Whisper realtime start failed, falling back to audio recording', error);
         }
       }
 
-      const { recording: nextRecording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-      setRecording({ kind: 'expo', recording: nextRecording });
+      await audioRecorder.prepareToRecordAsync();
+      audioRecorder.record();
+      setRecording({ kind: 'expo' });
+      setRecordingReady(true);
     } catch (error) {
       logCaptureError('Failed to start recording', error);
       Alert.alert(t('quickAdd.audioErrorTitle'), t('quickAdd.audioErrorBody'));
+      setRecordingReady(false);
     } finally {
       setRecordingBusy(false);
     }
   }, [
+    audioRecorder,
     ensureAudioDirectory,
     recording,
     recordingBusy,
@@ -534,6 +560,7 @@ export function QuickCaptureSheet({
     const currentRecording = recording;
     if (!currentRecording) return;
     setRecordingBusy(true);
+    setRecordingReady(false);
     setRecording(null);
     try {
       if (currentRecording.kind === 'whisper') {
@@ -664,16 +691,15 @@ export function QuickCaptureSheet({
         return;
       }
 
-      const expoRecording = currentRecording.recording;
       try {
-        await expoRecording.stopAndUnloadAsync();
+        await audioRecorder.stop();
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        if (!message.includes('already been unloaded')) {
+        if (!message.includes('not recording') && !message.includes('already')) {
           throw error;
         }
       }
-      const uri = expoRecording.getURI();
+      const uri = audioRecorder.uri;
       if (!uri) {
         throw new Error('Recording URI missing');
       }
@@ -846,6 +872,7 @@ export function QuickCaptureSheet({
     }
   }, [
     addTask,
+    audioRecorder,
     applySpeechResult,
     buildTaskProps,
     ensureAudioDirectory,
@@ -916,14 +943,14 @@ export function QuickCaptureSheet({
               style={[
                 styles.recordButton,
                 {
-                  backgroundColor: recording ? tc.danger : tc.filterBg,
+                  backgroundColor: recordingReady ? tc.danger : tc.filterBg,
                   borderColor: tc.border,
                   opacity: recordingBusy ? 0.6 : 1,
                 },
               ]}
               disabled={recordingBusy}
             >
-              {recording ? (
+              {recordingReady ? (
                 <Square size={16} color={tc.onTint} />
               ) : (
                 <Mic size={16} color={tc.text} />
@@ -931,7 +958,7 @@ export function QuickCaptureSheet({
             </TouchableOpacity>
           </View>
 
-          {recording && (
+          {recordingReady && (
             <View style={styles.recordingRow}>
               <View style={[styles.recordingDot, { backgroundColor: tc.danger }]} />
               <Text style={[styles.recordingText, { color: tc.danger }]}>{t('quickAdd.audioRecording')}</Text>

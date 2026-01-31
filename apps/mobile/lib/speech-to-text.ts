@@ -1,6 +1,9 @@
 import { Directory, File, Paths } from 'expo-file-system';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import RNFS from 'react-native-fs';
+import { AudioPcmStreamAdapter } from 'whisper.rn/realtime-transcription/adapters/AudioPcmStreamAdapter.js';
+import { RealtimeTranscriber, type RealtimeTranscriberEvent } from 'whisper.rn/realtime-transcription/index.js';
 import type { AudioCaptureMode, AudioFieldStrategy } from '@mindwtr/core';
 import { logInfo, logWarn } from './app-log';
 
@@ -50,10 +53,10 @@ const IS_EXPO_GO = Constants.appOwnership === 'expo';
 
 type WhisperContextLike = {
   transcribe: (uri: string, options?: Record<string, unknown>) => { promise: Promise<unknown> };
-  transcribeRealtime: (options?: Record<string, unknown>) => Promise<{
-    stop: () => Promise<void>;
-    subscribe: (callback: (event: { isCapturing?: boolean; data?: unknown; error?: string }) => void) => void;
-  }>;
+  transcribeData: (
+    data: ArrayBuffer,
+    options?: Record<string, unknown>
+  ) => { stop: () => Promise<void>; promise: Promise<unknown> };
 };
 
 let whisperContextCache: { modelPath: string; context: WhisperContextLike } | null = null;
@@ -449,8 +452,8 @@ const requestGemini = async (audioUri: string, config: SpeechToTextConfig, promp
 };
 
 const MIN_WHISPER_MODEL_BYTES = 5 * 1024 * 1024;
-const WHISPER_REALTIME_AUDIO_SEC = 120;
 const WHISPER_REALTIME_SLICE_SEC = 30;
+const WHISPER_REALTIME_BUFFER_SIZE = 2048;
 const WHISPER_MODEL_DIR_NAME = 'whisper-models';
 const WHISPER_MODEL_KEEP_FILE = '.keep';
 const WHISPER_MODEL_FILES: Record<string, string> = {
@@ -844,12 +847,16 @@ export const startWhisperRealtimeCapture = async (
   const effectiveLanguage = config.model?.endsWith('.en') && language === 'auto' ? 'en' : language;
   const options: Record<string, unknown> = {
     audioOutputPath,
-    realtimeAudioSec: WHISPER_REALTIME_AUDIO_SEC,
-    realtimeAudioSliceSec: WHISPER_REALTIME_SLICE_SEC,
+    audioSliceSec: WHISPER_REALTIME_SLICE_SEC,
+    audioStreamConfig: {
+      sampleRate: 16000,
+      channels: 1,
+      bitsPerSample: 16,
+      bufferSize: WHISPER_REALTIME_BUFFER_SIZE,
+      audioSource: 6,
+    },
+    transcribeOptions: effectiveLanguage !== 'auto' ? { language: effectiveLanguage } : undefined,
   };
-  if (effectiveLanguage !== 'auto') {
-    options.language = effectiveLanguage;
-  }
 
   void logInfo('Whisper transcription started', {
     scope: 'speech',
@@ -860,43 +867,113 @@ export const startWhisperRealtimeCapture = async (
     },
   });
 
-  const realtime = await context.transcribeRealtime(options);
+  const audioStream = new AudioPcmStreamAdapter();
+  const transcriptParts: string[] = [];
   let completed = false;
+  let hasActivated = false;
+  let resolveResult: (value: SpeechToTextResult) => void = () => {};
+  let rejectResult: (error: Error) => void = () => {};
+
   const result = new Promise<SpeechToTextResult>((resolve, reject) => {
-    realtime.subscribe((event) => {
-      if (completed) return;
-      if (event.error) {
-        completed = true;
-        reject(new Error(event.error));
-        return;
-      }
-      if (event.isCapturing === false) {
-        completed = true;
-        const text = extractWhisperText(event.data ?? {}).trim();
-        if (!text) {
-          void logWarn('Whisper returned empty transcript', {
-            scope: 'speech',
-            extra: {
-              uri: audioOutputPath,
-              modelPath: resolved.path,
-              language: effectiveLanguage,
-            },
-          });
-        } else {
-          void logInfo('Whisper transcription completed', {
-            scope: 'speech',
-            extra: {
-              length: String(text.length),
-              language: effectiveLanguage,
-            },
-          });
-        }
-        resolve({ transcript: text });
-      }
-    });
+    resolveResult = resolve;
+    rejectResult = reject;
   });
 
-  return { stop: realtime.stop, result };
+  const finalize = () => {
+    if (completed) return;
+    completed = true;
+    const text = transcriptParts.join(' ').replace(/\s+/g, ' ').trim();
+    if (!text) {
+      void logWarn('Whisper returned empty transcript', {
+        scope: 'speech',
+        extra: {
+          uri: audioOutputPath,
+          modelPath: resolved.path,
+          language: effectiveLanguage,
+        },
+      });
+    } else {
+      void logInfo('Whisper transcription completed', {
+        scope: 'speech',
+        extra: {
+          length: String(text.length),
+          language: effectiveLanguage,
+        },
+      });
+    }
+    resolveResult({ transcript: text });
+  };
+
+  const realtime = new RealtimeTranscriber(
+    { whisperContext: context, audioStream, fs: RNFS },
+    options,
+    {
+      onTranscribe: (event: RealtimeTranscriberEvent) => {
+        if (completed) return;
+        const nextText = extractWhisperText(event.data ?? {}).trim();
+        if (nextText && transcriptParts[transcriptParts.length - 1] !== nextText) {
+          transcriptParts.push(nextText);
+        }
+      },
+      onError: (error: string) => {
+        if (completed) return;
+        completed = true;
+        rejectResult(new Error(error));
+      },
+      onStatusChange: (isActive: boolean) => {
+        if (completed) return;
+        if (isActive) {
+          hasActivated = true;
+          return;
+        }
+        if (hasActivated) {
+          finalize();
+        }
+      },
+    }
+  );
+
+  try {
+    await realtime.start();
+  } catch (error) {
+    try {
+      realtime.destroy();
+    } catch {
+      // Ignore cleanup failures after a failed start.
+    }
+    throw error;
+  }
+
+  const stop = async () => {
+    try {
+      await realtime.stop();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      void logWarn('Failed to stop whisper recording', {
+        scope: 'speech',
+        extra: { error: message },
+      });
+    } finally {
+      try {
+        realtime.destroy();
+      } catch {
+        // Ignore destroy failures.
+      }
+      finalize();
+    }
+  };
+
+  return { stop, result };
+};
+
+export const preloadWhisperContext = async (config: {
+  model?: string;
+  modelPath?: string;
+}): Promise<void> => {
+  if (IS_EXPO_GO) return;
+  const resolved = ensureWhisperModelPathForConfig(config.model, config.modelPath);
+  if (!resolved.exists) return;
+  await getWhisperContext(resolved.path, config.model);
 };
 
 const transcribeWhisper = async (audioUri: string, config: SpeechToTextConfig) => {
