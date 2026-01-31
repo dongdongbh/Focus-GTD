@@ -134,6 +134,18 @@ Mindwtr automatically syncs in the following situations:
 - **On app blur/background** — When you switch away from the app
 - **On startup** — Shortly after the app launches
 
+### Settings Sync Options
+
+Mindwtr can sync select preferences across devices. Configure in **Settings → Data & Sync → Settings sync options**.
+
+Available options include:
+- **Appearance** (theme)
+- **Language & date format**
+- **External calendar URLs** (ICS subscriptions)
+- **AI settings** (models/providers)
+
+> API keys and local model paths are never synced.
+
 ### Merge Strategy
 
 Mindwtr uses **Last-Write-Wins (LWW)** per item:

@@ -70,6 +70,9 @@ Mindwtr supports natural language quick-add. Type directly in the task input:
 - Use a backslash to keep symbols as plain text: `\\@`, `\\#`, `\\+`, `\\/`
 - Example: `Call \\@support /due:tomorrow` → title becomes `Call @support`
 
+**Unicode support**
+- Context and tag names accept Unicode letters and numbers (e.g., CJK and accented characters).
+
 > **Tip:** You can also use **Audio Capture** to speak your tasks. Enable it in **Settings → AI Assistant** to use voice-to-text with smart parsing.
 
 ---

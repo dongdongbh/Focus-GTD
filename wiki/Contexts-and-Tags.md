@@ -71,6 +71,7 @@ Your productivity varies throughout the day:
 Task title @context1 @context2
 Research topic #focused @computer
 ```
+Context and tag names accept Unicode letters and numbers (including CJK and accented characters).
 
 **Edit task:**
 1. Open task editor

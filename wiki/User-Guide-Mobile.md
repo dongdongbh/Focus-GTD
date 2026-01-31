@@ -466,6 +466,7 @@ See [[Data and Sync]] for sync setup.
 - **Sync** — Manually trigger sync
 - **Last sync status** — View when data was last synced
 - **Export Backup** — Save data to a file
+- **Settings sync options** — Choose which preferences sync across devices (theme, language/date format, external calendar URLs, AI settings). API keys and local model paths are never synced.
 
 ### Advanced
 

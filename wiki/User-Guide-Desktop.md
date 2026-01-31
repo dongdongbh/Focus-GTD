@@ -419,6 +419,13 @@ Access Settings from the sidebar.
 - **File** — Sync via a shared JSON file (Dropbox, Google Drive, etc.)
 - **WebDAV** — Sync to a WebDAV server (Nextcloud, ownCloud, etc.)
 
+**Settings sync options:**
+- Choose which preferences sync across devices (theme, language/date format, external calendar URLs, AI settings)
+- API keys and local model paths are never synced
+
+**Sync status:**
+- Sidebar footer shows last sync time and online/offline status
+
 For WebDAV, configure:
 - Server URL (full path to sync file)
 - Username and Password
