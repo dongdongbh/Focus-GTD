@@ -121,6 +121,31 @@ export class SqliteAdapter {
 
     private async loadAllRows(table: 'tasks' | 'projects' | 'sections' | 'areas'): Promise<Record<string, unknown>[]> {
         const rows: Record<string, unknown>[] = [];
+        try {
+            let lastRowId = 0;
+            while (true) {
+                const page = await this.client.all<Record<string, unknown> & { _rowid: number }>(
+                    `SELECT rowid as _rowid, * FROM ${table} WHERE rowid > ? ORDER BY rowid LIMIT ?`,
+                    [lastRowId, READ_PAGE_SIZE]
+                );
+                if (page.length === 0) break;
+                page.forEach((row) => {
+                    const { _rowid, ...rest } = row;
+                    if (typeof _rowid === 'number') {
+                        lastRowId = _rowid;
+                    }
+                    rows.push(rest);
+                });
+                if (page.length < READ_PAGE_SIZE) break;
+            }
+            return rows;
+        } catch (error) {
+            logWarn('Failed to page with rowid, falling back to offset pagination', {
+                scope: 'sqlite',
+                category: 'storage',
+                error,
+            });
+        }
         let offset = 0;
         while (true) {
             const page = await this.client.all<Record<string, unknown>>(
