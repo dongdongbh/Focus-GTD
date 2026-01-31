@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import type { TaskPriority, TimeEstimate } from '@mindwtr/core';
 
+const toastTimeouts = new Map<string, number>();
+
 interface UiState {
     isFocusMode: boolean;
     setFocusMode: (value: boolean) => void;
@@ -41,11 +43,20 @@ export const useUiStore = create<UiState>((set) => ({
     showToast: (message, tone = 'info', durationMs = 3000) => {
         const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         set((state) => ({ toasts: [...state.toasts, { id, message, tone }] }));
-        window.setTimeout(() => {
+        const timeoutId = window.setTimeout(() => {
+            toastTimeouts.delete(id);
             set((state) => ({ toasts: state.toasts.filter((toast) => toast.id !== id) }));
         }, durationMs);
+        toastTimeouts.set(id, timeoutId);
     },
-    dismissToast: (id) => set((state) => ({ toasts: state.toasts.filter((toast) => toast.id !== id) })),
+    dismissToast: (id) => {
+        const timeoutId = toastTimeouts.get(id);
+        if (timeoutId) {
+            window.clearTimeout(timeoutId);
+            toastTimeouts.delete(id);
+        }
+        set((state) => ({ toasts: state.toasts.filter((toast) => toast.id !== id) }));
+    },
     listFilters: {
         tokens: [],
         priorities: [],
