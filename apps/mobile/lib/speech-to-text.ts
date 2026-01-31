@@ -71,7 +71,8 @@ const getRNFSModule = (): RNFSModule | null => {
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const mod = require('react-native-fs') as RNFSModule;
-    if (!mod || !mod.RNFSFileTypeRegular) {
+    const hasFileType = !!mod && 'RNFSFileTypeRegular' in (mod as unknown as Record<string, unknown>);
+    if (!hasFileType) {
       rnfsModuleCache = null;
       return null;
     }
