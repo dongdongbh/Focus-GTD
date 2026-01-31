@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { Calendar, Inbox, CheckSquare, Archive, Layers, Tag, CheckCircle2, HelpCircle, Folder, Settings, Target, Search, ChevronsLeft, ChevronsRight, Trash2, PauseCircle, Book } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { useTaskStore, safeParseDate } from '@mindwtr/core';
+import { useTaskStore, safeParseDate, safeFormatDate } from '@mindwtr/core';
 import { useLanguage } from '../contexts/language-context';
 import { useUiStore } from '../store/ui-store';
 import { reportError } from '../lib/report-error';
@@ -27,6 +27,16 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
     const { t } = useLanguage();
     const isCollapsed = settings?.sidebarCollapsed ?? false;
     const isFocusMode = useUiStore((state) => state.isFocusMode);
+    const lastSyncAt = settings?.lastSyncAt;
+    const lastSyncStatus = settings?.lastSyncStatus;
+    const lastSyncDisplay = lastSyncAt ? safeFormatDate(lastSyncAt, 'PPp', lastSyncAt) : t('settings.lastSyncNever');
+    const lastSyncStatusLabel = lastSyncStatus === 'error'
+        ? t('settings.lastSyncError')
+        : lastSyncStatus === 'conflict'
+            ? t('settings.lastSyncConflict')
+            : lastSyncStatus === 'success'
+                ? t('settings.lastSyncSuccess')
+                : '';
     const dismissLabel = t('common.dismiss');
     const dismissText = dismissLabel && dismissLabel !== 'common.dismiss' ? dismissLabel : 'Dismiss';
     const areaById = useMemo(() => new Map(areas.map((area) => [area.id, area])), [areas]);
@@ -255,6 +265,12 @@ export function Layout({ children, currentView, onViewChange }: LayoutProps) {
                                 ))}
                                 <option value={AREA_FILTER_NONE}>{t('projects.noArea')}</option>
                             </select>
+                        </div>
+                    )}
+                    {!isCollapsed && (
+                        <div className="px-2 text-[10px] text-muted-foreground">
+                            {t('settings.lastSync')}: {lastSyncDisplay}
+                            {lastSyncStatusLabel && ` • ${lastSyncStatusLabel}`}
                         </div>
                     )}
                     <button
