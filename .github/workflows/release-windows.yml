@@ -200,6 +200,7 @@ jobs:
           "skip=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Publish to Microsoft Store
+        id: msstore_publish
         if: startsWith(github.ref, 'refs/tags/') && github.event_name != 'workflow_dispatch' && steps.msstore_status.outputs.skip != 'true'
         shell: pwsh
         env:
@@ -209,6 +210,7 @@ jobs:
           MS_CLIENT_SECRET: ${{ secrets.MS_CLIENT_SECRET }}
           MS_STORE_APP_ID: ${{ secrets.MS_STORE_APP_ID || '9N0V5B0B6FRX' }}
         run: |
+          "published=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           $msix = (Resolve-Path "mindwtr_${{ steps.version.outputs.version }}_x64.msix").Path
           $tenantId = $env:MS_TENANT_ID.Trim()
           $sellerId = $env:MS_SELLER_ID.Trim()
@@ -226,12 +228,13 @@ jobs:
             if ($publishOutput -match 'InvalidState' -or $publishOutput -match 'certification' -or $publishOutput -match 'Pending Submission') {
               Write-Warning "Store submission is already in certification. Skipping package publish."
               exit 0
+            }
+            throw "Store publish failed: $publishOutput"
           }
-          throw "Store publish failed: $publishOutput"
-          }
+          "published=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Update Microsoft Store metadata
-        if: startsWith(github.ref, 'refs/tags/') && github.event_name != 'workflow_dispatch' && steps.msstore_status.outputs.skip != 'true'
+        if: startsWith(github.ref, 'refs/tags/') && github.event_name != 'workflow_dispatch' && steps.msstore_status.outputs.skip != 'true' && steps.msstore_publish.outputs.published != 'true'
         shell: pwsh
         env:
           MS_STORE_APP_ID: ${{ secrets.MS_STORE_APP_ID || '9N0V5B0B6FRX' }}
