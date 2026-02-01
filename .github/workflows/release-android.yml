@@ -54,6 +54,7 @@ jobs:
         with:
           credentials_json: ${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}
           token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
 
       - name: Ensure Android versionCode is unique
         env:
