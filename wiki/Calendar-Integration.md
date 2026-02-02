@@ -33,6 +33,17 @@ Mindwtr supports **view-only external calendars** (ICS subscriptions) so you can
 
 Events are cached on-device and are not synced via Mindwtr sync.
 
+### Private calendars (Google Calendar)
+
+You **do not** need to make your calendar public. Use the private "Secret address" instead:
+
+1. Open Google Calendar on the web → **Settings**.
+2. Select the calendar in the left sidebar.
+3. In **Integrate calendar**, copy **Secret address in iCal format**.
+4. Paste that URL into Mindwtr.
+
+That link acts like a password: only apps with the link can see events, while the calendar stays private.
+
 ## Notes
 
 - Calendar does **not** create new tasks.
