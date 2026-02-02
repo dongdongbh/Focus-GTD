@@ -128,8 +128,8 @@ jobs:
         run: |
           VERSION=${{ steps.version.outputs.version }}
           cd apps/mobile
-          FOSS_BUILD=1 MINDWTR_ANDROID_ARCHS=arm64-v8a,armeabi-v7a eas build --platform android --profile production-apk --local --non-interactive --output ./build/mindwtr-${VERSION}-foss.apk
-          FOSS_BUILD=1 MINDWTR_ANDROID_ARCHS=arm64-v8a,armeabi-v7a eas build --platform android --profile production --local --non-interactive --output ./build/mindwtr-${VERSION}-foss.aab
+          FOSS_BUILD=1 MINDWTR_ANDROID_ARCHS=arm64-v8a eas build --platform android --profile production-apk --local --non-interactive --output ./build/mindwtr-${VERSION}-foss.apk
+          FOSS_BUILD=1 MINDWTR_ANDROID_ARCHS=arm64-v8a eas build --platform android --profile production --local --non-interactive --output ./build/mindwtr-${VERSION}-foss.aab
           ls -la ./build
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
