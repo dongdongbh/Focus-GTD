@@ -236,6 +236,13 @@ Install guides:
 - 🚀 [Getting Started](https://github.com/dongdongbh/Mindwtr/wiki/Getting-Started)
 - 📚 [All platforms & package managers](https://github.com/dongdongbh/Mindwtr/wiki)
 
+## Roadmap
+
+- 📦 Add to Flathub
+- 🤖 Add to F-Droid
+- 📱 iOS release
+- ✉️ Email to Inbox
+
 ## Documentation
 
 - 📚 [Wiki](https://github.com/dongdongbh/Mindwtr/wiki) - Complete user guide

@@ -236,6 +236,13 @@ iOS 构建需要 Apple Developer 账号（$99/年），目前仅提供模拟器�
 - 🚀 [快速开始](https://github.com/dongdongbh/Mindwtr/wiki/Getting-Started)
 - 📚 [全平台与包管理器](https://github.com/dongdongbh/Mindwtr/wiki)
 
+## 路线图
+
+- 📦 上架 Flathub
+- 🤖 上架 F-Droid
+- 📱 iOS 正式发布
+- ✉️ 邮件添加到收件箱
+
 ## 文档
 
 - 📚 [Wiki](https://github.com/dongdongbh/Mindwtr/wiki) - 完整用户指南
