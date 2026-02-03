@@ -1,34 +1,35 @@
-import type { ExpoConfig } from 'expo/config';
+import type { ConfigContext, ExpoConfig } from 'expo/config';
 
-import baseConfig from './app.json';
-
-type PluginEntry = string | [string, ...unknown[]];
+type PluginEntry = NonNullable<ExpoConfig['plugins']>[number];
 
 const isFossBuild = process.env.FOSS_BUILD === '1' || process.env.FOSS_BUILD === 'true';
 
-const rawConfig = (baseConfig as { expo: ExpoConfig }).expo ?? (baseConfig as ExpoConfig);
+export default ({ config }: ConfigContext): ExpoConfig => {
+  const base = config as ExpoConfig;
+  const plugins: PluginEntry[] = Array.isArray(base.plugins) ? [...base.plugins] : [];
+  const filteredPlugins = isFossBuild
+    ? plugins.filter((plugin) => {
+        if (typeof plugin === 'string') {
+          return plugin !== 'expo-notifications';
+        }
+        if (Array.isArray(plugin)) {
+          if (plugin.length === 0) return true;
+          return plugin[0] !== 'expo-notifications';
+        }
+        return true;
+      })
+    : plugins;
 
-const plugins = Array.isArray(rawConfig.plugins) ? [...rawConfig.plugins] : [];
-const filteredPlugins = isFossBuild
-  ? (plugins.filter((plugin: PluginEntry) => {
-      if (typeof plugin === 'string') {
-        return plugin !== 'expo-notifications';
-      }
-      return plugin[0] !== 'expo-notifications';
-    }) as PluginEntry[])
-  : plugins;
+  const android = base.android ? { ...base.android } : undefined;
+  if (android && Array.isArray(android.permissions)) {
+    android.permissions = isFossBuild
+      ? android.permissions.filter((permission) => permission !== 'POST_NOTIFICATIONS')
+      : android.permissions;
+  }
 
-const android = rawConfig.android ? { ...rawConfig.android } : undefined;
-if (android && Array.isArray(android.permissions)) {
-  android.permissions = isFossBuild
-    ? android.permissions.filter((permission) => permission !== 'POST_NOTIFICATIONS')
-    : android.permissions;
-}
-
-const config: ExpoConfig = {
-  ...rawConfig,
-  android,
-  plugins: filteredPlugins,
+  return {
+    ...base,
+    android,
+    plugins: filteredPlugins,
+  };
 };
-
-export default config;
