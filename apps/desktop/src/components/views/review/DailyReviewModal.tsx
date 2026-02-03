@@ -191,7 +191,7 @@ export function DailyReviewGuideModal({ onClose }: DailyReviewGuideModalProps) {
         return (
             <div className="space-y-2">
                 {list.slice(0, 10).map((task) => (
-                    <TaskItem key={task.id} task={task} />
+                    <TaskItem key={task.id} task={task} showProjectBadgeInActions={false} />
                 ))}
             </div>
         );

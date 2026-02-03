@@ -255,7 +255,9 @@ export function WeeklyReviewGuideModal({ onClose }: WeeklyReviewGuideModalProps)
                                     <p>{t('review.inboxEmpty')}</p>
                                 </div>
                             ) : (
-                                inboxTasks.map((task) => <TaskItem key={task.id} task={task} />)
+                                inboxTasks.map((task) => (
+                                    <TaskItem key={task.id} task={task} showProjectBadgeInActions={false} />
+                                ))
                             )}
                         </div>
                     </div>
@@ -301,7 +303,7 @@ export function WeeklyReviewGuideModal({ onClose }: WeeklyReviewGuideModalProps)
                             ) : (
                                 <>
                                     {waitingDue.length > 0 && waitingDue.map((task) => (
-                                        <TaskItem key={task.id} task={task} />
+                                        <TaskItem key={task.id} task={task} showProjectBadgeInActions={false} />
                                     ))}
                                     {waitingFuture.length > 0 && (
                                         <div className="pt-4">
@@ -309,7 +311,7 @@ export function WeeklyReviewGuideModal({ onClose }: WeeklyReviewGuideModalProps)
                                                 {t('review.notDueYet')}
                                             </h4>
                                             {waitingFuture.map((task) => (
-                                                <TaskItem key={task.id} task={task} />
+                                                <TaskItem key={task.id} task={task} showProjectBadgeInActions={false} />
                                             ))}
                                         </div>
                                     )}
@@ -426,7 +428,7 @@ export function WeeklyReviewGuideModal({ onClose }: WeeklyReviewGuideModalProps)
                                         </div>
                                         <div className="space-y-2 pl-5">
                                             {projectTasks.map((task) => (
-                                                <TaskItem key={task.id} task={task} />
+                                                <TaskItem key={task.id} task={task} showProjectBadgeInActions={false} />
                                             ))}
                                             {projectTasks.length > 0 && (
                                                 <div className="mt-2 text-xs text-muted-foreground bg-muted/30 p-2 rounded border border-border/50">
@@ -463,7 +465,7 @@ export function WeeklyReviewGuideModal({ onClose }: WeeklyReviewGuideModalProps)
                             ) : (
                                 <>
                                     {somedayDue.length > 0 && somedayDue.map((task) => (
-                                        <TaskItem key={task.id} task={task} />
+                                        <TaskItem key={task.id} task={task} showProjectBadgeInActions={false} />
                                     ))}
                                     {somedayFuture.length > 0 && (
                                         <div className="pt-4">
@@ -471,7 +473,7 @@ export function WeeklyReviewGuideModal({ onClose }: WeeklyReviewGuideModalProps)
                                                 {t('review.notDueYet')}
                                             </h4>
                                             {somedayFuture.map((task) => (
-                                                <TaskItem key={task.id} task={task} />
+                                                <TaskItem key={task.id} task={task} showProjectBadgeInActions={false} />
                                             ))}
                                         </div>
                                     )}

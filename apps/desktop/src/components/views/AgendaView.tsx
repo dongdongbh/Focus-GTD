@@ -369,6 +369,7 @@ export function AgendaView() {
                             task={task}
                             project={task.projectId ? projectMap.get(task.projectId) : undefined}
                             focusToggle={buildFocusToggle(task)}
+                            showProjectBadgeInActions={false}
                             compactMetaEnabled={showListDetails}
                         />
                     ))}
@@ -582,6 +583,7 @@ export function AgendaView() {
                                         key={task.id}
                                         task={task}
                                         project={task.projectId ? projectMap.get(task.projectId) : undefined}
+                                        showProjectBadgeInActions={false}
                                         compactMetaEnabled={showListDetails}
                                     />
                                 ))}
@@ -620,6 +622,7 @@ export function AgendaView() {
                                         task={task}
                                         project={task.projectId ? projectMap.get(task.projectId) : undefined}
                                         focusToggle={buildFocusToggle(task)}
+                                        showProjectBadgeInActions={false}
                                         compactMetaEnabled={showListDetails}
                                     />
                                 ))}

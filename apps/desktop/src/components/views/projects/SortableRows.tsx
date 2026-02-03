@@ -133,6 +133,7 @@ export function SortableProjectTaskRow({
                     task={task}
                     project={project}
                     enableDoubleClickEdit
+                    showProjectBadgeInActions={false}
                     dragHandle={(
                         <button
                             type="button"

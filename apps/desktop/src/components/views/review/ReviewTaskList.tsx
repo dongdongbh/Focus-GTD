@@ -45,6 +45,7 @@ export function ReviewTaskList({
                         key={task.id}
                         task={task}
                         project={task.projectId ? projectMap[task.projectId] : undefined}
+                        showProjectBadgeInActions={false}
                         selectionMode={selectionMode}
                         isMultiSelected={multiSelectedIds.has(task.id)}
                         onToggleSelect={() => onToggleSelect(task.id)}
@@ -77,6 +78,7 @@ export function ReviewTaskList({
                                 <TaskItem
                                     task={task}
                                     project={task.projectId ? projectMap[task.projectId] : undefined}
+                                    showProjectBadgeInActions={false}
                                     selectionMode={selectionMode}
                                     isMultiSelected={multiSelectedIds.has(task.id)}
                                     onToggleSelect={() => onToggleSelect(task.id)}

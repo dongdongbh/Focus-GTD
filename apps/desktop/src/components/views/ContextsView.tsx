@@ -165,7 +165,7 @@ export function ContextsView() {
                 <div className="flex-1 overflow-y-auto space-y-2 pr-2">
                     {filteredTasks.length > 0 ? (
                         filteredTasks.map(task => (
-                            <TaskItem key={task.id} task={task} />
+                            <TaskItem key={task.id} task={task} showProjectBadgeInActions={false} />
                         ))
                     ) : (
                         <div className="text-center text-muted-foreground py-12">
