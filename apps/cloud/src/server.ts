@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'fs';
+import { mkdirSync, readFileSync, writeFileSync, existsSync, unlinkSync } from 'fs';
 import { createHash } from 'crypto';
 import { dirname, join, resolve } from 'path';
 import {
@@ -181,6 +181,20 @@ function writeData(filePath: string, data: unknown) {
     writeFileSync(filePath, JSON.stringify(data, null, 2));
 }
 
+function ensureWritableDir(dirPath: string): boolean {
+    try {
+        mkdirSync(dirPath, { recursive: true });
+        const testPath = join(dirPath, '.mindwtr_write_test');
+        writeFileSync(testPath, 'ok');
+        unlinkSync(testPath);
+        return true;
+    } catch (error) {
+        logError(`cloud data dir is not writable: ${dirPath}`, error);
+        logError('ensure the volume is writable by the container user (uid 1000)');
+        return false;
+    }
+}
+
 async function readJsonBody(req: Request, maxBodyBytes: number, encoder: TextEncoder): Promise<any> {
     const contentLength = Number(req.headers.get('content-length') || '0');
     if (contentLength && contentLength > maxBodyBytes) {
@@ -231,16 +245,20 @@ async function main() {
     }
 
     logInfo(`dataDir: ${dataDir}`);
+    if (!ensureWritableDir(dataDir)) {
+        process.exit(1);
+    }
     logInfo(`listening on http://${host}:${port}`);
 
     Bun.serve({
         hostname: host,
         port,
         async fetch(req) {
-            if (req.method === 'OPTIONS') return jsonResponse({ ok: true });
+            try {
+                if (req.method === 'OPTIONS') return jsonResponse({ ok: true });
 
-            const url = new URL(req.url);
-            const pathname = url.pathname.replace(/\/+$/, '') || '/';
+                const url = new URL(req.url);
+                const pathname = url.pathname.replace(/\/+$/, '') || '/';
 
             if (req.method === 'GET' && pathname === '/health') {
                 return jsonResponse({ ok: true });
@@ -556,7 +574,18 @@ async function main() {
                 return errorResponse('Method not allowed', 405);
             }
 
-            return errorResponse('Not found', 404);
+                return errorResponse('Not found', 404);
+            } catch (error) {
+                if (error && typeof error === 'object' && 'code' in error) {
+                    const code = (error as any).code;
+                    if (code === 'EACCES') {
+                        logError('permission denied writing cloud data', error);
+                        return errorResponse('Cloud data directory is not writable. Check volume permissions.', 500);
+                    }
+                }
+                logError('request failed', error);
+                return errorResponse('Internal server error', 500);
+            }
         },
     });
 }

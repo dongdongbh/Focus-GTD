@@ -74,6 +74,12 @@ Persist cloud data by mounting a host path:
 /path/data_dir:/app/cloud_data
 ```
 
+Make sure the host path is writable by the container user (uid 1000):
+
+```
+sudo chown -R 1000:1000 /path/data_dir
+```
+
 ## Build without compose (optional)
 
 ```bash
