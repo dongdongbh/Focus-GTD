@@ -7,6 +7,19 @@ on:
         description: 'Release tag (e.g., v0.2.3)'
         required: false
         type: string
+    secrets:
+      APPLE_ID:
+        required: false
+      APPLE_PASSWORD:
+        required: false
+      APPLE_TEAM_ID:
+        required: false
+      APPLE_CERTIFICATE:
+        required: false
+      APPLE_CERTIFICATE_PASSWORD:
+        required: false
+      APPLE_SIGNING_IDENTITY:
+        required: false
   workflow_dispatch:
     inputs:
       tag:
