@@ -85,7 +85,7 @@ jobs:
           }
           $metadataRaw = Get-Content -Raw "metadata/metadata.json"
           $metadata = $metadataRaw | ConvertFrom-Json
-          foreach ($prop in @('Status','StatusDetails','FileUploadUrl','ApplicationPackages','PackageDeliveryOptions','FriendlyName','Trailers')) {
+          foreach ($prop in @('Id','Status','StatusDetails','FileUploadUrl','ApplicationPackages','PackageDeliveryOptions','FriendlyName','Trailers')) {
             if ($metadata.PSObject.Properties.Name -contains $prop) {
               $metadata.PSObject.Properties.Remove($prop)
             }
