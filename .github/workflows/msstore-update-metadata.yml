@@ -83,8 +83,15 @@ jobs:
           if (-not (Test-Path "metadata/metadata.json")) {
             Write-Error "metadata/metadata.json not found. Run the base metadata workflow first."
           }
-          $metadata = Get-Content -Raw "metadata/metadata.json"
-          $updateOutput = msstore submission updateMetadata $env:MS_STORE_APP_ID $metadata 2>&1
+          $metadataRaw = Get-Content -Raw "metadata/metadata.json"
+          $metadata = $metadataRaw | ConvertFrom-Json
+          foreach ($prop in @('Status','StatusDetails','FileUploadUrl','ApplicationPackages','PackageDeliveryOptions','FriendlyName','Trailers')) {
+            if ($metadata.PSObject.Properties.Name -contains $prop) {
+              $metadata.PSObject.Properties.Remove($prop)
+            }
+          }
+          $metadataJson = $metadata | ConvertTo-Json -Depth 100
+          $updateOutput = msstore submission updateMetadata $env:MS_STORE_APP_ID $metadataJson 2>&1
           if ($LASTEXITCODE -ne 0) {
             if ($updateOutput -match 'InvalidState' -or $updateOutput -match 'certification' -or $updateOutput -match 'Pending Submission') {
               Write-Warning "Store submission is in certification. Skipping metadata update."
