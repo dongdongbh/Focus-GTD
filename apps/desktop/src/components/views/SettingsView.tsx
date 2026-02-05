@@ -781,6 +781,7 @@ export function SettingsView() {
             webdavPassword,
             setWebdavPassword,
             webdavHasPassword,
+            isSavingWebDav,
             cloudUrl,
             setCloudUrl,
             cloudToken,
@@ -821,6 +822,7 @@ export function SettingsView() {
                 webdavUsername={webdavUsername}
                 webdavPassword={webdavPassword}
                 webdavHasPassword={webdavHasPassword}
+                isSavingWebDav={isSavingWebDav}
                 onWebdavUrlChange={setWebdavUrl}
                 onWebdavUsernameChange={setWebdavUsername}
                 onWebdavPasswordChange={setWebdavPassword}

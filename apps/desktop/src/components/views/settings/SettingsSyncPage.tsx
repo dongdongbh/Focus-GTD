@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { AppData } from '@mindwtr/core';
 import { safeFormatDate } from '@mindwtr/core';
-import { ExternalLink, Info, RefreshCw, Trash2 } from 'lucide-react';
+import { Info, RefreshCw, Trash2 } from 'lucide-react';
 
 import { cn } from '../../../lib/utils';
 
@@ -80,6 +80,7 @@ type SettingsSyncPageProps = {
     webdavUsername: string;
     webdavPassword: string;
     webdavHasPassword: boolean;
+    isSavingWebDav: boolean;
     onWebdavUrlChange: (value: string) => void;
     onWebdavUsernameChange: (value: string) => void;
     onWebdavPasswordChange: (value: string) => void;
@@ -144,6 +145,7 @@ export function SettingsSyncPage({
     webdavUsername,
     webdavPassword,
     webdavHasPassword,
+    isSavingWebDav,
     onWebdavUrlChange,
     onWebdavUsernameChange,
     onWebdavPasswordChange,
@@ -379,8 +381,9 @@ export function SettingsSyncPage({
                             <div className="flex justify-end">
                                 <button
                                     onClick={onSaveWebDav}
-                                    disabled={webdavUrlError}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 whitespace-nowrap"
+                                    disabled={webdavUrlError || isSavingWebDav}
+                                    aria-busy={isSavingWebDav}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 whitespace-nowrap disabled:bg-gray-400"
                                 >
                                     {t.webdavSave}
                                 </button>
@@ -462,7 +465,7 @@ export function SettingsSyncPage({
                                     isSyncing ? "bg-blue-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700",
                                 )}
                             >
-                                <ExternalLink className={cn("w-4 h-4", isSyncing && "animate-spin")} />
+                                <RefreshCw className={cn("w-4 h-4", isSyncing && "animate-spin")} />
                                 {isSyncing ? t.syncing : t.syncNow}
                             </button>
                             {syncStatusLabel && (
@@ -503,7 +506,9 @@ export function SettingsSyncPage({
                             </div>
                         )}
                         {lastSyncStatus === 'error' && lastSyncError && (
-                            <div className="text-destructive">{lastSyncError}</div>
+                            <div className="text-destructive text-xs break-all line-clamp-2" title={lastSyncError}>
+                                {lastSyncError}
+                            </div>
                         )}
                         {historyEntries.length > 0 && (
                             <div className="pt-2 space-y-1">

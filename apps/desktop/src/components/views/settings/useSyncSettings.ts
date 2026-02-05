@@ -20,6 +20,7 @@ export const useSyncSettings = ({ isTauri, showSaved, selectSyncFolderTitle }: U
     const [webdavUsername, setWebdavUsername] = useState('');
     const [webdavPassword, setWebdavPassword] = useState('');
     const [webdavHasPassword, setWebdavHasPassword] = useState(false);
+    const [isSavingWebDav, setIsSavingWebDav] = useState(false);
     const [cloudUrl, setCloudUrl] = useState('');
     const [cloudToken, setCloudToken] = useState('');
     const showToast = useUiStore((state) => state.showToast);
@@ -102,18 +103,23 @@ export const useSyncSettings = ({ isTauri, showSaved, selectSyncFolderTitle }: U
     const handleSaveWebDav = useCallback(async () => {
         const trimmedUrl = webdavUrl.trim();
         const trimmedPassword = webdavPassword.trim();
-        await SyncService.setWebDavConfig({
-            url: trimmedUrl,
-            username: webdavUsername.trim(),
-            ...(trimmedPassword ? { password: trimmedPassword } : {}),
-        });
-        if (!trimmedUrl) {
-            setWebdavHasPassword(false);
-            setWebdavPassword('');
-        } else if (trimmedPassword) {
-            setWebdavHasPassword(true);
+        setIsSavingWebDav(true);
+        try {
+            await SyncService.setWebDavConfig({
+                url: trimmedUrl,
+                username: webdavUsername.trim(),
+                ...(trimmedPassword ? { password: trimmedPassword } : {}),
+            });
+            if (!trimmedUrl) {
+                setWebdavHasPassword(false);
+                setWebdavPassword('');
+            } else if (trimmedPassword) {
+                setWebdavHasPassword(true);
+            }
+            showSaved();
+        } finally {
+            setIsSavingWebDav(false);
         }
-        showSaved();
     }, [showSaved, webdavPassword, webdavUrl, webdavUsername]);
 
     const handleSaveCloud = useCallback(async () => {
@@ -176,6 +182,7 @@ export const useSyncSettings = ({ isTauri, showSaved, selectSyncFolderTitle }: U
         webdavPassword,
         setWebdavPassword,
         webdavHasPassword,
+        isSavingWebDav,
         cloudUrl,
         setCloudUrl,
         cloudToken,
