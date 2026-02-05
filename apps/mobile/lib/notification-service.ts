@@ -33,12 +33,20 @@ let scheduledWeeklyReviewId: string | null = null;
 let started = false;
 let responseSubscription: Subscription | null = null;
 let storeSubscription: (() => void) | null = null;
+let rescheduleTimer: ReturnType<typeof setTimeout> | null = null;
 
 let Notifications: NotificationsApi | null = null;
 
 const logNotificationError = (message: string, error?: unknown) => {
   const extra = error ? { error: error instanceof Error ? error.message : String(error) } : undefined;
   void logWarn(`[Notifications] ${message}`, { scope: 'notifications', extra });
+};
+
+const clearRescheduleTimer = () => {
+  if (rescheduleTimer) {
+    clearTimeout(rescheduleTimer);
+    rescheduleTimer = null;
+  }
 };
 
 const normalizeNotificationData = (data?: Record<string, unknown>): Record<string, unknown> | undefined => {
@@ -450,6 +458,7 @@ export async function startMobileNotifications() {
   if (!permission.granted) {
     storeSubscription?.();
     storeSubscription = null;
+    clearRescheduleTimer();
     responseSubscription?.remove();
     responseSubscription = null;
     scheduledByTask.clear();
@@ -488,9 +497,13 @@ export async function startMobileNotifications() {
 
   storeSubscription?.();
   storeSubscription = useTaskStore.subscribe(() => {
-    rescheduleAll(api).catch((error) => logNotificationError('Failed to reschedule', error));
-    rescheduleDailyDigest(api).catch((error) => logNotificationError('Failed to reschedule daily digest', error));
-    rescheduleWeeklyReview(api).catch((error) => logNotificationError('Failed to reschedule weekly review', error));
+    clearRescheduleTimer();
+    rescheduleTimer = setTimeout(() => {
+      rescheduleTimer = null;
+      rescheduleAll(api).catch((error) => logNotificationError('Failed to reschedule', error));
+      rescheduleDailyDigest(api).catch((error) => logNotificationError('Failed to reschedule daily digest', error));
+      rescheduleWeeklyReview(api).catch((error) => logNotificationError('Failed to reschedule weekly review', error));
+    }, 500);
   });
 
   responseSubscription?.remove();
@@ -507,6 +520,7 @@ export async function stopMobileNotifications() {
   responseSubscription = null;
   storeSubscription?.();
   storeSubscription = null;
+  clearRescheduleTimer();
 
   if (Notifications) {
     for (const entry of scheduledByTask.values()) {
