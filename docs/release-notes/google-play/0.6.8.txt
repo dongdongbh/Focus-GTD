@@ -1,0 +1,15 @@
+<en-US>
+- Description markdown now supports checklist syntax (`[ ]` / `[x]`) and list rendering more reliably.
+- Tapping a notification on mobile now opens the Review screen.
+- Mobile sync is more reliable and better preserves newly created local tasks.
+</en-US>
+<zh-CN>
+- 任务描述 Markdown 现已更好支持清单语法（`[ ]` / `[x]`）和列表渲染。
+- 在移动端点击通知后会直接打开回顾页面。
+- 移动端同步更可靠，可更好保留新建的本地任务。
+</zh-CN>
+<es-ES>
+- El markdown de descripciones ahora soporta mejor la sintaxis de checklist (`[ ]` / `[x]`) y las listas.
+- Al tocar una notificación en móvil ahora se abre la pantalla de Revisión.
+- La sincronización móvil es más fiable y conserva mejor las tareas locales recién creadas.
+</es-ES>

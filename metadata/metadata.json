@@ -32,7 +32,7 @@
 "\u5B8C\u5168\u79BB\u7EBF\u53EF\u7528\uFF0C\u65E0\u9700\u4E92\u8054\u7F51\u8FDE\u63A5",
           "\u5B8C\u5168\u5F00\u6E90\uFF0C\u5B89\u5168\u900F\u660E"
         ],
-        "ReleaseNotes": "\u2022 WebDAV \u9644\u4ef6\u540c\u6b65\u4f7f\u7528\u5df2\u4fdd\u5b58\u51ed\u636e\uff0c\u4f20\u8f93\u66f4\u53ef\u9760\u3002\n\u2022 \u770b\u677f\u89c6\u56fe\u9690\u85cf\u60ac\u6d6e\u63d0\u793a\uff0c\u754c\u9762\u66f4\u6e05\u723d\u3002\n\u2022 \u7d27\u51d1\u5217\u8868\u4e2d\u4efb\u52a1\u64cd\u4f5c\u4e0d\u518d\u663e\u793a\u9879\u76ee\u5fbd\u6807\u3002",
+        "ReleaseNotes": "\u2022 描述 Markdown 现已支持清单语法（[ ] / [x]）和列表渲染。\n\u2022 在移动端点击通知后会打开回顾页面。\n\u2022 移动端同步更可靠，可更好保留新建的本地任务。",
         "Images": [
           {
             "FileName": "2026-01-27_22-59-40.png",
@@ -84,7 +84,7 @@
           "No internet connection required to function",
           "Open source and transparent"
         ],
-        "ReleaseNotes": "\u2022 WebDAV attachment sync now uses stored credentials for reliable transfers.\n\u2022 Board view hover hint removed for a cleaner layout.\n\u2022 Task actions no longer show project badge in compact lists.",
+        "ReleaseNotes": "\u2022 Description markdown now supports checklist syntax ([ ] / [x]) and list rendering more reliably.\n\u2022 Tapping a notification on mobile now opens the Review screen.\n\u2022 Mobile sync is more reliable and better preserves newly created local tasks.",
         "Images": [
           {
             "FileName": "2026-01-27_22-59-40.png",
@@ -132,7 +132,7 @@
           "No requiere conexi\u00F3n a internet para funcionar",
           "C\u00F3digo abierto y transparente"
         ],
-        "ReleaseNotes": "\u2022 La sincronizaci\u00f3n de adjuntos por WebDAV usa credenciales guardadas para transferencias m\u00e1s fiables.\n\u2022 Se elimin\u00f3 el aviso al pasar el cursor en la vista de tablero para un dise\u00f1o m\u00e1s limpio.\n\u2022 Las acciones de tarea ya no muestran la insignia del proyecto en listas compactas.",
+        "ReleaseNotes": "\u2022 El markdown de descripciones ahora soporta mejor la sintaxis de checklist ([ ] / [x]) y las listas.\n\u2022 Al tocar una notificaci\u00f3n en m\u00f3vil ahora se abre la pantalla de Revisi\u00f3n.\n\u2022 La sincronizaci\u00f3n m\u00f3vil es m\u00e1s fiable y conserva mejor las tareas locales reci\u00e9n creadas.",
         "Images": [
           {
             "FileName": "2026-01-27_22-59-40.png",
