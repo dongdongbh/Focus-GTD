@@ -208,6 +208,7 @@ export default function SettingsPage() {
     const [languagePickerOpen, setLanguagePickerOpen] = useState(false);
     const [weekStartPickerOpen, setWeekStartPickerOpen] = useState(false);
     const [syncOptionsOpen, setSyncOptionsOpen] = useState(false);
+    const [syncHistoryExpanded, setSyncHistoryExpanded] = useState(false);
     const [externalCalendars, setExternalCalendars] = useState<ExternalCalendarSubscription[]>([]);
     const [newCalendarName, setNewCalendarName] = useState('');
     const [newCalendarUrl, setNewCalendarUrl] = useState('');
@@ -1070,10 +1071,12 @@ export default function SettingsPage() {
         if (syncHistoryEntries.length === 0) return null;
         return (
             <View style={{ marginTop: 6 }}>
-                <Text style={[styles.settingDescription, { color: tc.secondaryText, fontWeight: '600' }]}>
-                    {localize('Sync history', '同步历史')}
-                </Text>
-                {syncHistoryEntries.map((entry) => {
+                <TouchableOpacity onPress={() => setSyncHistoryExpanded((value) => !value)} activeOpacity={0.7}>
+                    <Text style={[styles.settingDescription, { color: tc.secondaryText, fontWeight: '600' }]}>
+                        {localize('Sync history', '同步历史')} ({syncHistoryEntries.length}) {syncHistoryExpanded ? '▾' : '▸'}
+                    </Text>
+                </TouchableOpacity>
+                {syncHistoryExpanded && syncHistoryEntries.map((entry) => {
                     const statusLabel = entry.status === 'success'
                         ? localize('Completed', '完成')
                         : entry.status === 'conflict'
@@ -3188,9 +3191,6 @@ export default function SettingsPage() {
                                     />
                                     <Text style={[styles.settingDescription, { color: tc.secondaryText }]}>
                                         {t('settings.webdavHint')}
-                                    </Text>
-                                    <Text style={[styles.settingDescription, { color: tc.secondaryText }]}>
-                                        {localize('Point to a folder — Mindwtr will store data.json inside.', '填写文件夹地址，Mindwtr 会在其中存放 data.json。')}
                                     </Text>
                                     {webdavUrlError && (
                                         <Text style={[styles.settingDescription, { color: '#EF4444' }]}>
