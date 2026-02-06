@@ -7,6 +7,19 @@ import { parseInlineMarkdown } from '@mindwtr/core';
 
 const TASK_LIST_RE = /^\s{0,3}(?:[-*+]\s+)?\[( |x|X)\]\s+(.+)$/;
 const BULLET_LIST_RE = /^\s{0,3}[-*+]\s+(.+)$/;
+const HEADING_RE = /^(#{1,3})\s+(.+)$/;
+const HORIZONTAL_RULE_RE = /^(?:-{3,}|\*{3,}|_{3,})$/;
+
+function isBlockBoundary(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed) return false;
+  if (trimmed.startsWith('```')) return true;
+  if (HEADING_RE.test(trimmed)) return true;
+  if (HORIZONTAL_RULE_RE.test(trimmed)) return true;
+  if (TASK_LIST_RE.test(line)) return true;
+  if (BULLET_LIST_RE.test(line)) return true;
+  return false;
+}
 
 function isSafeLink(href: string): boolean {
   return /^https?:\/\//i.test(href) || /^mailto:/i.test(href);
@@ -80,7 +93,7 @@ export function MarkdownText({
       continue;
     }
 
-    const headingMatch = /^(#{1,3})\s+(.+)$/.exec(line.trim());
+    const headingMatch = HEADING_RE.exec(line.trim());
     if (headingMatch) {
       const level = headingMatch[1].length;
       const text = headingMatch[2];
@@ -95,6 +108,14 @@ export function MarkdownText({
         >
           {renderInline(text, tc, `h-${i}`)}
         </Text>
+      );
+      i += 1;
+      continue;
+    }
+
+    if (HORIZONTAL_RULE_RE.test(line.trim())) {
+      blocks.push(
+        <View key={`hr-${i}`} style={[styles.separator, { backgroundColor: tc.border }]} />
       );
       i += 1;
       continue;
@@ -150,7 +171,7 @@ export function MarkdownText({
     }
 
     const paragraph: string[] = [];
-    while (i < lines.length && lines[i].trim()) {
+    while (i < lines.length && lines[i].trim() && !isBlockBoundary(lines[i])) {
       paragraph.push(lines[i]);
       i += 1;
     }
@@ -209,5 +230,9 @@ const styles = StyleSheet.create({
   },
   link: {
     textDecorationLine: 'underline',
+  },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    marginVertical: 4,
   },
 });
