@@ -2,7 +2,6 @@ import { useMemo, useState, memo, useEffect, useRef, useCallback, type ReactNode
 import {
     shallow,
     useTaskStore,
-    generateUUID,
     Task,
     TaskEditorFieldId,
     type Recurrence,
@@ -39,6 +38,7 @@ import { useTaskItemAi } from './Task/useTaskItemAi';
 import { useTaskItemEditState } from './Task/useTaskItemEditState';
 import { useUiStore } from '../store/ui-store';
 import { logError } from '../lib/app-log';
+import { mergeMarkdownChecklist } from './Task/task-item-checklist';
 
 interface TaskItemProps {
     task: Task;
@@ -65,49 +65,6 @@ interface TaskItemProps {
     enableDoubleClickEdit?: boolean;
     showHoverHint?: boolean;
 }
-
-const normalizeChecklistKey = (value: string): string => value.trim().toLowerCase();
-
-const mergeMarkdownChecklist = (
-    markdownItems: { title: string; isCompleted: boolean }[],
-    checklist: Task['checklist'],
-): Task['checklist'] => {
-    const current = checklist || [];
-    const remainingByTitle = new Map<string, { id: string; title: string; isCompleted: boolean }[]>();
-    for (const item of current) {
-        if (!item?.title) continue;
-        const key = normalizeChecklistKey(item.title);
-        const bucket = remainingByTitle.get(key);
-        if (bucket) {
-            bucket.push(item);
-        } else {
-            remainingByTitle.set(key, [item]);
-        }
-    }
-
-    const usedIds = new Set<string>();
-    const merged: NonNullable<Task['checklist']> = [];
-    for (const item of markdownItems) {
-        const key = normalizeChecklistKey(item.title);
-        const bucket = remainingByTitle.get(key) || [];
-        const reusable = bucket.find((entry) => !usedIds.has(entry.id));
-        if (reusable) {
-            usedIds.add(reusable.id);
-        }
-        merged.push({
-            id: reusable?.id ?? generateUUID(),
-            title: item.title,
-            isCompleted: item.isCompleted,
-        });
-    }
-
-    for (const item of current) {
-        if (!item?.id || usedIds.has(item.id)) continue;
-        merged.push(item);
-    }
-
-    return merged;
-};
 
 export const TaskItem = memo(function TaskItem({
     task,

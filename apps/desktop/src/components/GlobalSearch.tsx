@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, FileText, CheckCircle, Save, SlidersHorizontal, X } from 'lucide-react';
-import { shallow, useTaskStore, Task, Project, searchAll, generateUUID, SavedSearch, getStorageAdapter, TaskStatus, matchesHierarchicalToken, safeParseDueDate } from '@mindwtr/core';
+import { shallow, useTaskStore, Task, Project, generateUUID, SavedSearch, getStorageAdapter, TaskStatus } from '@mindwtr/core';
 import { useLanguage } from '../contexts/language-context';
 import { cn } from '../lib/utils';
 import { PromptModal } from './PromptModal';
 import { useUiStore } from '../store/ui-store';
 import { AREA_FILTER_ALL, AREA_FILTER_NONE, resolveAreaFilter } from '../lib/area-filter';
+import { computeGlobalSearchResults, type DuePreset, type GlobalSearchScope } from './global-search-filtering';
 
 interface GlobalSearchProps {
     onNavigate: (view: string, itemId?: string) => void;
@@ -23,8 +24,8 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
     const [selectedStatuses, setSelectedStatuses] = useState<TaskStatus[]>([]);
     const [selectedArea, setSelectedArea] = useState<string>('all');
     const [selectedTokens, setSelectedTokens] = useState<string[]>([]);
-    const [duePreset, setDuePreset] = useState<string>('any');
-    const [scope, setScope] = useState<'all' | 'projects' | 'tasks' | 'project_tasks'>('all');
+    const [duePreset, setDuePreset] = useState<DuePreset>('any');
+    const [scope, setScope] = useState<GlobalSearchScope>('all');
     const [ftsResults, setFtsResults] = useState<{ tasks: Task[]; projects: Project[] } | null>(null);
     const [ftsLoading, setFtsLoading] = useState(false);
     const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -146,13 +147,6 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
         };
     }, [debouncedQuery, shouldUseFts]);
 
-    const fallbackResults = trimmedQuery === ''
-        ? { tasks: [] as Task[], projects: [] as Project[] }
-        : searchAll(_allTasks, projects, trimmedQuery);
-    const effectiveResults = ftsResults && (ftsResults.tasks.length + ftsResults.projects.length) > 0
-        ? ftsResults
-        : fallbackResults;
-    const { tasks: taskResults, projects: projectResults } = effectiveResults;
     const allTokens = useMemo(() => {
         return Array.from(new Set([...allContexts, ...allTags])).sort();
     }, [allContexts, allTags]);
@@ -164,90 +158,37 @@ export function GlobalSearch({ onNavigate }: GlobalSearchProps) {
     const includeReferenceText = includeReferenceLabel === 'search.includeReference'
         ? 'Include Reference tasks'
         : includeReferenceLabel;
-    const hasStatusFilter = selectedStatuses.length > 0;
-    const projectById = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
-    const areaById = useMemo(() => new Map(areas.map((area) => [area.id, area])), [areas]);
-    const matchesGlobalArea = (areaId?: string | null) => {
-        const normalized = areaId && areaById.has(areaId) ? areaId : null;
-        if (globalAreaFilter === AREA_FILTER_ALL) return true;
-        if (globalAreaFilter === AREA_FILTER_NONE) return !normalized;
-        return normalized === globalAreaFilter;
-    };
-    const matchesArea = (areaId?: string | null) => {
-        const normalized = areaId && areaById.has(areaId) ? areaId : null;
-        if (!matchesGlobalArea(normalized)) return false;
-        if (selectedArea === 'all') return true;
-        if (selectedArea === 'none') return !normalized;
-        return normalized === selectedArea;
-    };
-    const matchesTaskArea = (task: Task) => {
-        const areaId = task.projectId
-            ? projectById.get(task.projectId)?.areaId ?? null
-            : task.areaId ?? null;
-        return matchesArea(areaId);
-    };
-    const matchesTokens = (task: Task) => {
-        if (selectedTokens.length === 0) return true;
-        const taskTokens = [...(task.contexts || []), ...(task.tags || [])];
-        return selectedTokens.every((token) =>
-            taskTokens.some((taskToken) => matchesHierarchicalToken(token, taskToken))
-        );
-    };
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const weekStart = settings?.weekStart === 'monday' ? 1 : 0;
-    const startOfWeek = new Date(startOfToday);
-    const weekday = startOfWeek.getDay();
-    const diffToWeekStart = weekStart === 1 ? (weekday + 6) % 7 : weekday;
-    startOfWeek.setDate(startOfWeek.getDate() - diffToWeekStart);
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(endOfWeek.getDate() + 7);
-    const nextWeekStart = new Date(endOfWeek);
-    const nextWeekEnd = new Date(nextWeekStart);
-    nextWeekEnd.setDate(nextWeekStart.getDate() + 7);
-    const matchesDue = (task: Task) => {
-        if (duePreset === 'any') return true;
-        if (duePreset === 'none') return !task.dueDate;
-        if (!task.dueDate) return false;
-        const due = safeParseDueDate(task.dueDate);
-        if (!due) return false;
-        if (duePreset === 'overdue') return due < startOfToday;
-        if (duePreset === 'today') return due >= startOfToday && due < new Date(startOfToday.getTime() + 86400000);
-        if (duePreset === 'tomorrow') {
-            const tomorrow = new Date(startOfToday.getTime() + 86400000);
-            const nextDay = new Date(startOfToday.getTime() + 2 * 86400000);
-            return due >= tomorrow && due < nextDay;
-        }
-        if (duePreset === 'this_week') return due >= startOfWeek && due < endOfWeek;
-        if (duePreset === 'next_week') return due >= nextWeekStart && due < nextWeekEnd;
-        return true;
-    };
-    const filteredTasks = taskResults.filter((task) => {
-        if (hasStatusFilter) {
-            if (!selectedStatuses.includes(task.status)) return false;
-        } else {
-            if (!includeCompleted && ['done', 'archived'].includes(task.status)) return false;
-            if (!includeReference && task.status === 'reference') return false;
-        }
-        if (scope === 'project_tasks' && !task.projectId) return false;
-        if (!matchesTaskArea(task)) return false;
-        if (!matchesTokens(task)) return false;
-        if (!matchesDue(task)) return false;
-        return true;
-    });
-    const filteredProjects = projectResults.filter((project) => {
-        if (!includeCompleted && project.status === 'archived') return false;
-        if (!matchesArea(project.areaId ?? null)) return false;
-        return true;
-    });
-    const scopedProjects = scope === 'tasks' || scope === 'project_tasks' ? [] : filteredProjects;
-    const scopedTasks = scope === 'projects' ? [] : filteredTasks;
-    const totalResults = scopedProjects.length + scopedTasks.length;
-    const results = trimmedQuery === '' ? [] : [
-        ...scopedProjects.map(p => ({ type: 'project' as const, item: p })),
-        ...scopedTasks.map(t => ({ type: 'task' as const, item: t })),
-    ].slice(0, 50); // Limit results
-    const isTruncated = totalResults > results.length;
+    const { totalResults, results, isTruncated } = useMemo(() => computeGlobalSearchResults({
+        query,
+        tasks: _allTasks,
+        projects,
+        areas,
+        globalAreaFilter,
+        includeCompleted,
+        includeReference,
+        selectedStatuses,
+        selectedArea,
+        selectedTokens,
+        duePreset,
+        scope,
+        weekStart: settings?.weekStart === 'monday' ? 'monday' : 'sunday',
+        ftsResults,
+    }), [
+        query,
+        _allTasks,
+        projects,
+        areas,
+        globalAreaFilter,
+        includeCompleted,
+        includeReference,
+        selectedStatuses,
+        selectedArea,
+        selectedTokens,
+        duePreset,
+        scope,
+        settings?.weekStart,
+        ftsResults,
+    ]);
 
     useEffect(() => {
         if (results.length === 0) {
