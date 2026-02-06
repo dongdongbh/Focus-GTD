@@ -413,6 +413,66 @@ describe('Sync Logic', () => {
             expect(wroteLocal).toBe(false);
             expect(wroteRemote).toBe(false);
         });
+
+        it('purges expired task tombstones and deleted attachment tombstones by default', async () => {
+            let saved: AppData | null = null;
+            const oldPurgedTask = {
+                ...createMockTask('old-purged', '2025-06-01T00:00:00.000Z', '2025-06-01T00:00:00.000Z'),
+                purgedAt: '2025-06-01T00:00:00.000Z',
+            } as Task;
+            const oldDeletedTask = createMockTask('old-deleted', '2025-06-01T00:00:00.000Z', '2025-06-01T00:00:00.000Z');
+            const taskWithDeletedAttachment = {
+                ...createMockTask('with-deleted-attachment', '2025-12-20T00:00:00.000Z'),
+                attachments: [{
+                    id: 'att-old-deleted',
+                    kind: 'file',
+                    title: 'old.txt',
+                    uri: '/tmp/old.txt',
+                    createdAt: '2025-01-01T00:00:00.000Z',
+                    updatedAt: '2025-01-01T00:00:00.000Z',
+                    deletedAt: '2025-01-01T00:00:00.000Z',
+                }],
+            } as Task;
+
+            await performSyncCycle({
+                readLocal: async () => mockAppData([oldPurgedTask, oldDeletedTask, taskWithDeletedAttachment]),
+                readRemote: async () => null,
+                writeLocal: async (data) => {
+                    saved = data;
+                },
+                writeRemote: async () => undefined,
+                now: () => '2026-01-01T00:00:00.000Z',
+            });
+
+            expect(saved).not.toBeNull();
+            expect(saved!.tasks.some((task) => task.id === 'old-purged')).toBe(false);
+            expect(saved!.tasks.some((task) => task.id === 'old-deleted')).toBe(true);
+            const keptTask = saved!.tasks.find((task) => task.id === 'with-deleted-attachment');
+            expect(keptTask).toBeTruthy();
+            expect(keptTask!.attachments).toBeUndefined();
+        });
+
+        it('respects custom tombstone retention window', async () => {
+            let saved: AppData | null = null;
+            const oldPurgedTask = {
+                ...createMockTask('old-purged', '2025-06-01T00:00:00.000Z', '2025-06-01T00:00:00.000Z'),
+                purgedAt: '2025-06-01T00:00:00.000Z',
+            } as Task;
+
+            await performSyncCycle({
+                readLocal: async () => mockAppData([oldPurgedTask]),
+                readRemote: async () => null,
+                writeLocal: async (data) => {
+                    saved = data;
+                },
+                writeRemote: async () => undefined,
+                now: () => '2026-01-01T00:00:00.000Z',
+                tombstoneRetentionDays: 220,
+            });
+
+            expect(saved).not.toBeNull();
+            expect(saved!.tasks.some((task) => task.id === 'old-purged')).toBe(true);
+        });
     });
 
     describe('appendSyncHistory', () => {

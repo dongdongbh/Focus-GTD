@@ -41,6 +41,9 @@ export type SyncHistoryEntry = {
 
 // Log clock skew warnings if merges show >5 minutes drift.
 export const CLOCK_SKEW_THRESHOLD_MS = 5 * 60 * 1000;
+const DEFAULT_TOMBSTONE_RETENTION_DAYS = 90;
+const MIN_TOMBSTONE_RETENTION_DAYS = 1;
+const MAX_TOMBSTONE_RETENTION_DAYS = 3650;
 
 export type SyncStep = 'read-local' | 'read-remote' | 'merge' | 'write-local' | 'write-remote';
 
@@ -49,6 +52,7 @@ export type SyncCycleIO = {
     readRemote: () => Promise<AppData | null | undefined>;
     writeLocal: (data: AppData) => Promise<void>;
     writeRemote: (data: AppData) => Promise<void>;
+    tombstoneRetentionDays?: number;
     now?: () => string;
     onStep?: (step: SyncStep) => void;
 };
@@ -138,6 +142,86 @@ const validateMergedSyncData = (data: AppData): string[] => {
         }
     }
     return errors;
+};
+
+const resolveTombstoneRetentionDays = (value?: number): number => {
+    if (!Number.isFinite(value)) return DEFAULT_TOMBSTONE_RETENTION_DAYS;
+    const rounded = Math.floor(value as number);
+    return Math.min(MAX_TOMBSTONE_RETENTION_DAYS, Math.max(MIN_TOMBSTONE_RETENTION_DAYS, rounded));
+};
+
+const parseTimestampOrInfinity = (value?: string): number => {
+    if (!value) return Number.POSITIVE_INFINITY;
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? parsed : Number.POSITIVE_INFINITY;
+};
+
+const pruneAttachmentTombstones = (
+    attachments: Attachment[] | undefined,
+    cutoffMs: number
+): { next: Attachment[] | undefined; removed: number } => {
+    if (!attachments || attachments.length === 0) return { next: attachments, removed: 0 };
+    let removed = 0;
+    const next = attachments.filter((attachment) => {
+        if (!attachment.deletedAt) return true;
+        const deletedMs = parseTimestampOrInfinity(attachment.deletedAt);
+        if (deletedMs <= cutoffMs) {
+            removed += 1;
+            return false;
+        }
+        return true;
+    });
+    return {
+        next: next.length > 0 ? next : undefined,
+        removed,
+    };
+};
+
+const purgeExpiredTombstones = (
+    data: AppData,
+    nowIso: string,
+    retentionDays?: number
+): { data: AppData; removedTaskTombstones: number; removedAttachmentTombstones: number } => {
+    const nowMs = Date.parse(nowIso);
+    if (!Number.isFinite(nowMs)) {
+        return { data, removedTaskTombstones: 0, removedAttachmentTombstones: 0 };
+    }
+    const keepDays = resolveTombstoneRetentionDays(retentionDays);
+    const cutoffMs = nowMs - keepDays * 24 * 60 * 60 * 1000;
+
+    let removedTaskTombstones = 0;
+    let removedAttachmentTombstones = 0;
+    const nextTasks: Task[] = [];
+    for (const task of data.tasks) {
+        const tombstoneAt = task.purgedAt ? parseTimestampOrInfinity(task.purgedAt) : Number.POSITIVE_INFINITY;
+        if (task.deletedAt && task.purgedAt && tombstoneAt <= cutoffMs) {
+            removedTaskTombstones += 1;
+            continue;
+        }
+        const pruned = pruneAttachmentTombstones(task.attachments, cutoffMs);
+        removedAttachmentTombstones += pruned.removed;
+        if (pruned.removed > 0) {
+            nextTasks.push({ ...task, attachments: pruned.next });
+            continue;
+        }
+        nextTasks.push(task);
+    }
+
+    const nextProjects: Project[] = data.projects.map((project) => {
+        const pruned = pruneAttachmentTombstones(project.attachments, cutoffMs);
+        removedAttachmentTombstones += pruned.removed;
+        return pruned.removed > 0 ? { ...project, attachments: pruned.next } : project;
+    });
+
+    return {
+        data: {
+            ...data,
+            tasks: nextTasks,
+            projects: nextProjects,
+        },
+        removedTaskTombstones,
+        removedAttachmentTombstones,
+    };
 };
 
 const parseSyncTimestamp = (value?: string): number => {
@@ -614,7 +698,7 @@ export async function performSyncCycle(io: SyncCycleIO): Promise<SyncCycleResult
         timestampAdjustments,
     };
     const nextHistory = appendSyncHistory(mergeResult.data.settings, historyEntry);
-    const finalData: AppData = {
+    const nextMergedData: AppData = {
         ...mergeResult.data,
         settings: {
             ...mergeResult.data.settings,
@@ -625,6 +709,17 @@ export async function performSyncCycle(io: SyncCycleIO): Promise<SyncCycleResult
             lastSyncHistory: nextHistory,
         },
     };
+    const pruned = purgeExpiredTombstones(nextMergedData, nowIso, io.tombstoneRetentionDays);
+    if (pruned.removedTaskTombstones > 0 || pruned.removedAttachmentTombstones > 0) {
+        logWarn('Purged expired sync tombstones', {
+            scope: 'sync',
+            context: {
+                removedTaskTombstones: pruned.removedTaskTombstones,
+                removedAttachmentTombstones: pruned.removedAttachmentTombstones,
+            },
+        });
+    }
+    const finalData = pruned.data;
     const validationErrors = validateMergedSyncData(finalData);
     if (validationErrors.length > 0) {
         const sample = validationErrors.slice(0, 3).join('; ');
