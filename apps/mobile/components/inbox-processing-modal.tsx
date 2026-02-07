@@ -124,11 +124,8 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
   };
 
   const hasInitialized = useRef(false);
-  const closingRef = useRef(false);
 
   const handleClose = () => {
-    if (closingRef.current) return;
-    closingRef.current = true;
     resetProcessingState();
     onClose();
   };
@@ -136,7 +133,6 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
   useEffect(() => {
     if (!visible) {
       hasInitialized.current = false;
-      closingRef.current = false;
       return;
     }
     if (hasInitialized.current) return;
@@ -482,11 +478,13 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
       <Modal
         visible={visible}
         animationType="slide"
-        presentationStyle="fullScreen"
+        presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
+        allowSwipeDismissal
         onRequestClose={handleClose}
-        onDismiss={handleClose}
       >
-        <View style={[styles.fullScreenContainer, { backgroundColor: tc.bg }]}>
+        <View
+          style={[styles.fullScreenContainer, { backgroundColor: tc.bg }]}
+        >
           <View style={headerStyle}>
             <TouchableOpacity onPress={handleClose}>
               <Text style={[styles.headerClose, { color: tc.text }]}>✕</Text>
@@ -533,11 +531,13 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
       <Modal
         visible={visible}
         animationType="slide"
-        presentationStyle="fullScreen"
+        presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
+        allowSwipeDismissal
         onRequestClose={handleClose}
-        onDismiss={handleClose}
       >
-        <View style={[styles.fullScreenContainer, { backgroundColor: tc.bg }]}>
+        <View
+          style={[styles.fullScreenContainer, { backgroundColor: tc.bg }]}
+        >
           <View style={headerStyle}>
             <TouchableOpacity onPress={handleClose}>
               <Text style={[styles.headerClose, { color: tc.text }]}>✕</Text>

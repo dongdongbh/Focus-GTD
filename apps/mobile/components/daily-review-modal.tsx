@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, ScrollView, StyleSheet, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -283,7 +283,9 @@ function DailyReviewFlow({ onClose }: { onClose: () => void }) {
     };
 
     return (
-        <GestureHandlerRootView style={[styles.modalContainer, { backgroundColor: tc.bg }]}>
+        <GestureHandlerRootView
+            style={[styles.modalContainer, { backgroundColor: tc.bg }]}
+        >
             <View style={[styles.header, { borderBottomColor: tc.border }]}>
                 <TouchableOpacity onPress={onClose}>
                     <Text style={[styles.closeButton, { color: tc.text }]}>✕</Text>
@@ -346,7 +348,13 @@ function DailyReviewFlow({ onClose }: { onClose: () => void }) {
 
 export function DailyReviewModal({ visible, onClose }: DailyReviewModalProps) {
     return (
-        <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
+        <Modal
+            visible={visible}
+            animationType="slide"
+            presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
+            allowSwipeDismissal
+            onRequestClose={onClose}
+        >
             <DailyReviewFlow onClose={onClose} />
         </Modal>
     );

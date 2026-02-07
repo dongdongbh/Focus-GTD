@@ -569,7 +569,7 @@ export function ReviewModal({ visible, onClose }: ReviewModalProps) {
     };
 
     return (
-        <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
+        <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" allowSwipeDismissal onRequestClose={handleClose}>
             <GestureHandlerRootView style={{ flex: 1 }}>
                 <View style={[styles.container, { backgroundColor: tc.bg }]}>
                     {/* Header */}

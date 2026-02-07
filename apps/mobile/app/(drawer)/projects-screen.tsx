@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, Modal, Alert, Pressable, ScrollView, SectionList, Dimensions } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, Modal, Alert, Pressable, ScrollView, SectionList, Dimensions, Platform } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Area, Attachment, generateUUID, Project, PRESET_TAGS, Task, TaskStatus, useTaskStore, validateAttachmentForUpload } from '@mindwtr/core';
@@ -54,7 +54,6 @@ export default function ProjectsScreen() {
   const [expandedAreaColorId, setExpandedAreaColorId] = useState<string | null>(null);
   const { projectId, taskId } = useLocalSearchParams<{ projectId?: string; taskId?: string }>();
   const lastOpenedTaskIdRef = useRef<string | null>(null);
-  const closingProjectRef = useRef(false);
   const ALL_TAGS = '__all__';
   const NO_TAGS = '__none__';
   const ALL_AREAS = '__all__';
@@ -163,13 +162,6 @@ export default function ProjectsScreen() {
     setHighlightTask(task.id);
     setEditingTask(task);
   }, [taskId, projectId, selectedProject, tasks, setHighlightTask]);
-
-  useEffect(() => {
-    if (!selectedProject) {
-      closingProjectRef.current = false;
-    }
-  }, [selectedProject]);
-
 
   const sortAreasByName = () => {
     const reordered = [...sortedAreas]
@@ -381,8 +373,6 @@ export default function ProjectsScreen() {
   };
 
   const closeProjectDetail = () => {
-    if (closingProjectRef.current) return;
-    closingProjectRef.current = true;
     persistSelectedProjectEdits(selectedProject);
     setSelectedProject(null);
     setNotesExpanded(false);
@@ -803,10 +793,14 @@ export default function ProjectsScreen() {
       <Modal
         visible={!!selectedProject}
         animationType="slide"
+        presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
+        allowSwipeDismissal
         onRequestClose={closeProjectDetail}
-        onDismiss={closeProjectDetail}
       >
-                <SafeAreaView style={{ flex: 1, backgroundColor: tc.bg }} edges={['left', 'right', 'bottom']}>
+                <SafeAreaView
+                  style={{ flex: 1, backgroundColor: tc.bg }}
+                  edges={['left', 'right', 'bottom']}
+                >
                   {selectedProject ? (
                     <>
                 <View style={modalHeaderStyle}>

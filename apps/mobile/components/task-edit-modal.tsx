@@ -2263,9 +2263,13 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
             visible={visible}
             animationType="slide"
             presentationStyle="pageSheet"
+            allowSwipeDismissal
             onRequestClose={handleDone}
         >
-            <SafeAreaView style={[styles.container, { backgroundColor: tc.bg }]} edges={['top']}>
+            <SafeAreaView
+                style={[styles.container, { backgroundColor: tc.bg }]}
+                edges={['top']}
+            >
                 <TaskEditHeader
                     title={String(titleDraft || editedTask.title || '').trim() || t('taskEdit.title')}
                     onDone={handleDone}
