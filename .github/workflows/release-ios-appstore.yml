@@ -213,6 +213,21 @@ jobs:
           cd apps/mobile/ios
           pod install
 
+      - name: Apply iOS version and build number
+        run: |
+          set -euo pipefail
+          APP_INFO_PLIST="apps/mobile/ios/Mindwtr/Info.plist"
+          if [ ! -f "$APP_INFO_PLIST" ]; then
+            echo "::error::Info.plist not found at $APP_INFO_PLIST"
+            exit 1
+          fi
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $APP_VERSION" "$APP_INFO_PLIST" \
+            || /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string $APP_VERSION" "$APP_INFO_PLIST"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $APP_BUILD_NUMBER" "$APP_INFO_PLIST" \
+            || /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $APP_BUILD_NUMBER" "$APP_INFO_PLIST"
+          echo "Info.plist version: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_INFO_PLIST")"
+          echo "Info.plist build: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP_INFO_PLIST")"
+
       - name: Prepare ExportOptions.plist
         env:
           IOS_EXPORT_OPTIONS: ${{ secrets.IOS_EXPORT_OPTIONS }}
@@ -279,6 +294,19 @@ jobs:
             MARKETING_VERSION="$APP_VERSION" \
             CURRENT_PROJECT_VERSION="$APP_BUILD_NUMBER" \
             clean archive
+          ARCHIVE_INFO_PLIST="$ARCHIVE_PATH/Products/Applications/Mindwtr.app/Info.plist"
+          if [ ! -f "$ARCHIVE_INFO_PLIST" ]; then
+            echo "::error::Archived app Info.plist not found: $ARCHIVE_INFO_PLIST"
+            exit 1
+          fi
+          ARCHIVE_BUILD_NUMBER="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$ARCHIVE_INFO_PLIST")"
+          ARCHIVE_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$ARCHIVE_INFO_PLIST")"
+          echo "Archived app version: ${ARCHIVE_VERSION}"
+          echo "Archived app build: ${ARCHIVE_BUILD_NUMBER}"
+          if [ "$ARCHIVE_BUILD_NUMBER" != "$APP_BUILD_NUMBER" ]; then
+            echo "::error::Archive build number mismatch (expected $APP_BUILD_NUMBER, got $ARCHIVE_BUILD_NUMBER)."
+            exit 1
+          fi
           echo "ARCHIVE_PATH=$ARCHIVE_PATH" >> "$GITHUB_ENV"
 
       - name: Export IPA
