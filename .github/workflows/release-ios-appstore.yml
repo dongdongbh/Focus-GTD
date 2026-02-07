@@ -82,13 +82,20 @@ jobs:
         run: |
           set -euo pipefail
           APP_VERSION="$(jq -r '.expo.version // empty' apps/mobile/app.json)"
-          APP_BUILD_NUMBER="$(jq -r '.expo.ios.buildNumber // empty' apps/mobile/app.json)"
-          if [ -z "${APP_VERSION}" ] || [ -z "${APP_BUILD_NUMBER}" ]; then
-            echo "::error::Missing expo.version or expo.ios.buildNumber in apps/mobile/app.json"
+          APP_BUILD_NUMBER_BASE="$(jq -r '.expo.ios.buildNumber // "0"' apps/mobile/app.json)"
+          if [ -z "${APP_VERSION}" ]; then
+            echo "::error::Missing expo.version in apps/mobile/app.json"
             exit 1
           fi
+          RUN_BUILD_NUMBER="$(( GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT ))"
+          if [[ "${APP_BUILD_NUMBER_BASE}" =~ ^[0-9]+$ ]]; then
+            if [ "${RUN_BUILD_NUMBER}" -le "${APP_BUILD_NUMBER_BASE}" ]; then
+              RUN_BUILD_NUMBER="$(( APP_BUILD_NUMBER_BASE + 1 ))"
+            fi
+          fi
           echo "APP_VERSION=${APP_VERSION}" >> "$GITHUB_ENV"
-          echo "APP_BUILD_NUMBER=${APP_BUILD_NUMBER}" >> "$GITHUB_ENV"
+          echo "APP_BUILD_NUMBER=${RUN_BUILD_NUMBER}" >> "$GITHUB_ENV"
+          echo "Resolved iOS build number: ${RUN_BUILD_NUMBER}"
 
       - name: Import iOS distribution certificate
         env:
