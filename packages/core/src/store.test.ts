@@ -123,7 +123,6 @@ describe('TaskStore', () => {
     });
 
     it('purges expired tombstones during fetch even without sync', async () => {
-        vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
         mockStorage.getData = vi.fn().mockResolvedValue({
             tasks: [
                 {
@@ -132,10 +131,10 @@ describe('TaskStore', () => {
                     status: 'done',
                     tags: [],
                     contexts: [],
-                    createdAt: '2025-01-01T00:00:00.000Z',
-                    updatedAt: '2025-06-01T00:00:00.000Z',
-                    deletedAt: '2025-06-01T00:00:00.000Z',
-                    purgedAt: '2025-06-01T00:00:00.000Z',
+                    createdAt: '2000-01-01T00:00:00.000Z',
+                    updatedAt: '2000-06-01T00:00:00.000Z',
+                    deletedAt: '2000-06-01T00:00:00.000Z',
+                    purgedAt: '2000-06-01T00:00:00.000Z',
                 },
             ],
             projects: [],
