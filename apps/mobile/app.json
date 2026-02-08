@@ -42,7 +42,7 @@
       "./plugins/expo-router",
       "expo-notifications",
       [
-        "./plugins/expo-splash-screen",
+        "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 132,
