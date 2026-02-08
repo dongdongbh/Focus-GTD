@@ -106,50 +106,86 @@ jobs:
           }
 
           REMOTE_MAX_BUILD=0
+          REMOTE_LOOKUP_STATUS="skipped"
           if [ -n "${IOS_ASC_KEY_ID:-}" ] && [ -n "${IOS_ASC_ISSUER_ID:-}" ] && [ -n "${IOS_ASC_PRIVATE_KEY:-}" ]; then
             KEY_PATH="$RUNNER_TEMP/ios-asc-key.p8"
             if printf '%s' "$IOS_ASC_PRIVATE_KEY" | grep -q "BEGIN PRIVATE KEY"; then
-              printf '%s' "$IOS_ASC_PRIVATE_KEY" > "$KEY_PATH"
+              # Support both multiline PEM and single-line PEM with '\n' escapes
+              printf '%b' "$IOS_ASC_PRIVATE_KEY" | tr -d '\r' > "$KEY_PATH"
             else
               if ! printf '%s' "$IOS_ASC_PRIVATE_KEY" | tr -d '\r' | base64 --decode > "$KEY_PATH" 2>/dev/null; then
                 printf '%s' "$IOS_ASC_PRIVATE_KEY" | tr -d '\r' | base64 -D > "$KEY_PATH"
               fi
             fi
 
-            NOW="$(date +%s)"
-            EXP="$((NOW + 1200))"
-            JWT_HEADER="$(printf '{"alg":"ES256","kid":"%s","typ":"JWT"}' "$IOS_ASC_KEY_ID" | b64url)"
-            JWT_PAYLOAD="$(printf '{"iss":"%s","iat":%s,"exp":%s,"aud":"appstoreconnect-v1"}' "$IOS_ASC_ISSUER_ID" "$NOW" "$EXP" | b64url)"
-            JWT_UNSIGNED="${JWT_HEADER}.${JWT_PAYLOAD}"
-            JWT_SIGNATURE="$(printf '%s' "$JWT_UNSIGNED" | openssl dgst -binary -sha256 -sign "$KEY_PATH" | b64url)"
-            ASC_TOKEN="${JWT_UNSIGNED}.${JWT_SIGNATURE}"
-
-            APP_LOOKUP_JSON="$(curl -fsSLG \
-              -H "Authorization: Bearer ${ASC_TOKEN}" \
-              --data-urlencode "filter[bundleId]=${EXPECTED_BUNDLE_ID}" \
-              --data-urlencode "limit=1" \
-              "https://api.appstoreconnect.apple.com/v1/apps")"
-            APPSTORE_APP_ID="$(printf '%s' "$APP_LOOKUP_JSON" | jq -r '.data[0].id // empty')"
-
-            if [ -n "${APPSTORE_APP_ID}" ]; then
-              BUILDS_JSON="$(curl -fsSLG \
-                -H "Authorization: Bearer ${ASC_TOKEN}" \
-                --data-urlencode "filter[app]=${APPSTORE_APP_ID}" \
-                --data-urlencode "limit=200" \
-                "https://api.appstoreconnect.apple.com/v1/builds")"
-              while : ; do
-                PAGE_MAX="$(printf '%s' "$BUILDS_JSON" | jq -r '[.data[]?.attributes.version | select(type=="string") | select(test("^[0-9]+$")) | tonumber] | max // 0')"
-                if [ "${PAGE_MAX}" -gt "${REMOTE_MAX_BUILD}" ]; then
-                  REMOTE_MAX_BUILD="${PAGE_MAX}"
-                fi
-                NEXT_URL="$(printf '%s' "$BUILDS_JSON" | jq -r '.links.next // empty')"
-                if [ -z "${NEXT_URL}" ]; then
-                  break
-                fi
-                BUILDS_JSON="$(curl -fsSLg -H "Authorization: Bearer ${ASC_TOKEN}" "$NEXT_URL")"
-              done
+            if ! openssl pkey -in "$KEY_PATH" -noout >/dev/null 2>&1; then
+              echo "::warning::IOS_ASC_PRIVATE_KEY is not a valid .p8 key; skipping remote max build lookup."
+              REMOTE_LOOKUP_STATUS="invalid_key"
             else
-              echo "::warning::App Store Connect app lookup returned no app for bundle id ${EXPECTED_BUNDLE_ID}."
+              api_get() {
+                local out_file="$1"
+                shift
+                local tmp_body="$RUNNER_TEMP/asc-api-$(date +%s)-$RANDOM.json"
+                local http_code
+                http_code="$(curl -sS -w '%{http_code}' -o "$tmp_body" "$@" || true)"
+                if [ "${http_code}" -ge 200 ] && [ "${http_code}" -lt 300 ]; then
+                  mv "$tmp_body" "$out_file"
+                  return 0
+                fi
+                local preview
+                preview="$(tr '\n' ' ' < "$tmp_body" | head -c 240)"
+                rm -f "$tmp_body"
+                echo "::warning::App Store Connect API request failed (HTTP ${http_code}): ${preview}"
+                return 1
+              }
+
+              NOW="$(date +%s)"
+              EXP="$((NOW + 1200))"
+              JWT_HEADER="$(printf '{"alg":"ES256","kid":"%s","typ":"JWT"}' "$IOS_ASC_KEY_ID" | b64url)"
+              JWT_PAYLOAD="$(printf '{"iss":"%s","iat":%s,"exp":%s,"aud":"appstoreconnect-v1"}' "$IOS_ASC_ISSUER_ID" "$NOW" "$EXP" | b64url)"
+              JWT_UNSIGNED="${JWT_HEADER}.${JWT_PAYLOAD}"
+              JWT_SIGNATURE="$(printf '%s' "$JWT_UNSIGNED" | openssl dgst -binary -sha256 -sign "$KEY_PATH" | b64url)"
+              ASC_TOKEN="${JWT_UNSIGNED}.${JWT_SIGNATURE}"
+
+              APP_LOOKUP_JSON_FILE="$RUNNER_TEMP/asc-app-lookup.json"
+              if api_get "$APP_LOOKUP_JSON_FILE" -G \
+                -H "Authorization: Bearer ${ASC_TOKEN}" \
+                --data-urlencode "filter[bundleId]=${EXPECTED_BUNDLE_ID}" \
+                --data-urlencode "limit=1" \
+                "https://api.appstoreconnect.apple.com/v1/apps"; then
+                APPSTORE_APP_ID="$(jq -r '.data[0].id // empty' "$APP_LOOKUP_JSON_FILE")"
+                if [ -n "${APPSTORE_APP_ID}" ]; then
+                  BUILDS_JSON_FILE="$RUNNER_TEMP/asc-builds-page.json"
+                  if api_get "$BUILDS_JSON_FILE" -G \
+                    -H "Authorization: Bearer ${ASC_TOKEN}" \
+                    --data-urlencode "filter[app]=${APPSTORE_APP_ID}" \
+                    --data-urlencode "limit=200" \
+                    "https://api.appstoreconnect.apple.com/v1/builds"; then
+                    while : ; do
+                      PAGE_MAX="$(jq -r '[.data[]?.attributes.version | select(type=="string") | select(test("^[0-9]+$")) | tonumber] | max // 0' "$BUILDS_JSON_FILE")"
+                      if [ "${PAGE_MAX}" -gt "${REMOTE_MAX_BUILD}" ]; then
+                        REMOTE_MAX_BUILD="${PAGE_MAX}"
+                      fi
+                      NEXT_URL="$(jq -r '.links.next // empty' "$BUILDS_JSON_FILE")"
+                      if [ -z "${NEXT_URL}" ]; then
+                        REMOTE_LOOKUP_STATUS="ok"
+                        break
+                      fi
+                      if ! api_get "$BUILDS_JSON_FILE" -g -H "Authorization: Bearer ${ASC_TOKEN}" "$NEXT_URL"; then
+                        REMOTE_LOOKUP_STATUS="api_error"
+                        break
+                      fi
+                    done
+                  else
+                    REMOTE_LOOKUP_STATUS="api_error"
+                  fi
+                else
+                  echo "::warning::App Store Connect app lookup returned no app for bundle id ${EXPECTED_BUNDLE_ID}."
+                  REMOTE_LOOKUP_STATUS="no_app"
+                fi
+              else
+                REMOTE_LOOKUP_STATUS="api_error"
+              fi
             fi
           else
             echo "::warning::Remote max build lookup skipped. Set IOS_ASC_KEY_ID / IOS_ASC_ISSUER_ID / IOS_ASC_PRIVATE_KEY secrets."
@@ -171,7 +207,7 @@ jobs:
 
           echo "APP_VERSION=${APP_VERSION}" >> "$GITHUB_ENV"
           echo "APP_BUILD_NUMBER=${FINAL_BUILD_NUMBER}" >> "$GITHUB_ENV"
-          echo "Resolved iOS build number: ${FINAL_BUILD_NUMBER} (remote max: ${REMOTE_MAX_BUILD}, local base: ${APP_BUILD_NUMBER_BASE}, run-based: ${RUN_BUILD_NUMBER})"
+          echo "Resolved iOS build number: ${FINAL_BUILD_NUMBER} (remote max: ${REMOTE_MAX_BUILD}, remote lookup: ${REMOTE_LOOKUP_STATUS}, local base: ${APP_BUILD_NUMBER_BASE}, run-based: ${RUN_BUILD_NUMBER})"
 
       - name: Import iOS distribution certificate
         env:
