@@ -715,26 +715,13 @@ export default function SettingsPage() {
                     directory.create({ intermediates: true, idempotent: true });
                     const dirUri = directory.uri.endsWith('/') ? directory.uri : `${directory.uri}/`;
                     const targetFile = new File(`${dirUri}${fileName}`);
-                    try {
-                        const entries = directory.list();
-                        const conflict = entries.find((entry) => Paths.basename(entry.uri) === fileName);
-                        if (conflict instanceof Directory) {
-                            conflict.delete();
-                        }
-                        if (conflict instanceof File) {
-                            conflict.delete();
-                        }
-                    } catch (cleanupError) {
-                        logSettingsWarn('Whisper model cleanup failed', cleanupError);
-                    }
                     const conflictInfo = safePathInfo(targetFile.uri);
                     if (conflictInfo?.exists && conflictInfo.isDirectory) {
-                        if (isWhisperTargetPath(targetFile.uri, fileName)) {
-                            try {
-                                new Directory(targetFile.uri).delete();
-                            } catch (deleteError) {
-                                logSettingsWarn('Whisper model directory cleanup failed', deleteError);
-                            }
+                        if (!isWhisperTargetPath(targetFile.uri, fileName)) {
+                            throw new Error(localize(
+                                `Offline model path is not safe to modify (${targetFile.uri}).`,
+                                `离线模型路径不安全，无法自动处理（${targetFile.uri}）。`
+                            ));
                         }
                     }
                     const postCleanupInfo = safePathInfo(targetFile.uri);
