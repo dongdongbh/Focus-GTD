@@ -22,6 +22,7 @@ export interface EntityMergeStats {
 export interface MergeStats {
     tasks: EntityMergeStats;
     projects: EntityMergeStats;
+    sections: EntityMergeStats;
 }
 
 export interface MergeResult {
@@ -679,19 +680,20 @@ export function mergeAppDataWithStats(local: AppData, incoming: AppData): MergeR
         return attachments ? { ...winner, attachments } : winner;
     });
 
-    const sectionsMerged = mergeEntities(localNormalized.sections, incomingNormalized.sections);
+    const sectionsResult = mergeEntitiesWithStats(localNormalized.sections, incomingNormalized.sections);
 
     return {
         data: {
             tasks: tasksResult.merged,
             projects: projectsResult.merged,
-            sections: sectionsMerged,
+            sections: sectionsResult.merged,
             areas: mergeAreas(localNormalized.areas, incomingNormalized.areas, nowIso),
             settings: mergeSettingsForSync(localNormalized.settings, incomingNormalized.settings),
         },
         stats: {
             tasks: tasksResult.stats,
             projects: projectsResult.stats,
+            sections: sectionsResult.stats,
         },
     };
 }
@@ -711,16 +713,20 @@ export async function performSyncCycle(io: SyncCycleIO): Promise<SyncCycleResult
 
     io.onStep?.('merge');
     const mergeResult = mergeAppDataWithStats(localData, remoteData);
-    const conflictCount = (mergeResult.stats.tasks.conflicts || 0) + (mergeResult.stats.projects.conflicts || 0);
+    const conflictCount = (mergeResult.stats.tasks.conflicts || 0)
+        + (mergeResult.stats.projects.conflicts || 0)
+        + (mergeResult.stats.sections.conflicts || 0);
     const nextSyncStatus: SyncCycleResult['status'] = conflictCount > 0 ? 'conflict' : 'success';
     const nowIso = io.now ? io.now() : new Date().toISOString();
     const conflictIds = [
         ...(mergeResult.stats.tasks.conflictIds || []),
         ...(mergeResult.stats.projects.conflictIds || []),
+        ...(mergeResult.stats.sections.conflictIds || []),
     ].slice(0, 10);
     const maxClockSkewMs = Math.max(
         mergeResult.stats.tasks.maxClockSkewMs || 0,
-        mergeResult.stats.projects.maxClockSkewMs || 0
+        mergeResult.stats.projects.maxClockSkewMs || 0,
+        mergeResult.stats.sections.maxClockSkewMs || 0
     );
     if (maxClockSkewMs > CLOCK_SKEW_THRESHOLD_MS) {
         logWarn('Sync merge detected large clock skew', {
@@ -732,7 +738,8 @@ export async function performSyncCycle(io: SyncCycleIO): Promise<SyncCycleResult
         });
     }
     const timestampAdjustments = (mergeResult.stats.tasks.timestampAdjustments || 0)
-        + (mergeResult.stats.projects.timestampAdjustments || 0);
+        + (mergeResult.stats.projects.timestampAdjustments || 0)
+        + (mergeResult.stats.sections.timestampAdjustments || 0);
     const historyEntry: SyncHistoryEntry = {
         at: nowIso,
         status: nextSyncStatus,
