@@ -36,7 +36,7 @@
     "@tauri-apps/plugin-notification": "^2.3.3",
     "@tauri-apps/plugin-shell": "^2.3.0",
     "clsx": "^2.1.0",
-    "date-fns": "^3.3.1",
+    "date-fns": "^4.1.0",
     "lucide-react": "^0.344.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
