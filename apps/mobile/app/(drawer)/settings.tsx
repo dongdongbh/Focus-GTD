@@ -836,6 +836,7 @@ export default function SettingsPage() {
             /"softwareVersion"\s*:\s*"([^"]+)"/i,
             /\\"softwareVersion\\"\s*:\s*\\"([^"]+)\\"/i,
             /itemprop="softwareVersion"[^>]*>\s*([^<]+)\s*</i,
+            /"versionName"\s*:\s*"([^"]+)"/i,
         ];
         for (const pattern of patterns) {
             const match = html.match(pattern);
@@ -850,22 +851,31 @@ export default function SettingsPage() {
     }, []);
 
     const fetchLatestPlayStoreVersion = useCallback(async () => {
-        const response = await fetch(PLAY_STORE_LOOKUP_URL, {
-            headers: {
-                'Accept': 'text/html',
-                'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36'
+        const urls = [PLAY_STORE_LOOKUP_URL, PLAY_STORE_URL];
+        let lastError: Error | null = null;
+        for (const url of urls) {
+            const response = await fetch(url, {
+                headers: {
+                    'Accept': 'text/html',
+                    'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36'
+                }
+            });
+            if (!response.ok) {
+                lastError = new Error(`Play Store request failed (${url}): ${response.status}`);
+                continue;
             }
-        });
-        if (!response.ok) {
-            throw new Error(`Play Store request failed: ${response.status}`);
+            const html = await response.text();
+            const version = parsePlayStoreVersion(html);
+            if (version) {
+                return version;
+            }
+            lastError = new Error(`Unable to parse Play Store version from ${url}`);
         }
-        const html = await response.text();
-        const version = parsePlayStoreVersion(html);
-        if (!version) {
-            throw new Error('Unable to parse Play Store version');
+        if (lastError) {
+            throw lastError;
         }
-        return version;
-    }, [PLAY_STORE_LOOKUP_URL, parsePlayStoreVersion]);
+        throw new Error('Unable to fetch Play Store version');
+    }, [PLAY_STORE_LOOKUP_URL, PLAY_STORE_URL, parsePlayStoreVersion]);
 
     useEffect(() => {
         let cancelled = false;
