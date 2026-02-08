@@ -1,5 +1,6 @@
 import { safeParseDate } from './date';
 import { logWarn } from './logger';
+import { purgeExpiredTombstones } from './sync';
 import { normalizeTaskForLoad } from './task-status';
 import type { StorageAdapter } from './storage';
 import type { AppData, Area, Project, TaskEditorFieldId } from './types';
@@ -18,6 +19,7 @@ import { generateUUID as uuidv4 } from './uuid';
 const MIGRATION_VERSION = 1;
 // Run auto-archive at most twice a day to keep background work bounded.
 const AUTO_ARCHIVE_INTERVAL_MS = 12 * 60 * 60 * 1000;
+const TOMBSTONE_CLEANUP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const TASK_EDITOR_DEFAULTS_VERSION = 3;
 const TASK_EDITOR_ALWAYS_VISIBLE: TaskEditorFieldId[] = ['status', 'project', 'description', 'checklist', 'contexts'];
 const STORAGE_TIMEOUT_MS = 15_000;
@@ -82,6 +84,8 @@ export const createSettingsActions = ({
             const shouldRunMigrations = (migrations.version ?? 0) < MIGRATION_VERSION;
             const lastAutoArchiveAt = safeParseDate(migrations.lastAutoArchiveAt)?.getTime() ?? 0;
             const shouldRunAutoArchive = Date.now() - lastAutoArchiveAt > AUTO_ARCHIVE_INTERVAL_MS;
+            const lastTombstoneCleanupAt = safeParseDate(migrations.lastTombstoneCleanupAt)?.getTime() ?? 0;
+            const shouldRunTombstoneCleanup = Date.now() - lastTombstoneCleanupAt > TOMBSTONE_CLEANUP_INTERVAL_MS;
             const nextMigrationState = { ...migrations };
             let didSettingsUpdate = false;
 
@@ -91,6 +95,10 @@ export const createSettingsActions = ({
             }
             if (shouldRunAutoArchive) {
                 nextMigrationState.lastAutoArchiveAt = nowIso;
+                didSettingsUpdate = true;
+            }
+            if (shouldRunTombstoneCleanup) {
+                nextMigrationState.lastTombstoneCleanupAt = nowIso;
                 didSettingsUpdate = true;
             }
 
@@ -337,6 +345,32 @@ export const createSettingsActions = ({
                     });
                 }
             }
+            let didTombstoneCleanup = false;
+            if (shouldRunTombstoneCleanup) {
+                const cleanup = purgeExpiredTombstones(
+                    {
+                        tasks: allTasks,
+                        projects: allProjects,
+                        sections: allSections,
+                        areas: allAreas,
+                        settings: nextSettings,
+                    },
+                    nowIso
+                );
+                allTasks = cleanup.data.tasks;
+                allProjects = cleanup.data.projects;
+                if (cleanup.removedTaskTombstones > 0 || cleanup.removedAttachmentTombstones > 0) {
+                    didTombstoneCleanup = true;
+                    logWarn('Purged expired tombstones during data fetch', {
+                        scope: 'store',
+                        category: 'storage',
+                        context: {
+                            removedTaskTombstones: cleanup.removedTaskTombstones,
+                            removedAttachmentTombstones: cleanup.removedAttachmentTombstones,
+                        },
+                    });
+                }
+            }
             // Filter out soft-deleted and archived items for day-to-day UI display
             const visibleTasks = allTasks.filter(t => !t.deletedAt && t.status !== 'archived');
             const visibleProjects = allProjects.filter(p => !p.deletedAt);
@@ -353,10 +387,10 @@ export const createSettingsActions = ({
                 _allSections: allSections,
                 _allAreas: allAreas,
                 isLoading: false,
-                lastDataChangeAt: didAutoArchive ? Date.now() : get().lastDataChangeAt,
+                lastDataChangeAt: didAutoArchive || didTombstoneCleanup ? Date.now() : get().lastDataChangeAt,
             });
 
-            if (didAutoArchive || didAreaMigration || didProjectOrderMigration || didSettingsUpdate) {
+            if (didAutoArchive || didTombstoneCleanup || didAreaMigration || didProjectOrderMigration || didSettingsUpdate) {
                 debouncedSave(
                     { tasks: allTasks, projects: allProjects, sections: allSections, areas: allAreas, settings: nextSettings },
                     (msg) => set({ error: msg })

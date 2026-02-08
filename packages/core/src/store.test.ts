@@ -122,6 +122,35 @@ describe('TaskStore', () => {
         unlockEditing();
     });
 
+    it('purges expired tombstones during fetch even without sync', async () => {
+        vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+        mockStorage.getData = vi.fn().mockResolvedValue({
+            tasks: [
+                {
+                    id: 't-old',
+                    title: 'Old tombstone',
+                    status: 'done',
+                    tags: [],
+                    contexts: [],
+                    createdAt: '2025-01-01T00:00:00.000Z',
+                    updatedAt: '2025-06-01T00:00:00.000Z',
+                    deletedAt: '2025-06-01T00:00:00.000Z',
+                    purgedAt: '2025-06-01T00:00:00.000Z',
+                },
+            ],
+            projects: [],
+            sections: [],
+            areas: [],
+            settings: {},
+        });
+
+        await useTaskStore.getState().fetchData({ silent: true });
+        await flushPendingSave();
+
+        expect(useTaskStore.getState()._allTasks).toHaveLength(0);
+        expect((mockStorage.saveData as unknown as { mock: { calls: any[][] } }).mock.calls.length).toBeGreaterThan(0);
+    });
+
     it('supports a basic task lifecycle', async () => {
         const { addTask, updateTask, moveTask } = useTaskStore.getState();
         addTask('Lifecycle Task');

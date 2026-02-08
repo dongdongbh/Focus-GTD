@@ -228,7 +228,7 @@ const pruneAttachmentTombstones = (
     };
 };
 
-const purgeExpiredTombstones = (
+export const purgeExpiredTombstones = (
     data: AppData,
     nowIso: string,
     retentionDays?: number

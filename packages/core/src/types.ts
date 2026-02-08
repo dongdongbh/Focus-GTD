@@ -269,6 +269,7 @@ export interface AppData {
         migrations?: {
             version?: number;
             lastAutoArchiveAt?: string;
+            lastTombstoneCleanupAt?: string;
         };
     };
 }
