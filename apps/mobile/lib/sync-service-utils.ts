@@ -1,12 +1,28 @@
-import { sanitizeLogMessage } from './app-log';
-
 const SYNC_FILE_NAME = 'data.json';
 const LEGACY_SYNC_FILE_NAME = 'mindwtr-sync.json';
+const AI_KEY_PATTERNS = [
+  /sk-[A-Za-z0-9]{10,}/g,
+  /sk-ant-[A-Za-z0-9]{10,}/g,
+  /rk-[A-Za-z0-9]{10,}/g,
+  /AIza[0-9A-Za-z\-_]{10,}/g,
+];
+const TOKEN_PATTERN = /(password|pass|token|access_token|api_key|apikey|authorization|username|user|secret|session|cookie)=([^\s&]+)/gi;
+const AUTH_HEADER_PATTERN = /(Authorization:\s*)(Basic|Bearer)\s+[A-Za-z0-9+\/=._-]+/gi;
+
+const sanitizeMessage = (value: string): string => {
+  let result = value;
+  result = result.replace(AUTH_HEADER_PATTERN, '$1$2 [redacted]');
+  result = result.replace(TOKEN_PATTERN, '$1=[redacted]');
+  for (const pattern of AI_KEY_PATTERNS) {
+    result = result.replace(pattern, '[redacted]');
+  }
+  return result;
+};
 
 export type SyncBackend = 'file' | 'webdav' | 'cloud' | 'off';
 
 export const formatSyncErrorMessage = (error: unknown, backend: SyncBackend): string => {
-  const raw = sanitizeLogMessage(String(error));
+  const raw = sanitizeMessage(String(error));
   if (backend !== 'webdav') return raw;
 
   const status = typeof error === 'object' && error !== null && 'status' in error
