@@ -287,6 +287,10 @@ function RootLayoutContent() {
           if (!isActive.current) return;
           updateAndroidWidgetFromStore().catch(logAppError);
         }, 800);
+        // Initial sync after cold start
+        if (!cancelled && isActive.current) {
+          requestSync(0);
+        }
       } catch (e) {
         void logError(e, { scope: 'app', extra: { message: 'Failed to load data' } });
         if (cancelled) return;
@@ -329,7 +333,7 @@ function RootLayoutContent() {
         widgetRefreshTimer.current = null;
       }
     };
-  }, [storageWarningShown, storageInitError]);
+  }, [storageWarningShown, storageInitError, requestSync]);
 
   useEffect(() => {
     let previousEnabled = useTaskStore.getState().settings.notificationsEnabled;
