@@ -42,14 +42,14 @@ Mindwtr is a cross-platform GTD application with:
 
 ```mermaid
 flowchart LR
-    Desktop[Desktop App\nTauri + React] --> Core[@mindwtr/core]
-    Mobile[Mobile App\nExpo + RN] --> Core
-    Core --> LocalDB[(SQLite)]
-    Core --> JSON[(data.json)]
-    Core --> Sync[Sync Backends]
-    Sync --> WebDAV[WebDAV]
-    Sync --> File[File Sync]
-    Sync --> Cloud[Self-hosted Cloud]
+    Desktop["Desktop App<br/>Tauri + React"] --> Core["@mindwtr/core"]
+    Mobile["Mobile App<br/>Expo + RN"] --> Core
+    Core --> LocalDB[("SQLite")]
+    Core --> JSON[("data.json")]
+    Core --> Sync["Sync Backends"]
+    Sync --> WebDAV["WebDAV"]
+    Sync --> File["File Sync"]
+    Sync --> Cloud["Self-hosted Cloud"]
 ```
 
 ---
