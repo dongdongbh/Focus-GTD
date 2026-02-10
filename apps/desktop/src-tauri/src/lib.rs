@@ -13,6 +13,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{Emitter, Manager};
 use tauri::menu::{Menu, MenuItem};
+#[cfg(target_os = "macos")]
+use tauri::menu::HELP_SUBMENU_ID;
 use tauri::path::BaseDirectory;
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::image::Image;
@@ -33,6 +35,8 @@ const KEYRING_CLOUD_TOKEN: &str = "cloud_token";
 const KEYRING_AI_OPENAI: &str = "ai_key_openai";
 const KEYRING_AI_ANTHROPIC: &str = "ai_key_anthropic";
 const KEYRING_AI_GEMINI: &str = "ai_key_gemini";
+const MENU_HELP_DOCS_ID: &str = "help_docs";
+const MENU_HELP_ISSUES_ID: &str = "help_report_issue";
 
 const SQLITE_SCHEMA: &str = r#"
 PRAGMA journal_mode = WAL;
@@ -2472,6 +2476,28 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .menu(|handle| {
+            let menu = Menu::default(handle)?;
+            #[cfg(target_os = "macos")]
+            {
+                if let Some(help_submenu) = menu.get(&HELP_SUBMENU_ID).and_then(|item| item.as_submenu().cloned()) {
+                    let docs_item = MenuItem::with_id(handle, MENU_HELP_DOCS_ID, "Mindwtr Help", true, None::<&str>)?;
+                    let issues_item = MenuItem::with_id(handle, MENU_HELP_ISSUES_ID, "Report an Issue", true, None::<&str>)?;
+                    help_submenu.append_items(&[&docs_item, &issues_item])?;
+                    let _ = help_submenu.set_as_help_menu_for_nsapp();
+                }
+            }
+            Ok(menu)
+        })
+        .on_menu_event(|_app, event| match event.id().as_ref() {
+            MENU_HELP_DOCS_ID => {
+                let _ = open::that("https://github.com/dongdongbh/Mindwtr#readme");
+            }
+            MENU_HELP_ISSUES_ID => {
+                let _ = open::that("https://github.com/dongdongbh/Mindwtr/issues");
+            }
+            _ => {}
+        })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
