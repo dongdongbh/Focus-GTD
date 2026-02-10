@@ -2480,7 +2480,7 @@ pub fn run() {
             let menu = Menu::default(handle)?;
             #[cfg(target_os = "macos")]
             {
-                if let Some(help_submenu) = menu.get(&HELP_SUBMENU_ID).and_then(|item| item.as_submenu().cloned()) {
+                if let Some(help_submenu) = menu.get(HELP_SUBMENU_ID).and_then(|item| item.as_submenu().cloned()) {
                     let docs_item = MenuItem::with_id(handle, MENU_HELP_DOCS_ID, "Mindwtr Help", true, None::<&str>)?;
                     let issues_item = MenuItem::with_id(handle, MENU_HELP_ISSUES_ID, "Report an Issue", true, None::<&str>)?;
                     help_submenu.append_items(&[&docs_item, &issues_item])?;
