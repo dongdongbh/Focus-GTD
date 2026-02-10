@@ -1,25 +1,63 @@
-import { Directory, File, Paths } from 'expo-file-system';
 import { useTaskStore } from '@mindwtr/core';
 
-let LOG_DIR: Directory | null = null;
-let LOG_FILE: File | null = null;
+type ExpoDirectory = {
+  exists: boolean;
+  create: (options: { intermediates?: boolean; idempotent?: boolean }) => void;
+  delete: () => void;
+  uri: string;
+};
+
+type ExpoFile = {
+  exists: boolean;
+  create: (options: { intermediates?: boolean; overwrite?: boolean }) => void;
+  delete: () => void;
+  write: (content: string, options?: { encoding?: string }) => void;
+  text: () => Promise<string>;
+  uri: string;
+};
+
+type ExpoFileSystemModule = {
+  Directory: new (uri: string) => ExpoDirectory;
+  File: new (uri: string) => ExpoFile;
+  Paths: { document?: { uri: string } };
+};
+
+let expoFileSystemModule: ExpoFileSystemModule | null | undefined;
+let logTargetsInitialized = false;
+let LOG_DIR: ExpoDirectory | null = null;
+let LOG_FILE: ExpoFile | null = null;
 let LOG_DIR_URI: string | null = null;
 let LOG_FILE_URI: string | null = null;
-try {
-  const baseUri = Paths.document?.uri;
-  if (baseUri) {
+
+const getExpoFileSystem = async (): Promise<ExpoFileSystemModule | null> => {
+  if (expoFileSystemModule !== undefined) return expoFileSystemModule;
+  try {
+    expoFileSystemModule = (await import('expo-file-system')) as unknown as ExpoFileSystemModule;
+  } catch {
+    expoFileSystemModule = null;
+  }
+  return expoFileSystemModule;
+};
+
+const ensureLogTargets = async (): Promise<void> => {
+  if (logTargetsInitialized) return;
+  logTargetsInitialized = true;
+  try {
+    const fs = await getExpoFileSystem();
+    const baseUri = fs?.Paths?.document?.uri;
+    if (!fs || !baseUri) return;
     const normalizedBase = baseUri.endsWith('/') ? baseUri : `${baseUri}/`;
     LOG_DIR_URI = `${normalizedBase}logs`;
     LOG_FILE_URI = `${LOG_DIR_URI}/mindwtr.log`;
-    LOG_DIR = new Directory(LOG_DIR_URI);
-    LOG_FILE = new File(LOG_FILE_URI);
+    LOG_DIR = new fs.Directory(LOG_DIR_URI);
+    LOG_FILE = new fs.File(LOG_FILE_URI);
+  } catch {
+    LOG_DIR = null;
+    LOG_FILE = null;
+    LOG_DIR_URI = null;
+    LOG_FILE_URI = null;
   }
-} catch {
-  LOG_DIR = null;
-  LOG_FILE = null;
-  LOG_DIR_URI = null;
-  LOG_FILE_URI = null;
-}
+};
 const MAX_LOG_CHARS = 200_000;
 const SENSITIVE_KEYS = [
   'token',
@@ -112,13 +150,15 @@ function sanitizeUrl(raw?: string): string | undefined {
 }
 
 async function ensureLogDir(): Promise<void> {
+  await ensureLogTargets();
   if (!LOG_DIR) return;
   if (!LOG_DIR.exists) {
     LOG_DIR.create({ intermediates: true, idempotent: true });
   }
 }
 
-function ensureLogFile(): boolean {
+async function ensureLogFile(): Promise<boolean> {
+  await ensureLogTargets();
   if (!LOG_DIR || !LOG_FILE) return false;
   if (!LOG_DIR.exists) {
     LOG_DIR.create({ intermediates: true, idempotent: true });
@@ -128,8 +168,9 @@ function ensureLogFile(): boolean {
       LOG_FILE.create({ intermediates: true, overwrite: true });
     } catch (error) {
       // If a directory exists where the log file should be, remove it and retry.
-      if (LOG_FILE_URI && LOG_DIR_URI && LOG_FILE_URI !== Paths.document?.uri) {
-        const strayDir = new Directory(LOG_FILE_URI);
+      const fs = await getExpoFileSystem();
+      if (LOG_FILE_URI && LOG_DIR_URI && LOG_FILE_URI !== fs?.Paths?.document?.uri && fs) {
+        const strayDir = new fs.Directory(LOG_FILE_URI);
         if (strayDir.exists) {
           try {
             strayDir.delete();
@@ -152,10 +193,10 @@ function isLoggingEnabled(): boolean {
 
 async function appendLogLine(entry: LogEntry): Promise<string | null> {
   if (!isLoggingEnabled()) return null;
-  if (!LOG_FILE) return null;
   try {
     await ensureLogDir();
-    if (!ensureLogFile()) return null;
+    if (!await ensureLogFile()) return null;
+    if (!LOG_FILE) return null;
     const line = `${JSON.stringify(entry)}\n`;
     const current = LOG_FILE.exists ? await LOG_FILE.text().catch(() => '') : '';
     let next = current + line;
@@ -170,14 +211,16 @@ async function appendLogLine(entry: LogEntry): Promise<string | null> {
 }
 
 export async function getLogPath(): Promise<string | null> {
+  await ensureLogTargets();
   return LOG_FILE?.uri ?? null;
 }
 
 export async function ensureLogFilePath(): Promise<string | null> {
-  if (!LOG_FILE) return null;
+  await ensureLogTargets();
   try {
     await ensureLogDir();
-    if (!ensureLogFile()) return null;
+    if (!await ensureLogFile()) return null;
+    if (!LOG_FILE) return null;
     if (!LOG_FILE.exists) return null;
     return LOG_FILE.uri;
   } catch {
@@ -186,14 +229,16 @@ export async function ensureLogFilePath(): Promise<string | null> {
 }
 
 export async function clearLog(): Promise<void> {
+  await ensureLogTargets();
   if (!LOG_FILE) return;
   try {
     if (LOG_FILE.exists) {
       LOG_FILE.delete();
       return;
     }
-    if (LOG_FILE_URI && LOG_FILE_URI !== Paths.document?.uri) {
-      const strayDir = new Directory(LOG_FILE_URI);
+    const fs = await getExpoFileSystem();
+    if (LOG_FILE_URI && LOG_FILE_URI !== fs?.Paths?.document?.uri && fs) {
+      const strayDir = new fs.Directory(LOG_FILE_URI);
       if (strayDir.exists) {
         strayDir.delete();
       }
