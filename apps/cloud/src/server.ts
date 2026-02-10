@@ -289,6 +289,7 @@ async function main() {
     const rateLimits = new Map<string, RateLimitState>();
     const windowMs = Number(process.env.MINDWTR_CLOUD_RATE_WINDOW_MS || 60_000);
     const maxPerWindow = Number(process.env.MINDWTR_CLOUD_RATE_MAX || 120);
+    const maxAttachmentPerWindow = Number(process.env.MINDWTR_CLOUD_ATTACHMENT_RATE_MAX || maxPerWindow);
     const maxBodyBytes = Number(process.env.MINDWTR_CLOUD_MAX_BODY_BYTES || 2_000_000);
     const maxAttachmentBytes = Number(process.env.MINDWTR_CLOUD_MAX_ATTACHMENT_BYTES || 50_000_000);
     const encoder = new TextEncoder();
@@ -590,10 +591,11 @@ async function main() {
                 if (!token) return errorResponse('Unauthorized', 401);
                 const key = tokenToKey(token);
                 const now = Date.now();
-                const state = rateLimits.get(key);
+                const attachmentRateKey = `${key}:${req.method}:${toRateLimitRoute(pathname)}`;
+                const state = rateLimits.get(attachmentRateKey);
                 if (state && now < state.resetAt) {
                     state.count += 1;
-                    if (state.count > maxPerWindow) {
+                    if (state.count > maxAttachmentPerWindow) {
                         const retryAfter = Math.ceil((state.resetAt - now) / 1000);
                         return jsonResponse(
                             { error: 'Rate limit exceeded', retryAfterSeconds: retryAfter },
@@ -601,7 +603,7 @@ async function main() {
                         );
                     }
                 } else {
-                    rateLimits.set(key, { count: 1, resetAt: now + windowMs });
+                    rateLimits.set(attachmentRateKey, { count: 1, resetAt: now + windowMs });
                 }
 
                 const resolvedAttachmentPath = resolveAttachmentPath(dataDir, key, pathname.slice('/v1/attachments/'.length));
