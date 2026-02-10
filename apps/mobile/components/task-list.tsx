@@ -830,7 +830,7 @@ function TaskListComponent({
             <TextInput
               value={tagInput}
               onChangeText={setTagInput}
-              placeholder="#tag"
+              placeholder={t('taskEdit.tagsLabel')}
               placeholderTextColor={themeColors.secondaryText}
               style={[
                 styles.modalInput,

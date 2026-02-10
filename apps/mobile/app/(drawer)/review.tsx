@@ -326,7 +326,7 @@ export default function ReviewScreen() {
             <TextInput
               value={tagInput}
               onChangeText={setTagInput}
-              placeholder="#tag"
+              placeholder={t('taskEdit.tagsLabel')}
               placeholderTextColor={tc.secondaryText}
               style={[styles.modalInput, { backgroundColor: tc.filterBg, color: tc.text, borderColor: tc.border }]}
             />

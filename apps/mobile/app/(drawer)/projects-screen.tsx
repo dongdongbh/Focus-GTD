@@ -1394,7 +1394,7 @@ export default function ProjectsScreen() {
               <TextInput
                 value={tagDraft}
                 onChangeText={setTagDraft}
-                placeholder="#tag"
+                placeholder={t('taskEdit.tagsLabel')}
                 placeholderTextColor={tc.secondaryText}
                 style={[styles.tagInput, { color: tc.text }]}
                 autoCapitalize="none"
