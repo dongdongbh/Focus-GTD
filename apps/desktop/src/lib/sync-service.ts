@@ -405,14 +405,15 @@ async function syncAttachments(
     }
 
     const baseDataDir = await dataDir();
+    const workingData = cloneAppData(appData);
 
     const attachmentsById = new Map<string, Attachment>();
-    for (const task of appData.tasks) {
+    for (const task of workingData.tasks) {
         for (const attachment of task.attachments || []) {
             attachmentsById.set(attachment.id, attachment);
         }
     }
-    for (const project of appData.projects) {
+    for (const project of workingData.projects) {
         for (const attachment of project.attachments || []) {
             attachmentsById.set(attachment.id, attachment);
         }
@@ -683,6 +684,13 @@ async function syncAttachments(
 
     if (abortedByRateLimit) {
         logSyncWarning('WebDAV attachment sync aborted due to rate limiting');
+    }
+    if (didMutate) {
+        appData.tasks = workingData.tasks;
+        appData.projects = workingData.projects;
+        appData.sections = workingData.sections;
+        appData.areas = workingData.areas;
+        appData.settings = workingData.settings;
     }
     logSyncInfo('WebDAV attachment sync done', { mutated: didMutate ? 'true' : 'false' });
     return didMutate;
