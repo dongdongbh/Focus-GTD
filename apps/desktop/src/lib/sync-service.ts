@@ -713,6 +713,58 @@ async function syncAttachments(
     return didMutate;
 }
 
+type BasicRemoteAttachmentSyncOptions = {
+    attachmentsById: Map<string, Attachment>;
+    localFileExists: (path: string) => Promise<boolean>;
+    onUpload: (attachment: Attachment, localPath: string) => Promise<boolean>;
+    onUploadError: (attachment: Attachment, error: unknown) => void;
+    onDownload: (attachment: Attachment) => Promise<boolean>;
+    onDownloadError: (attachment: Attachment, error: unknown) => void;
+};
+
+async function syncBasicRemoteAttachments(options: BasicRemoteAttachmentSyncOptions): Promise<boolean> {
+    let didMutate = false;
+
+    for (const attachment of options.attachmentsById.values()) {
+        if (attachment.kind !== 'file') continue;
+        if (attachment.deletedAt) continue;
+
+        const rawUri = attachment.uri ? stripFileScheme(attachment.uri) : '';
+        const isHttp = /^https?:\/\//i.test(rawUri);
+        const localPath = isHttp ? '' : rawUri;
+        const hasLocalPath = Boolean(localPath);
+        const existsLocally = hasLocalPath ? await options.localFileExists(localPath) : false;
+
+        const nextStatus: Attachment['localStatus'] = existsLocally ? 'available' : 'missing';
+        if (attachment.localStatus !== nextStatus) {
+            attachment.localStatus = nextStatus;
+            didMutate = true;
+        }
+
+        if (!attachment.cloudKey && existsLocally) {
+            try {
+                if (await options.onUpload(attachment, localPath)) {
+                    didMutate = true;
+                }
+            } catch (error) {
+                options.onUploadError(attachment, error);
+            }
+        }
+
+        if (attachment.cloudKey && !existsLocally) {
+            try {
+                if (await options.onDownload(attachment)) {
+                    didMutate = true;
+                }
+            } catch (error) {
+                options.onDownloadError(attachment, error);
+            }
+        }
+    }
+
+    return didMutate;
+}
+
 async function syncCloudAttachments(
     appData: AppData,
     cloudConfig: CloudConfig,
@@ -756,121 +808,99 @@ async function syncCloudAttachments(
         }
     };
 
-    let didMutate = false;
-
-    for (const attachment of attachmentsById.values()) {
-        if (attachment.kind !== 'file') continue;
-        if (attachment.deletedAt) continue;
-
-        const rawUri = attachment.uri ? stripFileScheme(attachment.uri) : '';
-        const isHttp = /^https?:\/\//i.test(rawUri);
-        const localPath = isHttp ? '' : rawUri;
-        const hasLocalPath = Boolean(localPath);
-        const existsLocally = hasLocalPath ? await localFileExists(localPath) : false;
-
-        const nextStatus: Attachment['localStatus'] = existsLocally ? 'available' : 'missing';
-        if (attachment.localStatus !== nextStatus) {
-            attachment.localStatus = nextStatus;
-            didMutate = true;
-        }
-
-        if (!attachment.cloudKey && existsLocally) {
+    return await syncBasicRemoteAttachments({
+        attachmentsById,
+        localFileExists,
+        onUpload: async (attachment, localPath) => {
             const cloudKey = buildCloudKey(attachment);
-            try {
-                const fileData = await readLocalFile(localPath);
-                const validation = await validateAttachmentForUpload(attachment, fileData.length);
-                if (!validation.valid) {
-                    logSyncWarning(`Attachment validation failed (${validation.error}) for ${attachment.title}`);
-                    continue;
-                }
-                reportProgress(attachment.id, 'upload', 0, fileData.length, 'active');
-                await withRetry(
-                    () => cloudPutFile(
-                        `${baseSyncUrl}/${cloudKey}`,
-                        fileData,
-                        attachment.mimeType || 'application/octet-stream',
-                        {
-                            token: cloudConfig.token,
-                            fetcher,
-                            timeoutMs: UPLOAD_TIMEOUT_MS,
-                            onProgress: (loaded, total) => reportProgress(attachment.id, 'upload', loaded, total, 'active'),
-                        }
-                    ),
-                    {
-                        ...CLOUD_ATTACHMENT_RETRY_OPTIONS,
-                        onRetry: (error, attempt, delayMs) => {
-                            logSyncInfo('Retrying cloud attachment upload', {
-                                id: attachment.id,
-                                attempt: String(attempt + 1),
-                                delayMs: String(delayMs),
-                                error: sanitizeLogMessage(error instanceof Error ? error.message : String(error)),
-                            });
-                        },
-                    }
-                );
-                attachment.cloudKey = cloudKey;
-                attachment.localStatus = 'available';
-                didMutate = true;
-                reportProgress(attachment.id, 'upload', fileData.length, fileData.length, 'completed');
-            } catch (error) {
-                reportProgress(
-                    attachment.id,
-                    'upload',
-                    0,
-                    attachment.size ?? 0,
-                    'failed',
-                    error instanceof Error ? error.message : String(error)
-                );
-                logSyncWarning(`Failed to upload attachment ${attachment.title}`, error);
+            const fileData = await readLocalFile(localPath);
+            const validation = await validateAttachmentForUpload(attachment, fileData.length);
+            if (!validation.valid) {
+                logSyncWarning(`Attachment validation failed (${validation.error}) for ${attachment.title}`);
+                return false;
             }
-        }
-
-        if (attachment.cloudKey && !existsLocally) {
-            try {
-                const downloadUrl = `${baseSyncUrl}/${attachment.cloudKey}`;
-                const fileData = await withRetry(() =>
-                    cloudGetFile(downloadUrl, {
+            reportProgress(attachment.id, 'upload', 0, fileData.length, 'active');
+            await withRetry(
+                () => cloudPutFile(
+                    `${baseSyncUrl}/${cloudKey}`,
+                    fileData,
+                    attachment.mimeType || 'application/octet-stream',
+                    {
                         token: cloudConfig.token,
                         fetcher,
-                        onProgress: (loaded, total) => reportProgress(attachment.id, 'download', loaded, total, 'active'),
-                    })
-                );
-                const bytes = fileData instanceof ArrayBuffer ? new Uint8Array(fileData) : new Uint8Array(fileData as ArrayBuffer);
-                await validateAttachmentHash(attachment, bytes);
-                const filename = attachment.cloudKey.split('/').pop() || `${attachment.id}${extractExtension(attachment.uri)}`;
-                const relativePath = `${LOCAL_ATTACHMENTS_DIR}/${filename}`;
-                await writeAttachmentFileSafely(relativePath, bytes, {
-                    baseDir: BaseDirectory.Data,
-                    writeFile,
-                    rename,
-                    remove,
-                });
-                const absolutePath = await join(baseDataDir, relativePath);
-                attachment.uri = absolutePath;
-                if (attachment.localStatus !== 'available') {
-                    attachment.localStatus = 'available';
-                    didMutate = true;
+                        timeoutMs: UPLOAD_TIMEOUT_MS,
+                        onProgress: (loaded, total) => reportProgress(attachment.id, 'upload', loaded, total, 'active'),
+                    }
+                ),
+                {
+                    ...CLOUD_ATTACHMENT_RETRY_OPTIONS,
+                    onRetry: (error, attempt, delayMs) => {
+                        logSyncInfo('Retrying cloud attachment upload', {
+                            id: attachment.id,
+                            attempt: String(attempt + 1),
+                            delayMs: String(delayMs),
+                            error: sanitizeLogMessage(error instanceof Error ? error.message : String(error)),
+                        });
+                    },
                 }
-                reportProgress(attachment.id, 'download', bytes.length, bytes.length, 'completed');
-            } catch (error) {
-                if (attachment.localStatus !== 'missing') {
-                    attachment.localStatus = 'missing';
-                    didMutate = true;
-                }
-                reportProgress(
-                    attachment.id,
-                    'download',
-                    0,
-                    attachment.size ?? 0,
-                    'failed',
-                    error instanceof Error ? error.message : String(error)
-                );
-                logSyncWarning(`Failed to download attachment ${attachment.title}`, error);
+            );
+            attachment.cloudKey = cloudKey;
+            attachment.localStatus = 'available';
+            reportProgress(attachment.id, 'upload', fileData.length, fileData.length, 'completed');
+            return true;
+        },
+        onUploadError: (attachment, error) => {
+            reportProgress(
+                attachment.id,
+                'upload',
+                0,
+                attachment.size ?? 0,
+                'failed',
+                error instanceof Error ? error.message : String(error)
+            );
+            logSyncWarning(`Failed to upload attachment ${attachment.title}`, error);
+        },
+        onDownload: async (attachment) => {
+            if (!attachment.cloudKey) return false;
+            const downloadUrl = `${baseSyncUrl}/${attachment.cloudKey}`;
+            const fileData = await withRetry(() =>
+                cloudGetFile(downloadUrl, {
+                    token: cloudConfig.token,
+                    fetcher,
+                    onProgress: (loaded, total) => reportProgress(attachment.id, 'download', loaded, total, 'active'),
+                })
+            );
+            const bytes = fileData instanceof ArrayBuffer ? new Uint8Array(fileData) : new Uint8Array(fileData as ArrayBuffer);
+            await validateAttachmentHash(attachment, bytes);
+            const filename = attachment.cloudKey.split('/').pop() || `${attachment.id}${extractExtension(attachment.uri)}`;
+            const relativePath = `${LOCAL_ATTACHMENTS_DIR}/${filename}`;
+            await writeAttachmentFileSafely(relativePath, bytes, {
+                baseDir: BaseDirectory.Data,
+                writeFile,
+                rename,
+                remove,
+            });
+            const absolutePath = await join(baseDataDir, relativePath);
+            attachment.uri = absolutePath;
+            const statusChanged = attachment.localStatus !== 'available';
+            if (statusChanged) {
+                attachment.localStatus = 'available';
             }
-        }
-    }
-
-    return didMutate;
+            reportProgress(attachment.id, 'download', bytes.length, bytes.length, 'completed');
+            return statusChanged;
+        },
+        onDownloadError: (attachment, error) => {
+            reportProgress(
+                attachment.id,
+                'download',
+                0,
+                attachment.size ?? 0,
+                'failed',
+                error instanceof Error ? error.message : String(error)
+            );
+            logSyncWarning(`Failed to download attachment ${attachment.title}`, error);
+        },
+    });
 }
 
 async function syncFileAttachments(
@@ -921,79 +951,57 @@ async function syncFileAttachments(
         }
     };
 
-    let didMutate = false;
-
-    for (const attachment of attachmentsById.values()) {
-        if (attachment.kind !== 'file') continue;
-        if (attachment.deletedAt) continue;
-
-        const rawUri = attachment.uri ? stripFileScheme(attachment.uri) : '';
-        const isHttp = /^https?:\/\//i.test(rawUri);
-        const localPath = isHttp ? '' : rawUri;
-        const hasLocalPath = Boolean(localPath);
-        const existsLocally = hasLocalPath ? await localFileExists(localPath) : false;
-
-        const nextStatus: Attachment['localStatus'] = existsLocally ? 'available' : 'missing';
-        if (attachment.localStatus !== nextStatus) {
-            attachment.localStatus = nextStatus;
-            didMutate = true;
-        }
-
-        if (!attachment.cloudKey && existsLocally) {
+    return await syncBasicRemoteAttachments({
+        attachmentsById,
+        localFileExists,
+        onUpload: async (attachment, localPath) => {
             const cloudKey = buildCloudKey(attachment);
-            try {
-                const fileData = await readLocalFile(localPath);
-                const validation = await validateAttachmentForUpload(attachment, fileData.length, FILE_BACKEND_VALIDATION_CONFIG);
-                if (!validation.valid) {
-                    logSyncWarning(`Attachment validation failed (${validation.error}) for ${attachment.title}`);
-                    continue;
-                }
-                const targetPath = await join(baseSyncDir, cloudKey);
-                await writeFileSafelyAbsolute(targetPath, fileData, {
-                    writeFile,
-                    rename,
-                    remove,
-                });
-                attachment.cloudKey = cloudKey;
+            const fileData = await readLocalFile(localPath);
+            const validation = await validateAttachmentForUpload(attachment, fileData.length, FILE_BACKEND_VALIDATION_CONFIG);
+            if (!validation.valid) {
+                logSyncWarning(`Attachment validation failed (${validation.error}) for ${attachment.title}`);
+                return false;
+            }
+            const targetPath = await join(baseSyncDir, cloudKey);
+            await writeFileSafelyAbsolute(targetPath, fileData, {
+                writeFile,
+                rename,
+                remove,
+            });
+            attachment.cloudKey = cloudKey;
+            attachment.localStatus = 'available';
+            return true;
+        },
+        onUploadError: (attachment, error) => {
+            logSyncWarning(`Failed to copy attachment ${attachment.title} to sync folder`, error);
+        },
+        onDownload: async (attachment) => {
+            if (!attachment.cloudKey) return false;
+            const sourcePath = await join(baseSyncDir, attachment.cloudKey);
+            const hasRemote = await exists(sourcePath);
+            if (!hasRemote) return false;
+            const fileData = await readFile(sourcePath);
+            await validateAttachmentHash(attachment, fileData);
+            const filename = attachment.cloudKey.split('/').pop() || `${attachment.id}${extractExtension(attachment.uri)}`;
+            const relativePath = `${LOCAL_ATTACHMENTS_DIR}/${filename}`;
+            await writeAttachmentFileSafely(relativePath, fileData, {
+                baseDir: BaseDirectory.Data,
+                writeFile,
+                rename,
+                remove,
+            });
+            const absolutePath = await join(baseDataDir, relativePath);
+            attachment.uri = absolutePath;
+            const statusChanged = attachment.localStatus !== 'available';
+            if (statusChanged) {
                 attachment.localStatus = 'available';
-                didMutate = true;
-            } catch (error) {
-                logSyncWarning(`Failed to copy attachment ${attachment.title} to sync folder`, error);
             }
-        }
-
-        if (attachment.cloudKey && !existsLocally) {
-            try {
-                const sourcePath = await join(baseSyncDir, attachment.cloudKey);
-                const hasRemote = await exists(sourcePath);
-                if (!hasRemote) continue;
-                const fileData = await readFile(sourcePath);
-                await validateAttachmentHash(attachment, fileData);
-                const filename = attachment.cloudKey.split('/').pop() || `${attachment.id}${extractExtension(attachment.uri)}`;
-                const relativePath = `${LOCAL_ATTACHMENTS_DIR}/${filename}`;
-                await writeAttachmentFileSafely(relativePath, fileData, {
-                    baseDir: BaseDirectory.Data,
-                    writeFile,
-                    rename,
-                    remove,
-                });
-                const absolutePath = await join(baseDataDir, relativePath);
-                attachment.uri = absolutePath;
-                if (attachment.localStatus !== 'available') {
-                    attachment.localStatus = 'available';
-                    didMutate = true;
-                }
-            } catch (error) {
-                if (attachment.localStatus !== 'missing') {
-                    attachment.localStatus = 'missing';
-                    didMutate = true;
-                }
-                logSyncWarning(`Failed to copy attachment ${attachment.title} from sync folder`, error);
-            }
-        }
-    }
-
-    return didMutate;
+            return statusChanged;
+        },
+        onDownloadError: (attachment, error) => {
+            logSyncWarning(`Failed to copy attachment ${attachment.title} from sync folder`, error);
+        },
+    });
 }
 
 export class SyncService {
