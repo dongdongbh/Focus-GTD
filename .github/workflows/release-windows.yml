@@ -214,20 +214,22 @@ jobs:
             exit 0
           }
 
+          $statusText = ($statusOutput | Out-String)
           $status = ''
-          $pendingMatch = [regex]::Match($statusOutput, 'Pending Submission.*?Submission Status\\s*=\\s*(\\w+)', 'Singleline')
+          $pendingMatch = [regex]::Match($statusText, 'Pending Submission.*?Submission Status\\s*=\\s*(\\w+)', 'Singleline')
           if ($pendingMatch.Success) {
             $status = $pendingMatch.Groups[1].Value
           } else {
-            $statusMatch = [regex]::Match($statusOutput, 'Submission Status\\s*=\\s*(\\w+)')
+            $statusMatch = [regex]::Match($statusText, 'Submission Status\\s*=\\s*(\\w+)')
             if ($statusMatch.Success) {
               $status = $statusMatch.Groups[1].Value
             }
           }
-          $blockedStatuses = @('CommitStarted', 'PreProcessing', 'Certification', 'PendingCommit', 'InProgress')
-          $blocked = $blockedStatuses -contains $status
+          $blockedStatuses = @('CommitStarted', 'PreProcessing', 'Certification', 'InCertification', 'PendingCommit', 'InProgress')
+          $blockedRegex = '(?i)(CommitStarted|PreProcessing|Certification|InCertification|PendingCommit|InProgress|Pending[\s_-]*Submission)'
+          $blocked = ($blockedStatuses -contains $status) -or ($statusText -match $blockedRegex)
           if ($blocked) {
-            Write-Warning "Store submission in progress. Skipping Store update. Status: $statusOutput"
+            Write-Warning "Store submission in progress. Skipping Store update. Status: $statusText"
             "skip=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
             exit 0
           }
@@ -331,6 +333,11 @@ jobs:
           if ($packagesJson) {
             $metadataJson = $metadataJson.Replace('"ApplicationPackages":"__PACKAGES__"', '"ApplicationPackages":' + $packagesJson)
           }
+          $isStoreBusy = {
+            param([string]$text)
+            if ([string]::IsNullOrWhiteSpace($text)) { return $false }
+            return $text -match '(?i)(InvalidState|CommitStarted|PreProcessing|Certification|InCertification|PendingCommit|InProgress|Pending[\s_-]*Submission|Another\s+submission|already\s+.*submission)'
+          }
           $maxRetries = 3
           $delaySeconds = 30
           $success = $false
@@ -362,8 +369,13 @@ jobs:
               $success = $true
               break
             }
-            if ($updateOutput -match 'InvalidState' -or $updateOutput -match 'certification' -or $updateOutput -match 'Pending Submission') {
+            if (& $isStoreBusy $updateOutput) {
               Write-Warning "Store submission is in certification. Skipping metadata update."
+              exit 0
+            }
+            $statusRecheckOutput = & msstore submission status $env:MS_STORE_APP_ID 2>&1
+            if ($LASTEXITCODE -eq 0 -and (& $isStoreBusy ($statusRecheckOutput | Out-String))) {
+              Write-Warning "Store submission moved into certification/in-progress state. Skipping metadata update. Status: $statusRecheckOutput"
               exit 0
             }
             if ($updateOutput -match '504' -or $updateOutput -match 'Gateway' -or $updateOutput -match 'timeout' -or $updateOutput -match 'timed out') {
@@ -389,7 +401,7 @@ jobs:
           $msix = (Resolve-Path "mindwtr_${{ steps.version.outputs.version }}_x64.msix").Path
           $publishOutput = & msstore publish $msix -id $env:MS_STORE_APP_ID 2>&1
           if ($LASTEXITCODE -ne 0) {
-            if ($publishOutput -match 'InvalidState' -or $publishOutput -match 'certification' -or $publishOutput -match 'Pending Submission') {
+            if ($publishOutput -match '(?i)(InvalidState|Certification|InCertification|CommitStarted|PreProcessing|PendingCommit|InProgress|Pending[\s_-]*Submission|Another\s+submission|already\s+.*submission)') {
               Write-Warning "Store submission is already in certification. Skipping publish."
               exit 0
             }
