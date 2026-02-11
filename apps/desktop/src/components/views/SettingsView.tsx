@@ -776,94 +776,44 @@ export function SettingsView() {
         { id: 'about', icon: Info, label: t.about, badge: hasUpdateBadge, badgeLabel: t.updateAvailable, keywords: ['version', 'update', 'license', 'sponsor'] },
     ], [hasUpdateBadge, t]);
 
-    const SyncPage = () => {
-        const {
-            syncPath,
-            setSyncPath,
-            isSyncing,
-            syncQueued,
-            syncLastResult,
-            syncLastResultAt,
-            syncError,
-            syncBackend,
-            webdavUrl,
-            setWebdavUrl,
-            webdavUsername,
-            setWebdavUsername,
-            webdavPassword,
-            setWebdavPassword,
-            webdavHasPassword,
-            isSavingWebDav,
-            cloudUrl,
-            setCloudUrl,
-            cloudToken,
-            setCloudToken,
-            handleSaveSyncPath,
-            handleChangeSyncLocation,
-            handleSetSyncBackend,
-            handleSaveWebDav,
-            handleSaveCloud,
-            handleSync,
-        } = useSyncSettings({
-            isTauri,
-            showSaved,
-            selectSyncFolderTitle,
-        });
-        const syncPreferences = settings?.syncPreferences ?? {};
-        const handleUpdateSyncPreferences = useCallback((updates: Partial<NonNullable<AppData['settings']['syncPreferences']>>) => {
-            updateSettings({ syncPreferences: { ...syncPreferences, ...updates } })
-                .then(showSaved)
-                .catch((error) => reportError('Failed to update sync preferences', error));
-        }, [syncPreferences, showSaved, updateSettings]);
-
-        return (
-            <SettingsSyncPage
-                t={t}
-                isTauri={isTauri}
-                loggingEnabled={loggingEnabled}
-                logPath={logPath}
-                onToggleLogging={toggleLogging}
-                onClearLog={handleClearLog}
-                syncBackend={syncBackend}
-                onSetSyncBackend={handleSetSyncBackend}
-                syncPath={syncPath}
-                onSyncPathChange={setSyncPath}
-                onSaveSyncPath={handleSaveSyncPath}
-                onBrowseSyncPath={handleChangeSyncLocation}
-                webdavUrl={webdavUrl}
-                webdavUsername={webdavUsername}
-                webdavPassword={webdavPassword}
-                webdavHasPassword={webdavHasPassword}
-                isSavingWebDav={isSavingWebDav}
-                onWebdavUrlChange={setWebdavUrl}
-                onWebdavUsernameChange={setWebdavUsername}
-                onWebdavPasswordChange={setWebdavPassword}
-                onSaveWebDav={handleSaveWebDav}
-                cloudUrl={cloudUrl}
-                cloudToken={cloudToken}
-                onCloudUrlChange={setCloudUrl}
-                onCloudTokenChange={setCloudToken}
-                onSaveCloud={handleSaveCloud}
-                onSyncNow={handleSync}
-                isSyncing={isSyncing}
-                syncQueued={syncQueued}
-                syncLastResult={syncLastResult}
-                syncLastResultAt={syncLastResultAt}
-                syncError={syncError}
-                syncPreferences={syncPreferences}
-                onUpdateSyncPreferences={handleUpdateSyncPreferences}
-                lastSyncDisplay={lastSyncDisplay}
-                lastSyncStatus={lastSyncStatus}
-                lastSyncStats={lastSyncStats}
-                lastSyncHistory={lastSyncHistory}
-                conflictCount={conflictCount}
-                lastSyncError={settings?.lastSyncError}
-                attachmentsLastCleanupDisplay={attachmentsLastCleanupDisplay}
-                onRunAttachmentsCleanup={handleAttachmentsCleanup}
-                isCleaningAttachments={isCleaningAttachments}
-            />
-        );
-    };
+    const {
+        syncPath,
+        setSyncPath,
+        isSyncing,
+        syncQueued,
+        syncLastResult,
+        syncLastResultAt,
+        syncError,
+        syncBackend,
+        webdavUrl,
+        setWebdavUrl,
+        webdavUsername,
+        setWebdavUsername,
+        webdavPassword,
+        setWebdavPassword,
+        webdavHasPassword,
+        isSavingWebDav,
+        cloudUrl,
+        setCloudUrl,
+        cloudToken,
+        setCloudToken,
+        handleSaveSyncPath,
+        handleChangeSyncLocation,
+        handleSetSyncBackend,
+        handleSaveWebDav,
+        handleSaveCloud,
+        handleSync,
+    } = useSyncSettings({
+        isTauri,
+        showSaved,
+        selectSyncFolderTitle,
+    });
+    const syncPreferences = settings?.syncPreferences ?? {};
+    const handleUpdateSyncPreferences = useCallback((updates: Partial<NonNullable<AppData['settings']['syncPreferences']>>) => {
+        updateSettings({ syncPreferences: { ...syncPreferences, ...updates } })
+            .then(showSaved)
+            .catch((error) => reportError('Failed to update sync preferences', error));
+    }, [syncPreferences, showSaved, updateSettings]);
 
     const CalendarPage = () => {
         const {
@@ -1003,7 +953,53 @@ export function SettingsView() {
         }
 
         if (page === 'sync') {
-            return <SyncPage />;
+            return (
+                <SettingsSyncPage
+                    t={t}
+                    isTauri={isTauri}
+                    loggingEnabled={loggingEnabled}
+                    logPath={logPath}
+                    onToggleLogging={toggleLogging}
+                    onClearLog={handleClearLog}
+                    syncBackend={syncBackend}
+                    onSetSyncBackend={handleSetSyncBackend}
+                    syncPath={syncPath}
+                    onSyncPathChange={setSyncPath}
+                    onSaveSyncPath={handleSaveSyncPath}
+                    onBrowseSyncPath={handleChangeSyncLocation}
+                    webdavUrl={webdavUrl}
+                    webdavUsername={webdavUsername}
+                    webdavPassword={webdavPassword}
+                    webdavHasPassword={webdavHasPassword}
+                    isSavingWebDav={isSavingWebDav}
+                    onWebdavUrlChange={setWebdavUrl}
+                    onWebdavUsernameChange={setWebdavUsername}
+                    onWebdavPasswordChange={setWebdavPassword}
+                    onSaveWebDav={handleSaveWebDav}
+                    cloudUrl={cloudUrl}
+                    cloudToken={cloudToken}
+                    onCloudUrlChange={setCloudUrl}
+                    onCloudTokenChange={setCloudToken}
+                    onSaveCloud={handleSaveCloud}
+                    onSyncNow={handleSync}
+                    isSyncing={isSyncing}
+                    syncQueued={syncQueued}
+                    syncLastResult={syncLastResult}
+                    syncLastResultAt={syncLastResultAt}
+                    syncError={syncError}
+                    syncPreferences={syncPreferences}
+                    onUpdateSyncPreferences={handleUpdateSyncPreferences}
+                    lastSyncDisplay={lastSyncDisplay}
+                    lastSyncStatus={lastSyncStatus}
+                    lastSyncStats={lastSyncStats}
+                    lastSyncHistory={lastSyncHistory}
+                    conflictCount={conflictCount}
+                    lastSyncError={settings?.lastSyncError}
+                    attachmentsLastCleanupDisplay={attachmentsLastCleanupDisplay}
+                    onRunAttachmentsCleanup={handleAttachmentsCleanup}
+                    isCleaningAttachments={isCleaningAttachments}
+                />
+            );
         }
 
         if (page === 'about') {
