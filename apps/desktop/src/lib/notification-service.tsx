@@ -1,4 +1,4 @@
-import { getDailyDigestSummary, getNextScheduledAt, stripMarkdown, type Language, Task, parseTimeOfDay, getTranslationsSync, loadTranslations, loadStoredLanguageSync, safeParseDate, hasTimeComponent } from '@mindwtr/core';
+import { getDailyDigestSummary, getNextScheduledAt, stripMarkdown, type Language, Task, parseTimeOfDay, getTranslationsSync, loadTranslations, loadStoredLanguageSync, safeParseDate, hasTimeComponent, getSystemDefaultLanguage } from '@mindwtr/core';
 import { useTaskStore } from '@mindwtr/core';
 import { isTauriRuntime } from './runtime';
 
@@ -25,7 +25,7 @@ const CHECK_INTERVAL_MS = 15_000;
 
 function getCurrentLanguage(): Language {
     if (typeof localStorage === 'undefined') return 'en';
-    return loadStoredLanguageSync(localStorage);
+    return loadStoredLanguageSync(localStorage, getSystemDefaultLanguage());
 }
 
 function localDateKey(date: Date): string {

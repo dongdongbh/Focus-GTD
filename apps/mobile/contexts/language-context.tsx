@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { type Language, loadTranslations, loadStoredLanguage, saveStoredLanguage } from '@mindwtr/core';
+import { type Language, getSystemDefaultLanguage, loadTranslations, loadStoredLanguage, saveStoredLanguage } from '@mindwtr/core';
 import { logError } from '../lib/app-log';
 
 export type { Language };
@@ -18,7 +18,7 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-    const [language, setLanguageState] = useState<Language>('en');
+    const [language, setLanguageState] = useState<Language>(() => getSystemDefaultLanguage());
     const [translationsMap, setTranslationsMap] = useState<Record<string, string>>({});
     const [fallbackTranslations, setFallbackTranslations] = useState<Record<string, string>>({});
     const [hasLoadedLanguage, setHasLoadedLanguage] = useState(false);
@@ -41,7 +41,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
     const loadLanguage = async () => {
         try {
-            const saved = await loadStoredLanguage(AsyncStorage);
+            const saved = await loadStoredLanguage(AsyncStorage, getSystemDefaultLanguage());
             setLanguageState(saved);
         } catch (error) {
             void logError(error, { scope: 'i18n', extra: { message: 'Failed to load language' } });

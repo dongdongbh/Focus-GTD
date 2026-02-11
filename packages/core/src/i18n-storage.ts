@@ -11,6 +11,48 @@ type KeyValueStorageAsync = {
     setItem: (key: string, value: string) => Promise<void>;
 };
 
+const WELL_SUPPORTED_DEFAULT_LANGUAGES = new Set<Language>(['en', 'zh', 'es']);
+
+/**
+ * Resolve app language from a locale string.
+ * Only auto-selects languages we consider well-supported; otherwise falls back to English.
+ */
+export function resolveLanguageFromLocale(locale: string | null | undefined, fallback: Language = 'en'): Language {
+    if (!locale) return fallback;
+    const primary = locale.trim().replace(/_/g, '-').toLowerCase().split('-')[0];
+    if (!primary) return fallback;
+    if (!isSupportedLanguage(primary)) return fallback;
+    return WELL_SUPPORTED_DEFAULT_LANGUAGES.has(primary) ? primary : fallback;
+}
+
+function detectSystemLocale(): string | null {
+    const isTestRuntime = typeof process !== 'undefined'
+        && typeof process.env === 'object'
+        && (process.env.NODE_ENV === 'test' || process.env.VITEST === 'true');
+    if (isTestRuntime) return null;
+
+    if (typeof navigator !== 'undefined') {
+        if (Array.isArray(navigator.languages) && typeof navigator.languages[0] === 'string' && navigator.languages[0]) {
+            return navigator.languages[0];
+        }
+        if (typeof navigator.language === 'string' && navigator.language) {
+            return navigator.language;
+        }
+    }
+    if (typeof Intl !== 'undefined' && typeof Intl.DateTimeFormat === 'function') {
+        try {
+            return Intl.DateTimeFormat().resolvedOptions().locale || null;
+        } catch {
+            return null;
+        }
+    }
+    return null;
+}
+
+export function getSystemDefaultLanguage(fallback: Language = 'en'): Language {
+    return resolveLanguageFromLocale(detectSystemLocale(), fallback);
+}
+
 export function loadStoredLanguageSync(storage: KeyValueStorageSync, fallback: Language = 'en'): Language {
     const saved = storage.getItem(LANGUAGE_STORAGE_KEY);
     return isSupportedLanguage(saved) ? saved : fallback;
