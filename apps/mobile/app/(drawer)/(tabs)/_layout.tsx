@@ -21,7 +21,8 @@ function NativeTabBar({
   inactiveTint,
   tc,
   tabBarHeight,
-  androidNavInset,
+  tabBarBottomInset,
+  tabBarBottomOffset,
   tabItemTopOffset,
   iconLift,
   openQuickCapture,
@@ -31,7 +32,8 @@ function NativeTabBar({
   inactiveTint: string;
   tc: { cardBg: string; border: string; onTint: string; tint: string };
   tabBarHeight: number;
-  androidNavInset: number;
+  tabBarBottomInset: number;
+  tabBarBottomOffset: number;
   tabItemTopOffset: number;
   iconLift: number;
   openQuickCapture: (options?: { initialValue?: string; initialProps?: Partial<Task>; autoRecord?: boolean }) => void;
@@ -49,7 +51,8 @@ function NativeTabBar({
           backgroundColor: tc.cardBg,
           borderTopColor: tc.border,
           height: tabBarHeight,
-          paddingBottom: androidNavInset,
+          paddingBottom: tabBarBottomInset,
+          marginBottom: tabBarBottomOffset,
         },
       ]}
     >
@@ -79,7 +82,10 @@ function NativeTabBar({
               accessibilityRole="button"
               accessibilityLabel={defaultAutoRecord ? 'Audio capture' : 'Add task'}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              style={[styles.nativeTabItem, { paddingTop: iconLift, top: tabItemTopOffset }]}
+              style={[
+                styles.nativeTabItem,
+                { paddingTop: iconLift, transform: [{ translateY: tabItemTopOffset }] },
+              ]}
             >
               <View style={[styles.captureButtonInner, { backgroundColor: tc.tint }]}>
                 {defaultAutoRecord ? (
@@ -125,7 +131,10 @@ function NativeTabBar({
             onPress={onPress}
             onLongPress={onLongPress}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            style={[styles.nativeTabItem, { paddingTop: iconLift, top: tabItemTopOffset }]}
+            style={[
+              styles.nativeTabItem,
+              { paddingTop: iconLift, transform: [{ translateY: tabItemTopOffset }] },
+            ]}
           >
             <View style={styles.nativeTabIconWrap}>{tabIcon}</View>
           </TouchableOpacity>
@@ -143,8 +152,13 @@ export default function TabLayout() {
   const androidNavInset = Platform.OS === 'android' && insets.bottom >= 20
     ? Math.max(0, insets.bottom - 12)
     : 0;
-  const tabItemTopOffset = Platform.OS === 'ios' ? -10 : -6;
-  const tabBarHeight = 58 + androidNavInset;
+  const iosBottomInset = Platform.OS === 'ios'
+    ? Math.max(0, insets.bottom - 12)
+    : 0;
+  const tabBarBottomInset = Platform.OS === 'ios' ? iosBottomInset : androidNavInset;
+  const tabBarBottomOffset = 0;
+  const tabItemTopOffset = Platform.OS === 'ios' ? 0 : -6;
+  const tabBarHeight = 58 + tabBarBottomInset;
   const iconLift = Platform.OS === 'android' ? 4 : 0;
   const [captureState, setCaptureState] = useState<{
     visible: boolean;
@@ -190,7 +204,8 @@ export default function TabLayout() {
             inactiveTint={inactiveTint}
             tc={{ cardBg: tc.cardBg, border: tc.border, onTint: tc.onTint, tint: tc.tint }}
             tabBarHeight={tabBarHeight}
-            androidNavInset={androidNavInset}
+            tabBarBottomInset={tabBarBottomInset}
+            tabBarBottomOffset={tabBarBottomOffset}
             tabItemTopOffset={tabItemTopOffset}
             iconLift={iconLift}
             openQuickCapture={openQuickCapture}
@@ -328,6 +343,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderTopWidth: StyleSheet.hairlineWidth,
     alignItems: 'stretch',
+    overflow: 'visible',
   },
   nativeTabItem: {
     flex: 1,
