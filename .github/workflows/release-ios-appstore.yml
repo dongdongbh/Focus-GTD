@@ -153,7 +153,7 @@ jobs:
               }
 
               if ! ASC_TOKEN="$(
-                node -e 'const fs = require("fs"); const crypto = require("crypto"); const keyId = process.argv[1]; const issuerId = process.argv[2]; const keyPath = process.argv[3]; const now = Math.floor(Date.now() / 1000); const exp = now + 1200; const encodeJson = (obj) => Buffer.from(JSON.stringify(obj)).toString("base64url"); const header = encodeJson({ alg: "ES256", kid: keyId, typ: "JWT" }); const payload = encodeJson({ iss: issuerId, iat: now, exp, aud: "appstoreconnect-v1" }); const unsignedToken = header + "." + payload; const privateKey = fs.readFileSync(keyPath, "utf8"); const signature = crypto.sign("sha256", Buffer.from(unsignedToken), { key: privateKey, dsaEncoding: "ieee-p1363" }); process.stdout.write(unsignedToken + "." + signature.toString("base64url"));' "$ASC_KEY_ID" "$ASC_ISSUER_ID" "$KEY_PATH"
+                node scripts/ci/generate-asc-jwt.js "$ASC_KEY_ID" "$ASC_ISSUER_ID" "$KEY_PATH"
               )"; then
                 echo "::warning::Failed to generate App Store Connect JWT from IOS_ASC_* secrets."
                 REMOTE_LOOKUP_STATUS="invalid_jwt"
@@ -228,19 +228,12 @@ jobs:
         run: |
           set -euo pipefail
 
-          decode_base64() {
-            local input="$1"
-            local output="$2"
-            if ! printf '%s' "$input" | tr -d '\r' | base64 --decode > "$output" 2>/dev/null; then
-              printf '%s' "$input" | tr -d '\r' | base64 -D > "$output"
-            fi
-          }
 
           KEYCHAIN_PATH="$RUNNER_TEMP/mindwtr-ios.keychain-db"
           KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
           CERT_PATH="$RUNNER_TEMP/ios-distribution.p12"
 
-          decode_base64 "$IOS_DISTRIBUTION_CERT" "$CERT_PATH"
+          bash scripts/ci/decode-base64-to-file.sh "$IOS_DISTRIBUTION_CERT" "$CERT_PATH"
           if ! openssl pkcs12 -in "$CERT_PATH" -passin "pass:${IOS_DISTRIBUTION_CERT_PWD}" -nokeys -clcerts >/dev/null 2>&1; then
             echo "::error::Unable to open IOS_DISTRIBUTION_CERT with IOS_DISTRIBUTION_CERT_PWD."
             exit 1
@@ -281,17 +274,10 @@ jobs:
         run: |
           set -euo pipefail
 
-          decode_base64() {
-            local input="$1"
-            local output="$2"
-            if ! printf '%s' "$input" | tr -d '\r' | base64 --decode > "$output" 2>/dev/null; then
-              printf '%s' "$input" | tr -d '\r' | base64 -D > "$output"
-            fi
-          }
 
           PROFILE_PATH="$RUNNER_TEMP/mindwtr-ios.mobileprovision"
           PROFILE_PLIST="$RUNNER_TEMP/mindwtr-ios-profile.plist"
-          decode_base64 "$IOS_PROVISIONING_PROFILE" "$PROFILE_PATH"
+          bash scripts/ci/decode-base64-to-file.sh "$IOS_PROVISIONING_PROFILE" "$PROFILE_PATH"
           security cms -D -i "$PROFILE_PATH" > "$PROFILE_PLIST"
 
           PROFILE_UUID="$(/usr/libexec/PlistBuddy -c 'Print UUID' "$PROFILE_PLIST")"
@@ -357,17 +343,10 @@ jobs:
         run: |
           set -euo pipefail
 
-          decode_base64() {
-            local input="$1"
-            local output="$2"
-            if ! printf '%s' "$input" | tr -d '\r' | base64 --decode > "$output" 2>/dev/null; then
-              printf '%s' "$input" | tr -d '\r' | base64 -D > "$output"
-            fi
-          }
 
           EXPORT_OPTIONS_PATH="$RUNNER_TEMP/ExportOptions.plist"
           if [ -n "${IOS_EXPORT_OPTIONS:-}" ]; then
-            decode_base64 "$IOS_EXPORT_OPTIONS" "$EXPORT_OPTIONS_PATH"
+            bash scripts/ci/decode-base64-to-file.sh "$IOS_EXPORT_OPTIONS" "$EXPORT_OPTIONS_PATH"
           else
             {
               printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>'
@@ -603,7 +582,7 @@ jobs:
           }
 
           if ! ASC_TOKEN="$(
-            node -e 'const fs = require("fs"); const crypto = require("crypto"); const keyId = process.argv[1]; const issuerId = process.argv[2]; const keyPath = process.argv[3]; const now = Math.floor(Date.now() / 1000); const exp = now + 1200; const encodeJson = (obj) => Buffer.from(JSON.stringify(obj)).toString("base64url"); const header = encodeJson({ alg: "ES256", kid: keyId, typ: "JWT" }); const payload = encodeJson({ iss: issuerId, iat: now, exp, aud: "appstoreconnect-v1" }); const unsignedToken = header + "." + payload; const privateKey = fs.readFileSync(keyPath, "utf8"); const signature = crypto.sign("sha256", Buffer.from(unsignedToken), { key: privateKey, dsaEncoding: "ieee-p1363" }); process.stdout.write(unsignedToken + "." + signature.toString("base64url"));' "$ASC_KEY_ID" "$ASC_ISSUER_ID" "$ASC_KEY_PATH"
+            node scripts/ci/generate-asc-jwt.js "$ASC_KEY_ID" "$ASC_ISSUER_ID" "$ASC_KEY_PATH"
           )"; then
             echo "::warning::submit_for_review requested, but failed to generate App Store Connect JWT. Disabling review submission."
             echo "EFFECTIVE_SUBMIT_FOR_REVIEW=false" >> "$GITHUB_ENV"
