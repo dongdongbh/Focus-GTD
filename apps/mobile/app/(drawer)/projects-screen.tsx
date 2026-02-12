@@ -90,6 +90,14 @@ export default function ProjectsScreen() {
   };
 
   const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+  const colorDisplayByHex: Record<string, { name: string; swatch: string }> = {
+    '#3b82f6': { name: 'Blue', swatch: '🔵' },
+    '#10b981': { name: 'Green', swatch: '🟢' },
+    '#f59e0b': { name: 'Amber', swatch: '🟠' },
+    '#ef4444': { name: 'Red', swatch: '🔴' },
+    '#8b5cf6': { name: 'Purple', swatch: '🟣' },
+    '#ec4899': { name: 'Pink', swatch: '🩷' },
+  };
 
   const sortedAreas = useMemo(() => [...areas].sort((a, b) => a.order - b.order), [areas]);
   const focusedCount = useMemo(() => projects.filter((project) => project.isFocused).length, [projects]);
@@ -424,12 +432,134 @@ export default function ProjectsScreen() {
         const translated = t('projects.manageAreas');
         return translated === 'projects.manageAreas' ? 'Manage areas' : translated;
       })();
+      const chooseColorLabel = (() => {
+        const translated = t('projects.changeColor');
+        return translated === 'projects.changeColor' ? 'Choose color' : translated;
+      })();
+      const nextLabel = (() => {
+        const translated = t('common.next');
+        return translated === 'common.next' ? 'Next' : translated;
+      })();
+      const createAreaWithColor = (onCreated: (created: Area) => void, logMessage: string) => {
+        Alert.prompt(
+          t('projects.areaLabel'),
+          `${t('common.add')} ${t('projects.areaLabel')}`,
+          [
+            { text: t('common.cancel'), style: 'cancel' },
+            {
+              text: nextLabel,
+              onPress: (value?: string) => {
+                const name = (value ?? '').trim();
+                if (!name) return;
+                ActionSheetIOS.showActionSheetWithOptions(
+                  {
+                    options: [
+                      t('common.cancel'),
+                      ...colors.map((color) => {
+                        const colorMeta = colorDisplayByHex[color] ?? { name: color.toUpperCase(), swatch: '◯' };
+                        return `${colorMeta.swatch} ${colorMeta.name}`;
+                      }),
+                    ],
+                    cancelButtonIndex: 0,
+                    title: chooseColorLabel,
+                  },
+                  async (colorIndex) => {
+                    if (colorIndex <= 0) return;
+                    const color = colors[colorIndex - 1];
+                    if (!color) return;
+                    try {
+                      const created = await addArea(name, { color });
+                      if (!created) return;
+                      onCreated(created);
+                    } catch (error) {
+                      logProjectError(logMessage, error);
+                    }
+                  }
+                );
+              },
+            },
+          ],
+          'plain-text'
+        );
+      };
       const openIOSAreaManager = () => {
+        const editAreaLabel = (() => {
+          const translated = t('projects.editArea');
+          return translated === 'projects.editArea' ? 'Edit area' : translated;
+        })();
+        const renameAreaLabel = (() => {
+          const translated = t('projects.renameArea');
+          return translated === 'projects.renameArea' ? 'Rename area' : translated;
+        })();
+        const changeColorLabel = (() => {
+          const translated = t('projects.changeColor');
+          return translated === 'projects.changeColor' ? 'Change color' : translated;
+        })();
+        const openIOSAreaEditor = (area: Area) => {
+          ActionSheetIOS.showActionSheetWithOptions(
+            {
+              options: [t('common.cancel'), renameAreaLabel, changeColorLabel],
+              cancelButtonIndex: 0,
+              title: area.name,
+            },
+            (editIndex) => {
+              if (editIndex === 0) return;
+              if (editIndex === 1) {
+                Alert.prompt(
+                  renameAreaLabel,
+                  area.name,
+                  [
+                    { text: t('common.cancel'), style: 'cancel' },
+                    {
+                      text: t('common.save'),
+                      onPress: async (value?: string) => {
+                        const nextName = (value ?? '').trim();
+                        if (!nextName || nextName === area.name) return;
+                        try {
+                          await updateArea(area.id, { name: nextName });
+                        } catch (error) {
+                          logProjectError('Failed to rename area on iOS', error);
+                        }
+                      },
+                    },
+                  ],
+                  'plain-text',
+                  area.name
+                );
+                return;
+              }
+              ActionSheetIOS.showActionSheetWithOptions(
+                {
+                  options: [
+                    t('common.cancel'),
+                    ...colors.map((color) => {
+                      const colorMeta = colorDisplayByHex[color] ?? { name: color.toUpperCase(), swatch: '◯' };
+                      return `${area.color === color ? '✓ ' : ''}${colorMeta.swatch} ${colorMeta.name}`;
+                    }),
+                  ],
+                  cancelButtonIndex: 0,
+                  title: changeColorLabel,
+                },
+                async (colorIndex) => {
+                  if (colorIndex <= 0) return;
+                  const color = colors[colorIndex - 1];
+                  if (!color || color === area.color) return;
+                  try {
+                    await updateArea(area.id, { color });
+                  } catch (error) {
+                    logProjectError('Failed to change area color on iOS', error);
+                  }
+                }
+              );
+            }
+          );
+        };
         ActionSheetIOS.showActionSheetWithOptions(
           {
             options: [
               t('common.cancel'),
               `${t('common.add')} ${t('projects.areaLabel')}`,
+              editAreaLabel,
               t('projects.sortByName'),
               t('projects.sortByColor'),
               t('common.delete'),
@@ -440,36 +570,37 @@ export default function ProjectsScreen() {
           (manageIndex) => {
             if (manageIndex === 0) return;
             if (manageIndex === 1) {
-              Alert.prompt(
-                t('projects.areaLabel'),
-                `${t('common.add')} ${t('projects.areaLabel')}`,
-                [
-                  { text: t('common.cancel'), style: 'cancel' },
-                  {
-                    text: t('common.save'),
-                    onPress: async (value?: string) => {
-                      const name = (value ?? '').trim();
-                      if (!name) return;
-                      try {
-                        const created = await addArea(name, { color: colors[0] });
-                        if (!created) return;
-                        updateProject(selectedProject.id, { areaId: created.id });
-                        setSelectedProject({ ...selectedProject, areaId: created.id });
-                      } catch (error) {
-                        logProjectError('Failed to create area from iOS manager', error);
-                      }
-                    },
-                  },
-                ],
-                'plain-text'
-              );
+              createAreaWithColor((created) => {
+                updateProject(selectedProject.id, { areaId: created.id });
+                setSelectedProject({ ...selectedProject, areaId: created.id });
+              }, 'Failed to create area from iOS manager');
               return;
             }
             if (manageIndex === 2) {
-              sortAreasByName();
+              if (sortedAreas.length === 0) {
+                Alert.alert(t('common.notice') || 'Notice', t('projects.noArea'));
+                return;
+              }
+              ActionSheetIOS.showActionSheetWithOptions(
+                {
+                  options: [t('common.cancel'), ...sortedAreas.map((area) => area.name)],
+                  cancelButtonIndex: 0,
+                  title: editAreaLabel,
+                },
+                (areaIndex) => {
+                  if (areaIndex <= 0) return;
+                  const target = sortedAreas[areaIndex - 1];
+                  if (!target) return;
+                  openIOSAreaEditor(target);
+                }
+              );
               return;
             }
             if (manageIndex === 3) {
+              sortAreasByName();
+              return;
+            }
+            if (manageIndex === 4) {
               sortAreasByColor();
               return;
             }
@@ -517,29 +648,10 @@ export default function ProjectsScreen() {
             return;
           }
           if (buttonIndex === 2) {
-            Alert.prompt(
-              t('projects.areaLabel'),
-              `${t('common.add')} ${t('projects.areaLabel')}`,
-              [
-                { text: t('common.cancel'), style: 'cancel' },
-                {
-                  text: t('common.save'),
-                  onPress: async (value?: string) => {
-                    const name = (value ?? '').trim();
-                    if (!name) return;
-                    try {
-                      const created = await addArea(name, { color: colors[0] });
-                      if (!created) return;
-                      updateProject(selectedProject.id, { areaId: created.id });
-                      setSelectedProject({ ...selectedProject, areaId: created.id });
-                    } catch (error) {
-                      logProjectError('Failed to create area from iOS action sheet', error);
-                    }
-                  },
-                },
-              ],
-              'plain-text'
-            );
+            createAreaWithColor((created) => {
+              updateProject(selectedProject.id, { areaId: created.id });
+              setSelectedProject({ ...selectedProject, areaId: created.id });
+            }, 'Failed to create area from iOS action sheet');
             return;
           }
           if (buttonIndex === 3) {
