@@ -1453,6 +1453,13 @@ export class SyncService {
             if (backend === 'off') {
                 return { success: true };
             }
+            if (
+                (backend === 'cloud' || backend === 'webdav')
+                && typeof navigator !== 'undefined'
+                && navigator.onLine === false
+            ) {
+                throw new Error('Offline: network connection is unavailable for remote sync.');
+            }
             const webdavConfig = backend === 'webdav' ? await SyncService.getWebDavConfig() : null;
             const cloudConfig = backend === 'cloud' ? await SyncService.getCloudConfig() : null;
             const syncPath = backend === 'file' ? await SyncService.getSyncPath() : '';
