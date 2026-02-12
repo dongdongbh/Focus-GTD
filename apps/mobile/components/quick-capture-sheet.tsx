@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Modal, View, Text, TextInput, TouchableOpacity, StyleSheet, Pressable, ScrollView, Switch, Platform, KeyboardAvoidingView } from 'react-native';
-import { CalendarDays, Folder, Flag, X, Clock, Mic, Square } from 'lucide-react-native';
+import { Alert, Modal, View, Text, TextInput, TouchableOpacity, StyleSheet, Pressable, ScrollView, Switch, Platform, KeyboardAvoidingView, Keyboard } from 'react-native';
+import { CalendarDays, Folder, Flag, X, AtSign, Mic, Square } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder } from 'expo-audio';
 import { Directory, File, Paths } from 'expo-file-system';
 
-import { parseQuickAdd, safeFormatDate, safeParseDate, type Attachment, type Task, type TaskPriority, generateUUID, useTaskStore } from '@mindwtr/core';
+import { parseQuickAdd, safeFormatDate, safeParseDate, type Attachment, type Task, type TaskPriority, generateUUID, PRESET_CONTEXTS, useTaskStore } from '@mindwtr/core';
 import { useLanguage } from '../contexts/language-context';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,6 +20,27 @@ import {
 } from './quick-capture-sheet.utils';
 
 const PRIORITY_OPTIONS: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
+const normalizeContextToken = (token: string): string => {
+  const trimmed = token.trim();
+  if (!trimmed) return '';
+  const stripped = trimmed.replace(/^[@＠]+/, '');
+  if (!stripped) return '';
+  return `@${stripped}`;
+};
+const parseContextQueryTokens = (value: string): string[] => {
+  const parts = value.split(',');
+  const seen = new Set<string>();
+  const tokens: string[] = [];
+  for (const part of parts) {
+    const normalized = normalizeContextToken(part);
+    if (!normalized) continue;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    tokens.push(normalized);
+  }
+  return tokens;
+};
 
 const logCaptureWarn = (message: string, error?: unknown) => {
   void logWarn(message, { scope: 'capture', extra: buildCaptureExtra(undefined, error) });
@@ -57,6 +78,7 @@ export function QuickCaptureSheet({
   const tc = useThemeColors();
   const insets = useSafeAreaInsets();
   const inputRef = useRef<TextInput>(null);
+  const contextInputRef = useRef<TextInput>(null);
   const prioritiesEnabled = settings?.features?.priorities === true;
 
   const updateSpeechSettings = useCallback(
@@ -80,6 +102,9 @@ export function QuickCaptureSheet({
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [startPickerMode, setStartPickerMode] = useState<'date' | 'time' | null>(null);
   const [pendingStartDate, setPendingStartDate] = useState<Date | null>(null);
+  const [contextTags, setContextTags] = useState<string[]>([]);
+  const [showContextPicker, setShowContextPicker] = useState(false);
+  const [contextQuery, setContextQuery] = useState('');
   const [projectId, setProjectId] = useState<string | null>(null);
   const [showProjectPicker, setShowProjectPicker] = useState(false);
   const [projectQuery, setProjectQuery] = useState('');
@@ -97,6 +122,81 @@ export function QuickCaptureSheet({
     return projects.filter((project) => project.title.toLowerCase().includes(query));
   }, [projectQuery, projects]);
 
+  const contextOptions = useMemo(() => {
+    const taskContexts = tasks.flatMap((task) => task.contexts || []);
+    const initialContexts = initialProps?.contexts ?? [];
+    return Array.from(
+      new Set(
+        [...PRESET_CONTEXTS, ...taskContexts, ...initialContexts]
+          .map((item) => normalizeContextToken(String(item || '')))
+          .filter(Boolean)
+      )
+    );
+  }, [initialProps?.contexts, tasks]);
+
+  const queryContextTokens = useMemo(() => parseContextQueryTokens(contextQuery), [contextQuery]);
+
+  const filteredContexts = useMemo(() => {
+    const query = queryContextTokens[0]?.toLowerCase() ?? '';
+    if (!query) return contextOptions;
+    return contextOptions.filter((token) => token.toLowerCase().includes(query));
+  }, [contextOptions, queryContextTokens]);
+
+  const hasAddableContextTokens = useMemo(() => {
+    if (queryContextTokens.length === 0) return false;
+    return queryContextTokens.some(
+      (token) => !contextTags.some((selected) => selected.toLowerCase() === token.toLowerCase())
+    );
+  }, [contextTags, queryContextTokens]);
+
+  const addContextFromQuery = useCallback(() => {
+    const pendingTokens = parseContextQueryTokens(contextQuery);
+    if (pendingTokens.length === 0) return 0;
+    const resolvedTokens = pendingTokens.map((token) =>
+      contextOptions.find((item) => item.toLowerCase() === token.toLowerCase()) ?? token
+    );
+    let addedCount = 0;
+    setContextTags((prev) => {
+      const next = [...prev];
+      for (const token of resolvedTokens) {
+        const exists = next.some((item) => item.toLowerCase() === token.toLowerCase());
+        if (exists) continue;
+        next.push(token);
+        addedCount += 1;
+      }
+      return next;
+    });
+    setContextQuery('');
+    return addedCount;
+  }, [contextOptions, contextQuery]);
+
+  const handleContextSubmit = useCallback(() => {
+    // Always keep picker open; users can dismiss by tapping outside.
+    addContextFromQuery();
+    requestAnimationFrame(() => {
+      contextInputRef.current?.focus();
+    });
+  }, [addContextFromQuery]);
+
+  const submitProjectQuery = useCallback(async () => {
+    const title = projectQuery.trim();
+    if (!title) return;
+    const match = projects.find((project) => project.title.toLowerCase() === title.toLowerCase());
+    if (match) {
+      setProjectId(match.id);
+      setShowProjectPicker(false);
+      setProjectQuery('');
+      Keyboard.dismiss();
+      return;
+    }
+    const created = await addProject(title, '#94a3b8');
+    if (!created) return;
+    setProjectId(created.id);
+    setShowProjectPicker(false);
+    setProjectQuery('');
+    Keyboard.dismiss();
+  }, [addProject, projectQuery, projects]);
+
   const hasExactProjectMatch = useMemo(() => {
     if (!projectQuery.trim()) return false;
     const query = projectQuery.trim().toLowerCase();
@@ -108,6 +208,14 @@ export function QuickCaptureSheet({
     setValue(initialValue ?? '');
     setDueDate(initialProps?.dueDate ? safeParseDate(initialProps.dueDate) : null);
     setStartTime(initialProps?.startTime ? safeParseDate(initialProps.startTime) : null);
+    const initialContextTokens = Array.from(
+      new Set(
+        (initialProps?.contexts ?? [])
+          .map((item) => normalizeContextToken(String(item || '')))
+          .filter(Boolean)
+      )
+    );
+    setContextTags(initialContextTokens);
     setProjectId(initialProps?.projectId ?? null);
     setPriority((initialProps?.priority as TaskPriority) ?? null);
     if (autoRecord) return;
@@ -279,12 +387,15 @@ export function QuickCaptureSheet({
     }
 
     if (projectId) initialPropsMerged.projectId = projectId;
+    if (contextTags.length > 0) {
+      initialPropsMerged.contexts = Array.from(new Set([...(initialPropsMerged.contexts ?? []), ...contextTags]));
+    }
     if (prioritiesEnabled && priority) initialPropsMerged.priority = priority;
     if (dueDate) initialPropsMerged.dueDate = dueDate.toISOString();
     if (startTime) initialPropsMerged.startTime = startTime.toISOString();
 
     return { title: finalTitle, props: initialPropsMerged };
-  }, [addProject, dueDate, initialProps, prioritiesEnabled, priority, projectId, projects, startTime, value]);
+  }, [addProject, contextTags, dueDate, initialProps, prioritiesEnabled, priority, projectId, projects, startTime, value]);
 
   const applySpeechResult = useCallback(async (taskId: string, result: SpeechToTextResult) => {
     const { tasks: currentTasks, projects: currentProjects, addProject: addProjectNow, updateTask: updateTaskNow, settings: currentSettings } = useTaskStore.getState();
@@ -386,6 +497,9 @@ export function QuickCaptureSheet({
     setValue('');
     setDueDate(null);
     setStartTime(null);
+    setContextTags([]);
+    setContextQuery('');
+    setShowContextPicker(false);
     setProjectId(null);
     setPriority(null);
     setProjectQuery('');
@@ -921,9 +1035,20 @@ export function QuickCaptureSheet({
 
   const selectedProject = projectId ? projects.find((project) => project.id === projectId) : null;
   const dueLabel = dueDate ? safeFormatDate(dueDate, 'MMM d') : t('taskEdit.dueDateLabel');
-  const startLabel = startTime ? safeFormatDate(startTime, 'MMM d, HH:mm') : t('calendar.scheduleAction');
+  const contextLabel = contextTags.length === 0
+    ? t('taskEdit.contextsLabel')
+    : `${contextTags[0].replace(/^@+/, '')}${contextTags.length > 1 ? ` +${contextTags.length - 1}` : ''}`;
   const projectLabel = selectedProject ? selectedProject.title : t('taskEdit.projectLabel');
   const priorityLabel = priority ? t(`priority.${priority}`) : t('taskEdit.priorityLabel');
+  const openDueDatePicker = useCallback(() => {
+    inputRef.current?.blur();
+    Keyboard.dismiss();
+    if (Platform.OS === 'ios') {
+      setTimeout(() => setShowDatePicker(true), 120);
+      return;
+    }
+    setShowDatePicker(true);
+  }, []);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
@@ -949,8 +1074,16 @@ export function QuickCaptureSheet({
               placeholderTextColor={tc.secondaryText}
               value={value}
               onChangeText={setValue}
-              onSubmitEditing={handleSave}
+              onSubmitEditing={() => {
+                if (Platform.OS === 'ios') {
+                  inputRef.current?.blur();
+                  Keyboard.dismiss();
+                  return;
+                }
+                handleSave();
+              }}
               returnKeyType="done"
+              blurOnSubmit
             />
             <TouchableOpacity
               onPress={() => {
@@ -990,22 +1123,20 @@ export function QuickCaptureSheet({
           <View style={styles.optionsRow}>
             <TouchableOpacity
               style={[styles.optionChip, { backgroundColor: tc.filterBg, borderColor: tc.border }]}
-              onPress={() => {
-                setPendingStartDate(null);
-                setStartPickerMode('date');
-              }}
-              onLongPress={() => setStartTime(null)}
-            >
-              <Clock size={16} color={tc.text} />
-              <Text style={[styles.optionText, { color: tc.text }]} numberOfLines={1}>{startLabel}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.optionChip, { backgroundColor: tc.filterBg, borderColor: tc.border }]}
-              onPress={() => setShowDatePicker(true)}
+              onPress={openDueDatePicker}
               onLongPress={() => setDueDate(null)}
             >
               <CalendarDays size={16} color={tc.text} />
               <Text style={[styles.optionText, { color: tc.text }]} numberOfLines={1}>{dueLabel}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.optionChip, { backgroundColor: tc.filterBg, borderColor: tc.border }]}
+              onPress={() => setShowContextPicker(true)}
+              onLongPress={() => setContextTags([])}
+            >
+              <AtSign size={16} color={tc.text} />
+              <Text style={[styles.optionText, { color: tc.text }]} numberOfLines={1}>{contextLabel}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -1109,6 +1240,93 @@ export function QuickCaptureSheet({
       )}
 
       <Modal
+        visible={showContextPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowContextPicker(false)}
+      >
+        <View style={styles.overlay}>
+          <Pressable style={styles.overlayBackdrop} onPress={() => setShowContextPicker(false)} />
+          <View style={[styles.pickerCard, { backgroundColor: tc.cardBg, borderColor: tc.border }]}>
+            <Text style={[styles.pickerTitle, { color: tc.text }]}>{t('taskEdit.contextsLabel')}</Text>
+            <TextInput
+              ref={contextInputRef}
+              value={contextQuery}
+              onChangeText={setContextQuery}
+              placeholder={t('taskEdit.contextsPlaceholder')}
+              placeholderTextColor={tc.secondaryText}
+              style={[styles.pickerInput, { backgroundColor: tc.inputBg, borderColor: tc.border, color: tc.text }]}
+              onSubmitEditing={handleContextSubmit}
+              returnKeyType="done"
+              blurOnSubmit={false}
+              submitBehavior="submit"
+            />
+            {hasAddableContextTokens && contextQuery.trim() && (
+              <Pressable
+                onPress={addContextFromQuery}
+                style={styles.pickerRow}
+              >
+                <Text style={[styles.pickerRowText, { color: tc.tint }]}>
+                  + {parseContextQueryTokens(contextQuery).join(', ')}
+                </Text>
+              </Pressable>
+            )}
+            {contextTags.length > 0 && (
+              <View style={styles.selectedContextWrap}>
+                {contextTags.map((token) => (
+                  <Pressable
+                    key={token}
+                    onPress={() => {
+                      setContextTags((prev) => prev.filter((item) => item.toLowerCase() !== token.toLowerCase()));
+                    }}
+                    style={[styles.selectedContextChip, { backgroundColor: tc.filterBg, borderColor: tc.border }]}
+                  >
+                    <Text style={[styles.selectedContextChipText, { color: tc.text }]}>{token}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+            <ScrollView style={[styles.pickerList, { borderColor: tc.border }]} contentContainerStyle={styles.pickerListContent}>
+              <Pressable
+                onPress={() => {
+                  setContextTags([]);
+                  setShowContextPicker(false);
+                }}
+                style={styles.pickerRow}
+              >
+                <Text style={[styles.pickerRowText, { color: tc.text }]}>{t('common.clear')}</Text>
+              </Pressable>
+              {filteredContexts.map((token) => (
+                <Pressable
+                  key={token}
+                  onPress={() => {
+                    setContextTags((prev) => {
+                      const exists = prev.some((item) => item.toLowerCase() === token.toLowerCase());
+                      if (exists) {
+                        return prev.filter((item) => item.toLowerCase() !== token.toLowerCase());
+                      }
+                      return [...prev, token];
+                    });
+                    setContextQuery('');
+                  }}
+                  style={[
+                    styles.pickerRow,
+                    contextTags.some((item) => item.toLowerCase() === token.toLowerCase())
+                      ? { backgroundColor: tc.filterBg, borderRadius: 8 }
+                      : null,
+                  ]}
+                >
+                  <Text style={[styles.pickerRowText, { color: tc.text }]}>
+                    {contextTags.some((item) => item.toLowerCase() === token.toLowerCase()) ? `✓ ${token}` : token}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
         visible={showProjectPicker}
         transparent
         animationType="fade"
@@ -1124,16 +1342,16 @@ export function QuickCaptureSheet({
               placeholder={t('projects.addPlaceholder')}
               placeholderTextColor={tc.secondaryText}
               style={[styles.pickerInput, { backgroundColor: tc.inputBg, borderColor: tc.border, color: tc.text }]}
+              onSubmitEditing={() => {
+                void submitProjectQuery();
+              }}
+              returnKeyType="done"
+              blurOnSubmit
             />
             {!hasExactProjectMatch && projectQuery.trim() && (
               <Pressable
-                onPress={async () => {
-                  const title = projectQuery.trim();
-                  if (!title) return;
-                  const created = await addProject(title, '#94a3b8');
-                  if (!created) return;
-                  setProjectId(created.id);
-                  setShowProjectPicker(false);
+                onPress={() => {
+                  void submitProjectQuery();
                 }}
                 style={styles.pickerRow}
               >
@@ -1356,6 +1574,22 @@ const styles = StyleSheet.create({
   },
   pickerRowText: {
     fontSize: 14,
+    fontWeight: '600',
+  },
+  selectedContextWrap: {
+    marginTop: 8,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  selectedContextChip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  selectedContextChipText: {
+    fontSize: 12,
     fontWeight: '600',
   },
 });

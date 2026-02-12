@@ -30,15 +30,17 @@ export function TaskEditHeader({
   return (
     <>
       <View style={[styles.header, { backgroundColor: tc.cardBg, borderBottomColor: tc.border }]}>
-        <TouchableOpacity onPress={onDone}>
-          <Text style={[styles.headerBtn, { color: tc.tint }]}>{t('common.done')}</Text>
-        </TouchableOpacity>
+        <View style={[styles.headerSide, styles.headerLeft]}>
+          <TouchableOpacity onPress={() => setMenuVisible(true)}>
+            <Text style={[styles.headerBtn, { color: tc.tint }]}>•••</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={[styles.headerTitle, { color: tc.text }]} numberOfLines={1}>
           {title}
         </Text>
-        <View style={styles.headerRight}>
-          <TouchableOpacity onPress={() => setMenuVisible(true)}>
-            <Text style={[styles.headerBtn, { color: tc.tint }]}>•••</Text>
+        <View style={[styles.headerSide, styles.headerRight]}>
+          <TouchableOpacity onPress={onDone}>
+            <Text style={[styles.headerBtn, { color: tc.tint }]}>{t('common.done')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -116,8 +118,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginHorizontal: 8,
   },
+  headerSide: {
+    minWidth: 56,
+  },
+  headerLeft: {
+    alignItems: 'flex-start',
+  },
   headerRight: {
-    minWidth: 32,
     alignItems: 'flex-end',
   },
   menuOverlay: {

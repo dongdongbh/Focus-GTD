@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import type { Task, TaskEditorFieldId, TimeEstimate } from '@mindwtr/core';
 import type { ThemeColors } from '@/hooks/use-theme-colors';
@@ -35,7 +35,6 @@ type TaskEditFormTabProps = {
     pendingDueDate: Date | null;
     getSafePickerDateValue: (dateStr?: string) => Date;
     onDateChange: (event: DateTimePickerEvent, selectedDate?: Date) => void;
-    onCloseDatePicker: () => void;
     containerWidth: number;
     textDirectionStyle: Record<string, any>;
     titleDraft: string;
@@ -70,7 +69,6 @@ export function TaskEditFormTab({
     pendingDueDate,
     getSafePickerDateValue,
     onDateChange,
-    onCloseDatePicker,
     containerWidth,
     textDirectionStyle,
     titleDraft,
@@ -245,16 +243,8 @@ export function TaskEditFormTab({
 
                     <View style={{ height: 100 }} />
 
-                    {showDatePicker && (
+                    {showDatePicker && Platform.OS === 'android' && (
                         <View>
-                            {Platform.OS === 'ios' && (
-                                <View style={styles.pickerToolbar}>
-                                    <View style={styles.pickerSpacer} />
-                                    <Pressable onPress={onCloseDatePicker} style={styles.pickerDone}>
-                                        <Text style={styles.pickerDoneText}>{t('common.done')}</Text>
-                                    </Pressable>
-                                </View>
-                            )}
                             <DateTimePicker
                                 value={(() => {
                                     if (showDatePicker === 'start') return getSafePickerDateValue(editedTask.startTime);
@@ -268,7 +258,7 @@ export function TaskEditFormTab({
                                         ? 'time'
                                         : 'date'
                                 }
-                                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                display="default"
                                 onChange={onDateChange}
                             />
                         </View>

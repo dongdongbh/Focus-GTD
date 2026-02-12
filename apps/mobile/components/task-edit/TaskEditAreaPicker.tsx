@@ -49,7 +49,15 @@ export function TaskEditAreaPicker({
 
     const handleCreateArea = async () => {
         const name = areaQuery.trim();
-        if (!name || hasExactAreaMatch) return;
+        if (!name) return;
+        if (hasExactAreaMatch) {
+            const matched = activeAreas.find((area) => area.name.toLowerCase() === normalizedAreaQuery);
+            if (matched) {
+                onSelectArea(matched.id);
+            }
+            onClose();
+            return;
+        }
         try {
             const created = await onCreateArea(name);
             if (created) {
@@ -80,6 +88,7 @@ export function TaskEditAreaPicker({
                         autoCapitalize="none"
                         autoCorrect={false}
                         returnKeyType="done"
+                        blurOnSubmit
                         onSubmitEditing={handleCreateArea}
                     />
                     {!hasExactAreaMatch && areaQuery.trim() && (

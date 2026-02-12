@@ -51,7 +51,15 @@ export function TaskEditProjectPicker({
 
     const handleCreateProject = async () => {
         const title = projectQuery.trim();
-        if (!title || hasExactProjectMatch) return;
+        if (!title) return;
+        if (hasExactProjectMatch) {
+            const matched = activeProjects.find((project) => project.title.toLowerCase() === normalizedProjectQuery);
+            if (matched) {
+                onSelectProject(matched.id);
+            }
+            onClose();
+            return;
+        }
         try {
             const created = await onCreateProject(title);
             if (!created) return;
@@ -81,6 +89,7 @@ export function TaskEditProjectPicker({
                         autoCapitalize="none"
                         autoCorrect={false}
                         returnKeyType="done"
+                        blurOnSubmit
                         onSubmitEditing={handleCreateProject}
                     />
                     {!hasExactProjectMatch && projectQuery.trim() && (

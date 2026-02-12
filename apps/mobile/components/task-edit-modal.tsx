@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, TextInput, Modal, TouchableOpacity, ScrollView, Platform, Share, Alert, Animated, Pressable } from 'react-native';
+import { View, Text, TextInput, Modal, TouchableOpacity, ScrollView, Platform, Share, Alert, Animated, Pressable, Keyboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
     Attachment,
@@ -29,7 +29,7 @@ import {
     validateAttachmentForUpload,
     parseQuickAdd,
 } from '@mindwtr/core';
-import type { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Linking from 'expo-linking';
 import * as Sharing from 'expo-sharing';
@@ -1623,6 +1623,40 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
         styles.quickTokenText,
         { color: active ? '#fff' : tc.secondaryText },
     ]);
+    const openDatePicker = (mode: NonNullable<typeof showDatePicker>) => {
+        Keyboard.dismiss();
+        setShowDatePicker(mode);
+    };
+    const getDatePickerValue = (mode: NonNullable<typeof showDatePicker>) => {
+        if (mode === 'start') return getSafePickerDateValue(editedTask.startTime);
+        if (mode === 'start-time') return pendingStartDate ?? getSafePickerDateValue(editedTask.startTime);
+        if (mode === 'review') return getSafePickerDateValue(editedTask.reviewAt);
+        if (mode === 'due-time') return pendingDueDate ?? getSafePickerDateValue(editedTask.dueDate);
+        return getSafePickerDateValue(editedTask.dueDate);
+    };
+    const getDatePickerMode = (mode: NonNullable<typeof showDatePicker>) =>
+        mode === 'start-time' || mode === 'due-time' ? 'time' : 'date';
+    const renderInlineIOSDatePicker = (targetModes: Array<NonNullable<typeof showDatePicker>>) => {
+        if (Platform.OS !== 'ios' || !showDatePicker || !targetModes.includes(showDatePicker)) {
+            return null;
+        }
+        return (
+            <View style={{ marginTop: 8 }}>
+                <View style={styles.pickerToolbar}>
+                    <View style={styles.pickerSpacer} />
+                    <Pressable onPress={() => setShowDatePicker(null)} style={styles.pickerDone}>
+                        <Text style={styles.pickerDoneText}>{t('common.done')}</Text>
+                    </Pressable>
+                </View>
+                <DateTimePicker
+                    value={getDatePickerValue(showDatePicker)}
+                    mode={getDatePickerMode(showDatePicker)}
+                    display="spinner"
+                    onChange={onDateChange}
+                />
+            </View>
+        );
+    };
 
     const renderField = (fieldId: TaskEditorFieldId) => {
         switch (fieldId) {
@@ -1760,6 +1794,12 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
                             onChangeText={updateContextInput}
                             onFocus={() => setIsContextInputFocused(true)}
                             onBlur={commitContextDraft}
+                            onSubmitEditing={() => {
+                                commitContextDraft();
+                                Keyboard.dismiss();
+                            }}
+                            returnKeyType="done"
+                            blurOnSubmit
                             placeholder={t('taskEdit.contextsPlaceholder')}
                             autoCapitalize="none"
                             placeholderTextColor={tc.secondaryText}
@@ -1808,6 +1848,12 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
                             onChangeText={updateTagInput}
                             onFocus={() => setIsTagInputFocused(true)}
                             onBlur={commitTagDraft}
+                            onSubmitEditing={() => {
+                                commitTagDraft();
+                                Keyboard.dismiss();
+                            }}
+                            returnKeyType="done"
+                            blurOnSubmit
                             placeholder={t('taskEdit.tagsPlaceholder')}
                             autoCapitalize="none"
                             placeholderTextColor={tc.secondaryText}
@@ -2051,29 +2097,32 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
                             const dateOnly = parsed ? safeFormatDate(parsed, 'yyyy-MM-dd') : '';
                             const timeOnly = hasTime && parsed ? safeFormatDate(parsed, 'HH:mm') : '';
                             return (
-                        <View style={styles.dateRow}>
-                            <TouchableOpacity style={[styles.dateBtn, styles.flex1, { backgroundColor: tc.inputBg, borderColor: tc.border }]} onPress={() => setShowDatePicker('start')}>
-                                <Text style={{ color: tc.text }}>{formatStartDateTime(editedTask.startTime)}</Text>
-                            </TouchableOpacity>
-                            {!!editedTask.startTime && (
-                                <TouchableOpacity
-                                    style={[styles.clearDateBtn, { borderColor: tc.border, backgroundColor: tc.filterBg }]}
-                                    onPress={() => setShowDatePicker('start-time')}
-                                >
-                                    <Text style={[styles.clearDateText, { color: tc.secondaryText }]}>
-                                        {hasTime && timeOnly ? timeOnly : (t('calendar.changeTime') || 'Add time')}
-                                    </Text>
-                                </TouchableOpacity>
-                            )}
-                            {!!editedTask.startTime && (
-                                <TouchableOpacity
-                                    style={[styles.clearDateBtn, { borderColor: tc.border, backgroundColor: tc.filterBg }]}
-                                    onPress={() => setEditedTask(prev => ({ ...prev, startTime: undefined }))}
-                                >
-                                    <Text style={[styles.clearDateText, { color: tc.secondaryText }]}>{t('common.clear')}</Text>
-                                </TouchableOpacity>
-                            )}
-                        </View>
+                                <View>
+                                    <View style={styles.dateRow}>
+                                        <TouchableOpacity style={[styles.dateBtn, styles.flex1, { backgroundColor: tc.inputBg, borderColor: tc.border }]} onPress={() => openDatePicker('start')}>
+                                            <Text style={{ color: tc.text }}>{formatStartDateTime(editedTask.startTime)}</Text>
+                                        </TouchableOpacity>
+                                        {!!editedTask.startTime && (
+                                            <TouchableOpacity
+                                                style={[styles.clearDateBtn, { borderColor: tc.border, backgroundColor: tc.filterBg }]}
+                                                onPress={() => openDatePicker('start-time')}
+                                            >
+                                                <Text style={[styles.clearDateText, { color: tc.secondaryText }]}>
+                                                    {hasTime && timeOnly ? timeOnly : (t('calendar.changeTime') || 'Add time')}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        )}
+                                        {!!editedTask.startTime && (
+                                            <TouchableOpacity
+                                                style={[styles.clearDateBtn, { borderColor: tc.border, backgroundColor: tc.filterBg }]}
+                                                onPress={() => setEditedTask(prev => ({ ...prev, startTime: undefined }))}
+                                            >
+                                                <Text style={[styles.clearDateText, { color: tc.secondaryText }]}>{t('common.clear')}</Text>
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+                                    {renderInlineIOSDatePicker(['start', 'start-time'])}
+                                </View>
                             );
                         })()}
                     </View>
@@ -2088,29 +2137,32 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
                             const dateOnly = parsed ? safeFormatDate(parsed, 'yyyy-MM-dd') : '';
                             const timeOnly = hasTime && parsed ? safeFormatDate(parsed, 'HH:mm') : '';
                             return (
-                        <View style={styles.dateRow}>
-                            <TouchableOpacity style={[styles.dateBtn, styles.flex1, { backgroundColor: tc.inputBg, borderColor: tc.border }]} onPress={() => setShowDatePicker('due')}>
-                                <Text style={{ color: tc.text }}>{formatDueDate(editedTask.dueDate)}</Text>
-                            </TouchableOpacity>
-                            {!!editedTask.dueDate && (
-                                <TouchableOpacity
-                                    style={[styles.clearDateBtn, { borderColor: tc.border, backgroundColor: tc.filterBg }]}
-                                    onPress={() => setShowDatePicker('due-time')}
-                                >
-                                    <Text style={[styles.clearDateText, { color: tc.secondaryText }]}>
-                                        {hasTime && timeOnly ? timeOnly : (t('calendar.changeTime') || 'Add time')}
-                                    </Text>
-                                </TouchableOpacity>
-                            )}
-                            {!!editedTask.dueDate && (
-                                <TouchableOpacity
-                                    style={[styles.clearDateBtn, { borderColor: tc.border, backgroundColor: tc.filterBg }]}
-                                    onPress={() => setEditedTask(prev => ({ ...prev, dueDate: undefined }))}
-                                >
-                                    <Text style={[styles.clearDateText, { color: tc.secondaryText }]}>{t('common.clear')}</Text>
-                                </TouchableOpacity>
-                            )}
-                        </View>
+                                <View>
+                                    <View style={styles.dateRow}>
+                                        <TouchableOpacity style={[styles.dateBtn, styles.flex1, { backgroundColor: tc.inputBg, borderColor: tc.border }]} onPress={() => openDatePicker('due')}>
+                                            <Text style={{ color: tc.text }}>{formatDueDate(editedTask.dueDate)}</Text>
+                                        </TouchableOpacity>
+                                        {!!editedTask.dueDate && (
+                                            <TouchableOpacity
+                                                style={[styles.clearDateBtn, { borderColor: tc.border, backgroundColor: tc.filterBg }]}
+                                                onPress={() => openDatePicker('due-time')}
+                                            >
+                                                <Text style={[styles.clearDateText, { color: tc.secondaryText }]}>
+                                                    {hasTime && timeOnly ? timeOnly : (t('calendar.changeTime') || 'Add time')}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        )}
+                                        {!!editedTask.dueDate && (
+                                            <TouchableOpacity
+                                                style={[styles.clearDateBtn, { borderColor: tc.border, backgroundColor: tc.filterBg }]}
+                                                onPress={() => setEditedTask(prev => ({ ...prev, dueDate: undefined }))}
+                                            >
+                                                <Text style={[styles.clearDateText, { color: tc.secondaryText }]}>{t('common.clear')}</Text>
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+                                    {renderInlineIOSDatePicker(['due', 'due-time'])}
+                                </View>
                             );
                         })()}
                     </View>
@@ -2120,7 +2172,7 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
                     <View style={styles.formGroup}>
                         <Text style={[styles.label, { color: tc.secondaryText }]}>{t('taskEdit.reviewDateLabel')}</Text>
                         <View style={styles.dateRow}>
-                            <TouchableOpacity style={[styles.dateBtn, styles.flex1, { backgroundColor: tc.inputBg, borderColor: tc.border }]} onPress={() => setShowDatePicker('review')}>
+                            <TouchableOpacity style={[styles.dateBtn, styles.flex1, { backgroundColor: tc.inputBg, borderColor: tc.border }]} onPress={() => openDatePicker('review')}>
                                 <Text style={{ color: tc.text }}>{formatDate(editedTask.reviewAt)}</Text>
                             </TouchableOpacity>
                             {!!editedTask.reviewAt && (
@@ -2132,6 +2184,7 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
                                 </TouchableOpacity>
                             )}
                         </View>
+                        {renderInlineIOSDatePicker(['review'])}
                     </View>
                 );
             case 'textDirection':
@@ -2459,7 +2512,6 @@ export function TaskEditModal({ visible, task, onClose, onSave, onFocusMode, def
                             pendingDueDate={pendingDueDate}
                             getSafePickerDateValue={getSafePickerDateValue}
                             onDateChange={onDateChange}
-                            onCloseDatePicker={() => setShowDatePicker(null)}
                             containerWidth={containerWidth}
                             textDirectionStyle={textDirectionStyle}
                             titleDraft={titleDraft}

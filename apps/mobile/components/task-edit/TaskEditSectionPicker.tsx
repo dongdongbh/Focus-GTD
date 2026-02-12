@@ -60,7 +60,15 @@ export function TaskEditSectionPicker({
     const handleCreateSection = async () => {
         if (!projectId) return;
         const title = sectionQuery.trim();
-        if (!title || hasExactMatch) return;
+        if (!title) return;
+        if (hasExactMatch) {
+            const matched = projectSections.find((section) => section.title.toLowerCase() === normalizedQuery);
+            if (matched) {
+                onSelectSection(matched.id);
+            }
+            onClose();
+            return;
+        }
         try {
             const created = await onCreateSection(projectId, title);
             if (created) {
@@ -91,6 +99,7 @@ export function TaskEditSectionPicker({
                         autoCapitalize="none"
                         autoCorrect={false}
                         returnKeyType="done"
+                        blurOnSubmit
                         onSubmitEditing={handleCreateSection}
                     />
                     {!hasExactMatch && sectionQuery.trim() && projectId && (
