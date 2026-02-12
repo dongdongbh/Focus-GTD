@@ -13,21 +13,14 @@ import { loadAIKey } from '../lib/ai-config';
 import { processAudioCapture, ensureWhisperModelPathForConfig, preloadWhisperContext, startWhisperRealtimeCapture, type SpeechToTextResult } from '../lib/speech-to-text';
 import { persistAttachmentLocally } from '../lib/attachment-sync';
 import { logError, logInfo, logWarn } from '../lib/app-log';
+import {
+  buildCaptureExtra,
+  getCaptureFileExtension,
+  getCaptureMimeType,
+} from './quick-capture-sheet.utils';
 
 const PRIORITY_OPTIONS: TaskPriority[] = ['low', 'medium', 'high', 'urgent'];
 
-const formatError = (error: unknown) => (error instanceof Error ? error.message : String(error));
-const buildCaptureExtra = (message?: string, error?: unknown): Record<string, string> | undefined => {
-  const extra: Record<string, string> = {};
-  if (message) extra.message = message;
-  if (error) {
-    extra.error = formatError(error);
-    if (error instanceof Error && error.stack) {
-      extra.stack = error.stack;
-    }
-  }
-  return Object.keys(extra).length ? extra : undefined;
-};
 const logCaptureWarn = (message: string, error?: unknown) => {
   void logWarn(message, { scope: 'capture', extra: buildCaptureExtra(undefined, error) });
 };
@@ -151,30 +144,6 @@ export function QuickCaptureSheet({
     }
     return null;
   }, []);
-
-  const getExtension = (uri: string) => {
-    const match = uri.match(/\.[a-z0-9]+$/i);
-    return match ? match[0] : '.m4a';
-  };
-
-  const getMimeType = (extension: string) => {
-    switch (extension.toLowerCase()) {
-      case '.aac':
-        return 'audio/aac';
-      case '.mp3':
-        return 'audio/mpeg';
-      case '.wav':
-        return 'audio/wav';
-      case '.caf':
-        return 'audio/x-caf';
-      case '.3gp':
-      case '.3gpp':
-        return 'audio/3gpp';
-      case '.m4a':
-      default:
-        return 'audio/mp4';
-    }
-  };
 
   const stripFileScheme = useCallback((uri: string) => {
     if (uri.startsWith('file://')) return uri.slice(7);
@@ -635,7 +604,7 @@ export function QuickCaptureSheet({
           kind: 'file',
           title: displayTitle,
           uri: finalFile.uri,
-          mimeType: getMimeType('.wav'),
+          mimeType: getCaptureMimeType('.wav'),
           size: fileInfo?.exists && fileInfo.size ? fileInfo.size : undefined,
           createdAt: nowIso,
           updatedAt: nowIso,
@@ -754,7 +723,7 @@ export function QuickCaptureSheet({
 
       const now = new Date();
       const timestamp = safeFormatDate(now, 'yyyyMMdd-HHmmss');
-      const extension = getExtension(uri);
+      const extension = getCaptureFileExtension(uri);
       const directory = await ensureAudioDirectory();
       const fileName = `mindwtr-audio-${timestamp}${extension}`;
       const sourceFile = new File(uri);
@@ -823,7 +792,7 @@ export function QuickCaptureSheet({
         kind: 'file',
         title: displayTitle,
         uri: audioUri,
-        mimeType: getMimeType(extension),
+        mimeType: getCaptureMimeType(extension),
         size: fileInfo?.exists && fileInfo.size ? fileInfo.size : undefined,
         createdAt: nowIso,
         updatedAt: nowIso,
