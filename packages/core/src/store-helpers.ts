@@ -232,7 +232,10 @@ export const getNextProjectOrder = (
         }
     }
     const cached = cache.get(projectId);
-    if (cached !== undefined) return cached;
-    cache.set(projectId, 0);
+    if (cached !== undefined) {
+        cache.set(projectId, cached + 1);
+        return cached;
+    }
+    cache.set(projectId, 1);
     return 0;
 };
