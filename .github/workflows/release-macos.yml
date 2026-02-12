@@ -30,6 +30,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   macos:
     strategy:
@@ -44,6 +48,7 @@ jobs:
             artifact_name: release-macos-x64
     runs-on: ${{ matrix.platform }}
     name: macOS Build (${{ matrix.rust_target }})
+    timeout-minutes: 90
 
     steps:
       - name: Checkout code

@@ -3,9 +3,14 @@ name: Debug Apple Notarization
 on:
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   check-status:
     runs-on: macos-latest
+    timeout-minutes: 20
     steps:
       - name: Check Notary History
         env:

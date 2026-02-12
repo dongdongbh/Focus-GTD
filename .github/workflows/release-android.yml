@@ -17,10 +17,15 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   android:
     runs-on: ubuntu-latest
     name: Android Build + Publish
+    timeout-minutes: 90
 
     steps:
       - name: Checkout code

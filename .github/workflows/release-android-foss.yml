@@ -17,10 +17,15 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   android-foss:
     runs-on: ubuntu-latest
     name: Android FOSS Build
+    timeout-minutes: 90
     env:
       # Keep Metro/JS bundling stable on CI during release builds.
       NODE_OPTIONS: --max-old-space-size=6144

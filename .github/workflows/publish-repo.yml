@@ -18,9 +18,14 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build-repo:
     runs-on: ubuntu-22.04
+    timeout-minutes: 45
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4

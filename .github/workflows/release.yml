@@ -14,6 +14,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   linux:
     uses: ./.github/workflows/release-linux.yml
@@ -39,6 +43,7 @@ jobs:
     needs: [linux, macos, windows, android, android-foss]
     runs-on: ubuntu-latest
     name: Create Release
+    timeout-minutes: 30
 
     steps:
       - name: Checkout code
@@ -106,6 +111,7 @@ jobs:
     needs: release
     runs-on: ubuntu-latest
     name: Update Homebrew/Scoop Packages
+    timeout-minutes: 45
     if: startsWith(github.ref, 'refs/tags/') && github.event_name == 'push' && needs.release.result == 'success'
     steps:
       - name: Checkout packages repo
@@ -372,6 +378,7 @@ jobs:
     needs: release
     runs-on: windows-latest
     name: Publish Chocolatey
+    timeout-minutes: 45
     if: startsWith(github.ref, 'refs/tags/') && github.event_name == 'push' && needs.release.result == 'success' && !contains(github.ref, '-')
     steps:
       - name: Checkout repo
@@ -493,6 +500,7 @@ jobs:
     needs: release
     runs-on: ubuntu-latest
     name: Update AUR
+    timeout-minutes: 30
     if: startsWith(github.ref, 'refs/tags/') && github.event_name == 'push' && needs.release.result == 'success'
     steps:
       - name: Checkout repo

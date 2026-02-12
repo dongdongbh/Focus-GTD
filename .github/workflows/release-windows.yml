@@ -25,6 +25,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   MS_IDENTITY_NAME: "DongdaLi.Mindwtr"
   MS_PUBLISHER_ID: "CN=76AC9B15-7A1B-49FF-9342-2BE80735A1E6"
@@ -34,6 +38,7 @@ jobs:
   windows:
     runs-on: windows-latest
     name: Windows Build (EXE + MSIX)
+    timeout-minutes: 90
 
     steps:
       - name: Checkout code

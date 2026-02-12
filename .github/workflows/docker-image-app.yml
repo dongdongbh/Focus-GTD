@@ -21,11 +21,16 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository_owner }}/mindwtr-app
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 # There is a single job in this workflow. It's configured to run on the
 # latest available version of Ubuntu.
 jobs:
   build-and-push-image:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     # Sets the permissions granted to the `GITHUB_TOKEN` for the actions
     # in this job.
