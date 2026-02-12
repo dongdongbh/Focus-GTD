@@ -415,7 +415,8 @@ jobs:
           Write-Host "Committing submission..."
           Invoke-RestMethod -Method Post `
             -Uri "https://manage.devcenter.microsoft.com/v1.0/my/applications/$applicationId/submissions/$submissionId/commit" `
-            -Headers @{ 'Authorization' = "Bearer $accessToken" }
+            -Headers @{ 'Authorization' = "Bearer $accessToken"; 'Content-Type' = 'application/json' } `
+            -Body '{}'
 
           Write-Host "Polling submission status..."
           $deadline = (Get-Date).AddMinutes(30)
