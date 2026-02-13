@@ -1,7 +1,19 @@
 name: Release macOS App Store
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
+    inputs:
+      upload:
+        description: Upload to App Store Connect
+        required: false
+        default: 'true'
+      submit_for_review:
+        description: Submit build for review after upload
+        required: false
+        default: 'true'
 
 permissions:
   contents: read
@@ -14,9 +26,19 @@ jobs:
   macos-appstore:
     runs-on: macos-15
     timeout-minutes: 90
+    env:
+      EXPECTED_BUNDLE_ID: tech.dongdongbh.mindwtr
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Install Fastlane
+        run: gem install fastlane --no-document
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -27,6 +49,11 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: apps/desktop/src-tauri
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -52,6 +79,9 @@ jobs:
           MAS_INSTALLER_CERT_PASSWORD: ${{ secrets.MAS_INSTALLER_CERT_PASSWORD }}
           MAS_PROVISIONING_PROFILE: ${{ secrets.MAS_PROVISIONING_PROFILE }}
           MAS_SIGNING_IDENTITY: ${{ secrets.MAS_SIGNING_IDENTITY }}
+          IOS_ASC_KEY_ID: ${{ secrets.IOS_ASC_KEY_ID }}
+          IOS_ASC_ISSUER_ID: ${{ secrets.IOS_ASC_ISSUER_ID }}
+          IOS_ASC_PRIVATE_KEY: ${{ secrets.IOS_ASC_PRIVATE_KEY }}
         run: |
           set -euo pipefail
           CERT_B64="${MAS_CERTIFICATE:-${MAS_CERTIFICATE_BASE64:-${APPLE_CERTIFICATE:-}}}"
@@ -62,6 +92,12 @@ jobs:
           for key in MAS_PROVISIONING_PROFILE MAS_SIGNING_IDENTITY; do
             if [ -z "${!key:-}" ]; then
               echo "::error::Missing required secret: $key"
+              missing=1
+            fi
+          done
+          for key in IOS_ASC_KEY_ID IOS_ASC_ISSUER_ID IOS_ASC_PRIVATE_KEY; do
+            if [ -z "${!key:-}" ]; then
+              echo "::error::Missing required App Store Connect API secret: $key"
               missing=1
             fi
           done
@@ -241,27 +277,6 @@ jobs:
           echo "PKG_PATH=$PKG_PATH" >> "$GITHUB_ENV"
           ls -la "$PKG_DIR"
 
-      - name: Upload to App Store Connect
-        env:
-          MAS_APPLE_ID: ${{ secrets.MAS_APPLE_ID }}
-          MAS_APPLE_PASSWORD: ${{ secrets.MAS_APPLE_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-        run: |
-          set -euo pipefail
-          UPLOAD_APPLE_ID="${MAS_APPLE_ID:-${APPLE_ID:-}}"
-          UPLOAD_APPLE_PASSWORD="${MAS_APPLE_PASSWORD:-${APPLE_PASSWORD:-}}"
-          if [ -z "${UPLOAD_APPLE_ID:-}" ] || [ -z "${UPLOAD_APPLE_PASSWORD:-}" ]; then
-            echo "::error::Missing upload credentials. Set APPLE_ID + APPLE_PASSWORD (or MAS_APPLE_ID / MAS_APPLE_PASSWORD)."
-            exit 1
-          fi
-          if [ -z "${PKG_PATH:-}" ] || [ ! -f "$PKG_PATH" ]; then
-            echo "::error::PKG file not found: ${PKG_PATH:-<empty>}"
-            exit 1
-          fi
-
-          xcrun iTMSTransporter -m upload -assetFile "$PKG_PATH" -u "$UPLOAD_APPLE_ID" -p "$UPLOAD_APPLE_PASSWORD" -v informational
-
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
         with:
@@ -269,9 +284,246 @@ jobs:
           path: ${{ env.PKG_PATH }}
           if-no-files-found: error
 
+      - name: Prepare Fastlane metadata
+        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.upload || 'true') == 'true') }}
+        env:
+          RELEASE_BODY: ${{ github.event.release.body || '' }}
+          APP_SUPPORT_URL: "https://github.com/dongdongbh/Mindwtr/issues"
+          APP_MARKETING_URL: "https://github.com/dongdongbh/Mindwtr"
+        run: |
+          set -euo pipefail
+
+          FASTLANE_METADATA_DIR="$RUNNER_TEMP/fastlane_metadata"
+          rm -rf "$FASTLANE_METADATA_DIR"
+          mkdir -p "$FASTLANE_METADATA_DIR"
+          if [ -f "metadata/copyright.txt" ]; then
+            cp "metadata/copyright.txt" "$FASTLANE_METADATA_DIR/copyright.txt"
+          fi
+
+          map_metadata() {
+            local src_locale="$1"
+            local dst_locale="$2"
+            local src_dir="metadata/$src_locale"
+            local dst_dir="$FASTLANE_METADATA_DIR/$dst_locale"
+
+            if [ ! -d "$src_dir" ]; then
+              echo "Skipping $src_locale (missing metadata folder)"
+              return
+            fi
+
+            mkdir -p "$dst_dir"
+
+            if [ -f "$src_dir/description.txt" ]; then
+              cp "$src_dir/description.txt" "$dst_dir/description.txt"
+            elif [ -f "$src_dir/full_description.txt" ]; then
+              cp "$src_dir/full_description.txt" "$dst_dir/description.txt"
+            fi
+            if [ -f "$src_dir/name.txt" ]; then
+              cp "$src_dir/name.txt" "$dst_dir/name.txt"
+            elif [ -f "$src_dir/title.txt" ]; then
+              cp "$src_dir/title.txt" "$dst_dir/name.txt"
+            fi
+            if [ -f "$src_dir/subtitle.txt" ]; then
+              cp "$src_dir/subtitle.txt" "$dst_dir/subtitle.txt"
+            elif [ -f "$src_dir/short_description.txt" ]; then
+              cp "$src_dir/short_description.txt" "$dst_dir/subtitle.txt"
+            fi
+            if [ -f "$src_dir/keywords.txt" ]; then
+              cp "$src_dir/keywords.txt" "$dst_dir/keywords.txt"
+            fi
+            if [ -f "$src_dir/support_url.txt" ]; then
+              cp "$src_dir/support_url.txt" "$dst_dir/support_url.txt"
+            elif [ -n "${APP_SUPPORT_URL:-}" ]; then
+              printf '%s\n' "$APP_SUPPORT_URL" > "$dst_dir/support_url.txt"
+            fi
+            if [ -f "$src_dir/marketing_url.txt" ]; then
+              cp "$src_dir/marketing_url.txt" "$dst_dir/marketing_url.txt"
+            elif [ -n "${APP_MARKETING_URL:-}" ]; then
+              printf '%s\n' "$APP_MARKETING_URL" > "$dst_dir/marketing_url.txt"
+            fi
+
+            if [ -f "$src_dir/release_notes.txt" ]; then
+              cp "$src_dir/release_notes.txt" "$dst_dir/release_notes.txt"
+              echo "Release notes source for $src_locale: release_notes.txt"
+              return
+            fi
+
+            if [ -d "$src_dir/changelogs" ]; then
+              local latest_log=""
+              latest_log="$(
+                ls -1 "$src_dir/changelogs" 2>/dev/null \
+                  | sed -E 's/\.txt$//' \
+                  | grep -E '^[0-9]+$' \
+                  | sort -n \
+                  | tail -n 1 || true
+              )"
+              if [ -n "$latest_log" ] && [ -f "$src_dir/changelogs/${latest_log}.txt" ]; then
+                cp "$src_dir/changelogs/${latest_log}.txt" "$dst_dir/release_notes.txt"
+                echo "Release notes source for $src_locale: changelogs/${latest_log}.txt"
+                return
+              fi
+            fi
+
+            if [ -n "${RELEASE_BODY:-}" ]; then
+              printf '%s\n' "$RELEASE_BODY" > "$dst_dir/release_notes.txt"
+              echo "Release notes source for $src_locale: github release body"
+              return
+            fi
+
+            echo "No release notes found for $src_locale"
+          }
+
+          map_metadata "en-US" "en-US"
+          map_metadata "es-ES" "es-ES"
+          map_metadata "zh-CN" "zh-Hans"
+
+          echo "FASTLANE_METADATA_PATH=$FASTLANE_METADATA_DIR" >> "$GITHUB_ENV"
+          echo "Generated fastlane metadata files:"
+          find "$FASTLANE_METADATA_DIR" -type f | sort
+
+      - name: Resolve App Store review submission flag
+        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.upload || 'true') == 'true') }}
+        env:
+          IOS_ASC_KEY_ID: ${{ secrets.IOS_ASC_KEY_ID }}
+          IOS_ASC_ISSUER_ID: ${{ secrets.IOS_ASC_ISSUER_ID }}
+          IOS_ASC_PRIVATE_KEY: ${{ secrets.IOS_ASC_PRIVATE_KEY }}
+          REQUESTED_SUBMIT_FOR_REVIEW: ${{ github.event_name == 'push' && 'true' || (github.event.inputs.submit_for_review || 'true') }}
+        run: |
+          set -euo pipefail
+
+          EFFECTIVE_SUBMIT_FOR_REVIEW="${REQUESTED_SUBMIT_FOR_REVIEW:-true}"
+          if [ "$EFFECTIVE_SUBMIT_FOR_REVIEW" != "true" ]; then
+            echo "EFFECTIVE_SUBMIT_FOR_REVIEW=false" >> "$GITHUB_ENV"
+            echo "Review submission disabled by input."
+            exit 0
+          fi
+
+          if [ -z "${IOS_ASC_KEY_ID:-}" ] || [ -z "${IOS_ASC_ISSUER_ID:-}" ] || [ -z "${IOS_ASC_PRIVATE_KEY:-}" ]; then
+            echo "::warning::submit_for_review requested, but App Store Connect API secrets are missing. Disabling review submission."
+            echo "EFFECTIVE_SUBMIT_FOR_REVIEW=false" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          ASC_KEY_ID="$(printf '%s' "$IOS_ASC_KEY_ID" | tr -d '\r\n\t ')"
+          ASC_ISSUER_ID="$(printf '%s' "$IOS_ASC_ISSUER_ID" | tr -d '\r\n\t ')"
+          ASC_KEY_PATH="$RUNNER_TEMP/macos-asc-key-review-check.p8"
+          bash scripts/ci/write-asc-private-key.sh "$IOS_ASC_PRIVATE_KEY" "$ASC_KEY_PATH"
+
+          if ! openssl pkey -in "$ASC_KEY_PATH" -noout >/dev/null 2>&1; then
+            echo "::warning::submit_for_review requested, but IOS_ASC_PRIVATE_KEY is invalid. Disabling review submission."
+            echo "EFFECTIVE_SUBMIT_FOR_REVIEW=false" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          ASC_API_TMP_PREFIX="asc-review"
+          source scripts/ci/asc-api-utils.sh
+
+          if ! ASC_TOKEN="$(
+            node scripts/ci/generate-asc-jwt.js "$ASC_KEY_ID" "$ASC_ISSUER_ID" "$ASC_KEY_PATH"
+          )"; then
+            echo "::warning::submit_for_review requested, but failed to generate App Store Connect JWT. Disabling review submission."
+            echo "EFFECTIVE_SUBMIT_FOR_REVIEW=false" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          APPSTORE_APP_ID_RESOLVED=""
+          APP_LOOKUP_JSON_FILE="$RUNNER_TEMP/asc-review-app-lookup.json"
+          if api_get "$APP_LOOKUP_JSON_FILE" -G \
+            -H "Authorization: Bearer ${ASC_TOKEN}" \
+            --data-urlencode "filter[bundleId]=${EXPECTED_BUNDLE_ID}" \
+            --data-urlencode "limit=1" \
+            "https://api.appstoreconnect.apple.com/v1/apps"; then
+            APPSTORE_APP_ID_RESOLVED="$(jq -r '.data[0].id // empty' "$APP_LOOKUP_JSON_FILE")"
+          fi
+
+          if [ -z "${APPSTORE_APP_ID_RESOLVED}" ]; then
+            echo "::warning::submit_for_review requested, but app lookup returned no App Store Connect app. Disabling review submission."
+            echo "EFFECTIVE_SUBMIT_FOR_REVIEW=false" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          REVIEW_JSON_FILE="$RUNNER_TEMP/asc-review-versions.json"
+          if ! api_get "$REVIEW_JSON_FILE" -G \
+            -H "Authorization: Bearer ${ASC_TOKEN}" \
+            --data-urlencode "filter[appStoreState]=WAITING_FOR_REVIEW,IN_REVIEW" \
+            --data-urlencode "limit=1" \
+            "https://api.appstoreconnect.apple.com/v1/apps/${APPSTORE_APP_ID_RESOLVED}/appStoreVersions"; then
+            echo "::warning::submit_for_review requested, but review-state lookup failed. Disabling review submission."
+            echo "EFFECTIVE_SUBMIT_FOR_REVIEW=false" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          ACTIVE_REVIEW_ID="$(jq -r '.data[0].id // empty' "$REVIEW_JSON_FILE")"
+          ACTIVE_REVIEW_VERSION="$(jq -r '.data[0].attributes.versionString // empty' "$REVIEW_JSON_FILE")"
+          ACTIVE_REVIEW_STATE="$(jq -r '.data[0].attributes.appStoreState // empty' "$REVIEW_JSON_FILE")"
+          if [ -n "${ACTIVE_REVIEW_ID}" ]; then
+            echo "::warning::Found existing App Store submission in state ${ACTIVE_REVIEW_STATE:-unknown} (version ${ACTIVE_REVIEW_VERSION:-unknown}). Upload will proceed, but review submission is disabled."
+            echo "EFFECTIVE_SUBMIT_FOR_REVIEW=false" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          echo "EFFECTIVE_SUBMIT_FOR_REVIEW=true" >> "$GITHUB_ENV"
+          echo "No active App Store review submission found; review submission remains enabled."
+
+      - name: Upload package to App Store Connect
+        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.upload || 'true') == 'true') }}
+        env:
+          IOS_ASC_KEY_ID: ${{ secrets.IOS_ASC_KEY_ID }}
+          IOS_ASC_ISSUER_ID: ${{ secrets.IOS_ASC_ISSUER_ID }}
+          IOS_ASC_PRIVATE_KEY: ${{ secrets.IOS_ASC_PRIVATE_KEY }}
+          SUBMIT_FOR_REVIEW: ${{ env.EFFECTIVE_SUBMIT_FOR_REVIEW || 'false' }}
+          FASTLANE_SKIP_UPDATE_CHECK: "1"
+          FASTLANE_HIDE_CHANGELOG: "1"
+          FASTLANE_OPT_OUT_USAGE: "1"
+          CI: "true"
+        run: |
+          set -euo pipefail
+
+          if [ -z "${PKG_PATH:-}" ] || [ ! -f "$PKG_PATH" ]; then
+            echo "::error::PKG file not found: ${PKG_PATH:-<empty>}"
+            exit 1
+          fi
+
+          ASC_KEY_PATH="$RUNNER_TEMP/macos-asc-key-fastlane.p8"
+          bash scripts/ci/write-asc-private-key.sh "$IOS_ASC_PRIVATE_KEY" "$ASC_KEY_PATH"
+
+          mkdir -p fastlane
+          cat <<'EOF' > fastlane/Fastfile
+          opt_out_usage
+          default_platform(:mac)
+
+          platform :mac do
+            lane :upload_app_store do
+              api_key = app_store_connect_api_key(
+                key_id: ENV.fetch("IOS_ASC_KEY_ID"),
+                issuer_id: ENV.fetch("IOS_ASC_ISSUER_ID"),
+                key_filepath: ENV.fetch("ASC_KEY_PATH"),
+                duration: 1200,
+                in_house: false
+              )
+
+              deliver(
+                api_key: api_key,
+                platform: "osx",
+                pkg: ENV.fetch("PKG_PATH"),
+                metadata_path: ENV.fetch("FASTLANE_METADATA_PATH"),
+                skip_screenshots: true,
+                skip_app_version_update: true,
+                force: true,
+                run_precheck_before_submit: false,
+                submit_for_review: ENV.fetch("SUBMIT_FOR_REVIEW", "false") == "true",
+                automatic_release: false
+              )
+            end
+          end
+          EOF
+
+          ASC_KEY_PATH="$ASC_KEY_PATH" fastlane mac upload_app_store
+
       - name: Cleanup signing files
         if: always()
         run: |
+          rm -rf fastlane || true
           rm -f apps/desktop/src-tauri/embedded.provisionprofile
           if [ -n "${KEYCHAIN_PATH:-}" ] && [ -f "${KEYCHAIN_PATH}" ]; then
             security delete-keychain "$KEYCHAIN_PATH" || true
