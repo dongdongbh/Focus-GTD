@@ -1,9 +1,12 @@
 type InsecureUrlOptions = {
     allowAndroidEmulator?: boolean;
     allowAndroidEmulatorInDev?: boolean;
+    allowPrivateIpRanges?: boolean;
 };
 
 export const DEFAULT_TIMEOUT_MS = 30_000;
+
+type Ipv4Octets = [number, number, number, number];
 
 export const isAbortError = (error: unknown): boolean => {
     if (typeof error !== 'object' || error === null || !('name' in error)) return false;
@@ -11,13 +14,37 @@ export const isAbortError = (error: unknown): boolean => {
     return name === 'AbortError';
 };
 
+const parseIpv4Host = (host: string): Ipv4Octets | null => {
+    const parts = host.split('.');
+    if (parts.length !== 4) return null;
+    const octets: number[] = [];
+    for (const part of parts) {
+        if (!/^\d+$/.test(part)) return null;
+        const value = Number(part);
+        if (!Number.isInteger(value) || value < 0 || value > 255) return null;
+        octets.push(value);
+    }
+    return [octets[0], octets[1], octets[2], octets[3]];
+};
+
 export const isAllowedInsecureUrl = (rawUrl: string, options: InsecureUrlOptions = {}): boolean => {
     try {
         const parsed = new URL(rawUrl);
         if (parsed.protocol === 'https:') return true;
         if (parsed.protocol !== 'http:') return false;
-        const host = parsed.hostname;
-        if (host === 'localhost' || host === '127.0.0.1' || host === '::1') return true;
+        const rawHost = parsed.hostname.toLowerCase();
+        const host =
+            rawHost.startsWith('[') && rawHost.endsWith(']') ? rawHost.slice(1, -1) : rawHost;
+        if (host === 'localhost' || host === '::1') return true;
+        const ipv4 = parseIpv4Host(host);
+        if (ipv4 && ipv4[0] === 127) return true;
+        if (options.allowPrivateIpRanges && ipv4) {
+            const [first, second] = ipv4;
+            if (first === 10) return true;
+            if (first === 172 && second >= 16 && second <= 31) return true;
+            if (first === 192 && second === 168) return true;
+            if (first === 100 && second >= 64 && second <= 127) return true;
+        }
         if (host === '10.0.2.2') {
             if (options.allowAndroidEmulator) return true;
             if (options.allowAndroidEmulatorInDev) {
