@@ -218,7 +218,14 @@ scoop install mindwtr
 
 ### 桌面端（macOS）
 
-**Homebrew（推荐）：**
+**Mac App Store（推荐）：**
+<a href="https://apps.apple.com/app/mindwtr/id6758597144">
+  <img src="https://tools.applemediaservices.com/api/badges/download-on-the-mac-app-store/black/zh-cn?size=250x83" alt="Download on the Mac App Store">
+</a>
+
+通过 Mac App Store 安装：[Mindwtr（Mac App Store）](https://apps.apple.com/app/mindwtr/id6758597144)。
+
+**Homebrew：**
 <a href="https://github.com/dongdongbh/homebrew-mindwtr">
   <img src="https://img.shields.io/badge/Homebrew-Install-orange?logo=homebrew&logoColor=white" alt="Homebrew">
 </a>
@@ -229,7 +236,7 @@ brew install --cask mindwtr
 
 **其他方式：** 从 [GitHub Releases](https://github.com/dongdongbh/Mindwtr/releases) 获取 `.dmg`。
 
-> **注意：** 如果 macOS 提示应用“已损坏”或“来自未知开发者”，请执行：
+> **注意（GitHub Releases 构建）：** 如果 macOS 提示应用“已损坏”或“来自未知开发者”，请执行：
 > ```bash
 > xattr -cr /Applications/Mindwtr.app
 > ```

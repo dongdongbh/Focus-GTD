@@ -218,7 +218,14 @@ scoop install mindwtr
 
 ### Desktop (macOS)
 
-**Homebrew (recommended):**
+**Mac App Store (recommended):**
+<a href="https://apps.apple.com/app/mindwtr/id6758597144">
+  <img src="https://tools.applemediaservices.com/api/badges/download-on-the-mac-app-store/black/en-us?size=250x83" alt="Download on the Mac App Store">
+</a>
+
+Install from the Mac App Store: [Mindwtr on Mac App Store](https://apps.apple.com/app/mindwtr/id6758597144).
+
+**Homebrew:**
 <a href="https://github.com/dongdongbh/homebrew-mindwtr">
   <img src="https://img.shields.io/badge/Homebrew-Install-orange?logo=homebrew&logoColor=white" alt="Homebrew">
 </a>
@@ -229,7 +236,7 @@ brew install --cask mindwtr
 
 **Other methods:** `.dmg` from [GitHub Releases](https://github.com/dongdongbh/Mindwtr/releases).
 
-> **Note:** If macOS says the app is "damaged" or from an "unidentified developer", run:
+> **Note (GitHub Releases build):** If macOS says the app is "damaged" or from an "unidentified developer", run:
 > ```bash
 > xattr -cr /Applications/Mindwtr.app
 > ```
