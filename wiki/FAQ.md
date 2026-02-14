@@ -218,17 +218,6 @@ You can snooze notifications for later.
 
 **macOS** will prompt for permission the first time you enable notifications. On **Linux**, ensure a notification daemon is running.
 
-### macOS says the app is "damaged"
-
-Run this command in Terminal:
-```bash
-xattr -cr /Applications/Mindwtr.app
-```
-
-This clears the quarantine flag. The app is not notarized with Apple.
-
----
-
 ## Mobile
 
 ### Which platforms are supported?

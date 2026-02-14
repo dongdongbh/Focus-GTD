@@ -121,7 +121,6 @@ The `.exe` standalone can be run without installation (place in any folder).
 Install using [Homebrew](https://brew.sh/):
 
 ```bash
-brew tap dongdongbh/mindwtr
 brew install --cask mindwtr
 ```
 
@@ -131,21 +130,6 @@ brew install --cask mindwtr
 2. Open the disk image
 3. Drag Mindwtr to your Applications folder
 4. Launch from Applications or Spotlight
-
-### Fixing "damaged" or "unidentified developer" Warning
-
-Because the app is not notarized with Apple, macOS may block it. Fix with:
-
-```bash
-xattr -cr /Applications/Mindwtr.app
-```
-
-Then open the app normally.
-
-Alternatively:
-1. Right-click the app in Finder
-2. Click "Open"
-3. Click "Open" in the security dialog
 
 ---
 

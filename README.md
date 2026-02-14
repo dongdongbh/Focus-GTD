@@ -236,12 +236,6 @@ brew install --cask mindwtr
 
 **Other methods:** `.dmg` from [GitHub Releases](https://github.com/dongdongbh/Mindwtr/releases).
 
-> **Note (GitHub Releases build):** If macOS says the app is "damaged" or from an "unidentified developer", run:
-> ```bash
-> xattr -cr /Applications/Mindwtr.app
-> ```
-> Then open the app normally. This is required because the app is not notarized with Apple.
-
 ### Mobile
 
 **Android:**

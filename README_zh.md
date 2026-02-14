@@ -236,12 +236,6 @@ brew install --cask mindwtr
 
 **其他方式：** 从 [GitHub Releases](https://github.com/dongdongbh/Mindwtr/releases) 获取 `.dmg`。
 
-> **注意（GitHub Releases 构建）：** 如果 macOS 提示应用“已损坏”或“来自未知开发者”，请执行：
-> ```bash
-> xattr -cr /Applications/Mindwtr.app
-> ```
-> 然后正常打开即可。该步骤是因为应用尚未进行苹果公证。
-
 ### 移动端
 
 **Android：**
