@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, ScrollView, TextInput, Platform, Alert, Share, ActivityIndicator, Dimensions, type TextStyle } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -46,6 +46,7 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [isAIWorking, setIsAIWorking] = useState(false);
   const [aiModal, setAiModal] = useState<{ title: string; message?: string; actions: AIResponseAction[] } | null>(null);
+  const processingScrollRef = useRef<ScrollView | null>(null);
 
   const inboxProcessing = settings?.gtd?.inboxProcessing ?? {};
   const scheduleEnabled = inboxProcessing.scheduleEnabled !== false;
@@ -169,6 +170,11 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
     setProcessingDescription('');
     setAiModal(null);
   };
+  const scrollProcessingToTop = useCallback((animated: boolean = false) => {
+    requestAnimationFrame(() => {
+      processingScrollRef.current?.scrollTo({ y: 0, animated });
+    });
+  }, []);
 
   const hasInitialized = useRef(false);
 
@@ -254,6 +260,7 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
       handleClose();
       return;
     }
+    scrollProcessingToTop(false);
     // Keep the same index since the current task will be removed from the queue.
     setCurrentIndex(currentIndex);
     setActionabilityChoice('actionable');
@@ -272,6 +279,11 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
     setProcessingTitle(nextTask?.title ?? '');
     setProcessingDescription(nextTask?.description ?? '');
   };
+
+  useEffect(() => {
+    if (!visible || !currentTask) return;
+    scrollProcessingToTop(false);
+  }, [visible, currentTask, scrollProcessingToTop]);
 
   const handleNextTask = () => {
     if (!currentTask) return;
@@ -707,6 +719,7 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
 
           <View style={styles.stepContainer}>
             <ScrollView
+              ref={processingScrollRef}
               style={styles.singlePageScroll}
               contentContainerStyle={styles.singlePageContent}
               keyboardShouldPersistTaps="handled"
@@ -1086,11 +1099,24 @@ export function InboxProcessingModal({ visible, onClose }: InboxProcessingModalP
               <View style={[styles.singleSection, { borderBottomColor: tc.border }]}>
                 <Text style={[styles.stepHint, { color: tc.secondaryText }]}>
                   {t('inbox.tapNextHint') === 'inbox.tapNextHint'
-                    ? 'Tap "Next task" in the top-right to apply your choices and move on.'
+                    ? 'Tap "Next task" at the bottom to apply your choices and move on.'
                     : t('inbox.tapNextHint')}
                 </Text>
               </View>
             </ScrollView>
+            <View style={[styles.bottomActionBar, { borderTopColor: tc.border, paddingBottom: Math.max(insets.bottom, 10) }]}>
+              <TouchableOpacity
+                style={[styles.bottomNextButton, { backgroundColor: tc.tint }]}
+                onPress={handleNextTask}
+              >
+                <Text style={styles.bottomNextButtonText}>
+                  {(() => {
+                    const translated = t('inbox.nextTask');
+                    return translated === 'inbox.nextTask' ? 'Next task →' : translated;
+                  })()}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>

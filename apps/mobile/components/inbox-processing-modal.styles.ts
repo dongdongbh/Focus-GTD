@@ -150,7 +150,6 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
   },
   stepContainer: {
-    padding: 20,
     flex: 1,
   },
   stepContent: {
@@ -400,7 +399,25 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   singlePageContent: {
-    paddingBottom: 28,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+  },
+  bottomActionBar: {
+    borderTopWidth: 1,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+  },
+  bottomNextButton: {
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bottomNextButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
   singleSection: {
     borderBottomWidth: 1,
