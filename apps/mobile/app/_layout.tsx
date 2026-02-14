@@ -23,6 +23,7 @@ import { updateAndroidWidgetFromStore } from '../lib/widget-service';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { verifyPolyfills } from '../utils/verify-polyfills';
 import { logError, logWarn, setupGlobalErrorLogging } from '../lib/app-log';
+import { useThemeColors } from '../hooks/use-theme-colors';
 
 type AutoSyncCadence = {
   minIntervalMs: number;
@@ -76,6 +77,7 @@ void SplashScreen.preventAutoHideAsync().catch(() => {});
 function RootLayoutContent() {
   const router = useRouter();
   const { isDark, isReady: themeReady } = useTheme();
+  const tc = useThemeColors();
   const { language, setLanguage, isReady: languageReady } = useLanguage();
   const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntentContext();
   const [storageWarningShown, setStorageWarningShown] = useState(false);
@@ -445,7 +447,7 @@ function RootLayoutContent() {
 
   if (storageInitError) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: isDark ? '#0f172a' : '#f8fafc' }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: tc.bg }}>
         <View style={{ flex: 1, padding: 24, justifyContent: 'center' }}>
           <Text style={{ fontSize: 20, fontWeight: '600', color: isDark ? '#e2e8f0' : '#0f172a', marginBottom: 12 }}>
             Storage unavailable
@@ -466,7 +468,7 @@ function RootLayoutContent() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: tc.bg }}>
       <QuickCaptureProvider
         value={{
           openQuickCapture: (options?: QuickCaptureOptions) => {
@@ -514,7 +516,11 @@ function RootLayoutContent() {
               }}
             />
           </Stack>
-          <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+          <StatusBar
+            barStyle={isDark ? 'light-content' : 'dark-content'}
+            backgroundColor={tc.cardBg}
+            translucent={false}
+          />
         </NavigationThemeProvider>
       </QuickCaptureProvider>
     </GestureHandlerRootView>
