@@ -1,9 +1,23 @@
 name: Release iOS App Store
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_call:
+    inputs:
+      upload:
+        description: Upload to App Store Connect
+        required: false
+        type: string
+        default: 'true'
+      submit_for_review:
+        description: Submit build for review after upload
+        required: false
+        type: string
+        default: 'true'
+      testflight_group:
+        description: TestFlight external group for review-blocked uploads
+        required: false
+        type: string
+        default: 'external_testing'
   workflow_dispatch:
     inputs:
       upload:
@@ -411,7 +425,7 @@ jobs:
           ls -la "$EXPORT_PATH"
 
       - name: Prepare Fastlane metadata
-        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.upload || 'true') == 'true') }}
+        if: ${{ (inputs.upload || 'true') == 'true' }}
         env:
           RELEASE_BODY: ${{ github.event.release.body || '' }}
           APP_SUPPORT_URL: "https://github.com/dongdongbh/Mindwtr/issues"
@@ -508,12 +522,12 @@ jobs:
           find "$FASTLANE_METADATA_DIR" -type f | sort
 
       - name: Resolve App Store review submission flag
-        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.upload || 'true') == 'true') }}
+        if: ${{ (inputs.upload || 'true') == 'true' }}
         env:
           IOS_ASC_KEY_ID: ${{ secrets.IOS_ASC_KEY_ID }}
           IOS_ASC_ISSUER_ID: ${{ secrets.IOS_ASC_ISSUER_ID }}
           IOS_ASC_PRIVATE_KEY: ${{ secrets.IOS_ASC_PRIVATE_KEY }}
-          REQUESTED_SUBMIT_FOR_REVIEW: ${{ github.event_name == 'push' && 'true' || (github.event.inputs.submit_for_review || 'false') }}
+          REQUESTED_SUBMIT_FOR_REVIEW: ${{ inputs.submit_for_review || 'true' }}
         run: |
           set -euo pipefail
 
@@ -603,7 +617,7 @@ jobs:
           fi
 
       - name: Upload IPA to App Store Connect
-        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.upload || 'true') == 'true') }}
+        if: ${{ (inputs.upload || 'true') == 'true' }}
         env:
           IOS_ASC_KEY_ID: ${{ secrets.IOS_ASC_KEY_ID }}
           IOS_ASC_ISSUER_ID: ${{ secrets.IOS_ASC_ISSUER_ID }}
@@ -652,12 +666,12 @@ jobs:
           ASC_KEY_PATH="$ASC_KEY_PATH" fastlane ios upload_app_store
 
       - name: Distribute upload to TestFlight external group when review is active
-        if: ${{ (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.upload || 'true') == 'true')) && env.ENABLE_TESTFLIGHT_EXTERNAL_RELEASE == 'true' }}
+        if: ${{ (inputs.upload || 'true') == 'true' && env.ENABLE_TESTFLIGHT_EXTERNAL_RELEASE == 'true' }}
         env:
           IOS_ASC_KEY_ID: ${{ secrets.IOS_ASC_KEY_ID }}
           IOS_ASC_ISSUER_ID: ${{ secrets.IOS_ASC_ISSUER_ID }}
           IOS_ASC_PRIVATE_KEY: ${{ secrets.IOS_ASC_PRIVATE_KEY }}
-          TESTFLIGHT_EXTERNAL_GROUP: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.testflight_group || 'external_testing') || 'external_testing' }}
+          TESTFLIGHT_EXTERNAL_GROUP: ${{ inputs.testflight_group || 'external_testing' }}
           FASTLANE_SKIP_UPDATE_CHECK: "1"
           FASTLANE_HIDE_CHANGELOG: "1"
           FASTLANE_OPT_OUT_USAGE: "1"

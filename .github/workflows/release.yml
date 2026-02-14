@@ -39,6 +39,22 @@ jobs:
     uses: ./.github/workflows/release-android-foss.yml
     secrets: inherit
 
+  ios-appstore:
+    uses: ./.github/workflows/release-ios-appstore.yml
+    with:
+      upload: 'true'
+      submit_for_review: 'true'
+      testflight_group: 'external_testing'
+    secrets: inherit
+
+  macos-appstore:
+    uses: ./.github/workflows/release-macos-appstore.yml
+    with:
+      upload: 'true'
+      submit_for_review: 'true'
+      testflight_group: 'external_testing'
+    secrets: inherit
+
   release:
     needs: [linux, macos, windows, android, android-foss]
     runs-on: ubuntu-latest
